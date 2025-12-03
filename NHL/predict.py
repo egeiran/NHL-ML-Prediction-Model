@@ -4,9 +4,11 @@ import pandas as pd
 
 from utils.data_loader import load_and_prepare_games
 from utils.feature_engineering import (
+    DEFAULT_WINDOWS,
     build_team_long_df,
-    add_rolling_form,
+    add_multiwindow_form,
     get_latest_team_form,
+    get_feature_columns,
 )
 from utils.model_utils import load_model
 
@@ -94,26 +96,29 @@ def build_feature_row(
     games_df: pd.DataFrame,
     long_df_with_form: pd.DataFrame,
     abbr_to_id: dict,
+    windows=DEFAULT_WINDOWS,
 ):
     """
     Lager én rad med features for en gitt matchup.
     Bruker samme featurer som under trening.
     """
-    home_form = get_latest_team_form(long_df_with_form, home_abbr)
-    away_form = get_latest_team_form(long_df_with_form, away_abbr)
+    home_form = get_latest_team_form(long_df_with_form, home_abbr, windows=windows)
+    away_form = get_latest_team_form(long_df_with_form, away_abbr, windows=windows)
 
-    row = {
-        "home_form_goals_for": home_form["form_goals_for"],
-        "home_form_goals_against": home_form["form_goals_against"],
-        "home_form_win_rate": home_form["form_win_rate"],
-        "away_form_goals_for": away_form["form_goals_for"],
-        "away_form_goals_against": away_form["form_goals_against"],
-        "away_form_win_rate": away_form["form_win_rate"],
-        "home_team_id": abbr_to_id[home_abbr],
-        "away_team_id": abbr_to_id[away_abbr],
-    }
+    row = {}
+    for w in windows:
+        row[f"home_form_goals_for_w{w}"] = home_form[f"form_goals_for_w{w}"]
+        row[f"home_form_goals_against_w{w}"] = home_form[f"form_goals_against_w{w}"]
+        row[f"home_form_win_rate_w{w}"] = home_form[f"form_win_rate_w{w}"]
 
-    return pd.DataFrame([row])
+        row[f"away_form_goals_for_w{w}"] = away_form[f"form_goals_for_w{w}"]
+        row[f"away_form_goals_against_w{w}"] = away_form[f"form_goals_against_w{w}"]
+        row[f"away_form_win_rate_w{w}"] = away_form[f"form_win_rate_w{w}"]
+
+    row["home_team_id"] = abbr_to_id[home_abbr]
+    row["away_team_id"] = abbr_to_id[away_abbr]
+
+    return pd.DataFrame([row], columns=get_feature_columns(windows))
 
 
 def predict_match(
@@ -130,7 +135,7 @@ def predict_match(
 
     print("Building long dataframe and forms...")
     long_df = build_team_long_df(games_df)
-    long_df = add_rolling_form(long_df, window=5)
+    long_df = add_multiwindow_form(long_df, windows=DEFAULT_WINDOWS)
     
     # Vis siste 5 kamper for begge lagene
     display_last_5_games(long_df, home_abbr, away_abbr)
@@ -140,7 +145,12 @@ def predict_match(
 
     print(f"Building feature row for {home_abbr} vs {away_abbr}...")
     X_input = build_feature_row(
-        home_abbr, away_abbr, games_df, long_df, abbr_to_id
+        home_abbr,
+        away_abbr,
+        games_df,
+        long_df,
+        abbr_to_id,
+        windows=DEFAULT_WINDOWS,
     )
 
     probs = model.predict_proba(X_input)[0]

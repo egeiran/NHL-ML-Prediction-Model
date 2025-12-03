@@ -48,6 +48,9 @@ Frontend vil kjøre på `http://localhost:3000`
     "away_team": "MTL"
   }
   ```
+- `GET /value-report` - Modell + odds + value-gap for de neste dagene
+- `GET /portfolio` - Henter lagret bet-historikk og tidsserie for graf
+- `POST /portfolio/update` - Kjører daglig oppdatering (henter nye value-bets og avregner ferdige)
 
 ## 🎨 Features
 
@@ -116,6 +119,23 @@ Prediction Model/
 3. Velg hjemmelag og bortelag
 4. Klikk "Prediker resultat"
 5. Se prediksjoner og statistikk!
+
+## 🔁 Automatisk value-tracking
+
+1. **Data lagres i** `NHL/data/bet_history.csv` (opprettes automatisk).
+2. **Kjør daglig oppdatering** (cron, scheduled job eller manuelt):
+   ```bash
+   cd NHL
+   python bet_tracker.py
+   ```
+   Dette:
+   - Avregner ferdige kamper og oppdaterer profit.
+   - Legger til beste value-bet per dag frem i tid (standard stake 100 kr).
+3. **Graf / frontend**: hent `GET /portfolio` fra backend for data (investert vs. verdi). `POST /portfolio/update` kan brukes fra et cron kall hvis du vil trigge via API.
+4. **Tilpasninger**: juster stake/minimum value i `bet_tracker.update_daily_bets` eller ved å sende body til `/portfolio/update`:
+   ```json
+   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.01 }
+   ```
 
 ## 🐛 Feilsøking
 

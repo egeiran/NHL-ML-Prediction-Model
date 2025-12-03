@@ -1,26 +1,41 @@
 # live/live_feature_builder.py
 import pandas as pd
-import json
-import os
+from typing import Dict, List, Optional, Sequence
 
-from live.form_engine import compute_team_form
+from live.form_engine import (
+    compute_team_form,
+    compute_team_form_from_games,
+)
+from utils.data_loader import load_team_mappings
+from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
 
 
 def load_team_ids(team_info_path="data/team_info.csv"):
-    df = pd.read_csv(team_info_path)
-    # mapping f.eks: "NYR" → 3
-    abbr_to_id = dict(zip(df["abbreviation"], df["team_id"]))
+    _, abbr_to_id = load_team_mappings(team_info_path)
     return abbr_to_id
 
 
-def build_live_features(away_abbr: str, home_abbr: str) -> pd.DataFrame:
+def build_live_features(
+    away_abbr: str,
+    home_abbr: str,
+    windows: Sequence[int] = DEFAULT_WINDOWS,
+    home_games: Optional[List[Dict]] = None,
+    away_games: Optional[List[Dict]] = None,
+) -> pd.DataFrame:
     """
     Lager en rad med nøyaktig de samme features som treningsdataen brukte.
     """
 
     # 1. form-features
-    away_form = compute_team_form(away_abbr)
-    home_form = compute_team_form(home_abbr)
+    if home_games is not None:
+        home_form = compute_team_form_from_games(home_abbr, home_games, windows=windows)
+    else:
+        home_form = compute_team_form(home_abbr, windows=windows)
+
+    if away_games is not None:
+        away_form = compute_team_form_from_games(away_abbr, away_games, windows=windows)
+    else:
+        away_form = compute_team_form(away_abbr, windows=windows)
 
     # 2. team_id-features
     abbr_to_id = load_team_ids()
@@ -34,29 +49,20 @@ def build_live_features(away_abbr: str, home_abbr: str) -> pd.DataFrame:
     home_id = abbr_to_id[home_abbr]
     away_id = abbr_to_id[away_abbr]
 
-    row = {
-        "home_form_goals_for": home_form["form_goals_for"],
-        "home_form_goals_against": home_form["form_goals_against"],
-        "home_form_win_rate": home_form["form_win_rate"],
+    row = {}
+    for w in windows:
+        row[f"home_form_goals_for_w{w}"] = home_form[f"form_goals_for_w{w}"]
+        row[f"home_form_goals_against_w{w}"] = home_form[f"form_goals_against_w{w}"]
+        row[f"home_form_win_rate_w{w}"] = home_form[f"form_win_rate_w{w}"]
 
-        "away_form_goals_for": away_form["form_goals_for"],
-        "away_form_goals_against": away_form["form_goals_against"],
-        "away_form_win_rate": away_form["form_win_rate"],
+        row[f"away_form_goals_for_w{w}"] = away_form[f"form_goals_for_w{w}"]
+        row[f"away_form_goals_against_w{w}"] = away_form[f"form_goals_against_w{w}"]
+        row[f"away_form_win_rate_w{w}"] = away_form[f"form_win_rate_w{w}"]
 
-        # CRUCIAL: same as training
-        "home_team_id": home_id,
-        "away_team_id": away_id,
-    }
+    # CRUCIAL: same as training
+    row["home_team_id"] = home_id
+    row["away_team_id"] = away_id
 
-    feature_cols = [
-        "home_form_goals_for",
-        "home_form_goals_against",
-        "home_form_win_rate",
-        "away_form_goals_for",
-        "away_form_goals_against",
-        "away_form_win_rate",
-        "home_team_id",
-        "away_team_id",
-    ]
+    feature_cols = get_feature_columns(windows)
 
     return pd.DataFrame([row], columns=feature_cols)

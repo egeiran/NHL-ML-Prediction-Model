@@ -6,13 +6,14 @@ from sklearn.metrics import (
     classification_report,
 )
 
-from nhl.data_loader import load_and_prepare_games
-from nhl.feature_engineering import (
+from utils.data_loader import load_and_prepare_games
+from utils.feature_engineering import (
+    DEFAULT_WINDOWS,
     build_team_long_df,
-    add_rolling_form,
+    add_multiwindow_form,
     make_game_feature_frame,
 )
-from nhl.model_utils import train_random_forest, save_model, get_feature_importances
+from utils.model_utils import train_random_forest, save_model, get_feature_importances
 
 
 def main():
@@ -23,10 +24,12 @@ def main():
 
     print("Building long team-level dataframe...")
     long_df = build_team_long_df(games)
-    long_df = add_rolling_form(long_df, window=5)
+    long_df = add_multiwindow_form(long_df, windows=DEFAULT_WINDOWS)
 
     print("Creating game-level features...")
-    X, y, merged, feature_cols = make_game_feature_frame(games, long_df)
+    X, y, merged, feature_cols = make_game_feature_frame(
+        games, long_df, windows=DEFAULT_WINDOWS
+    )
 
     print("Splitting into train and test...")
     X_train, X_test, y_train, y_test = train_test_split(

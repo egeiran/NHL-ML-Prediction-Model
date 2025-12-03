@@ -2,6 +2,7 @@
 import argparse
 from utils.model_utils import load_model
 from live.live_feature_builder import build_live_features
+from utils.feature_engineering import DEFAULT_WINDOWS
 
 
 MODEL_PATH = "models/nhl_model.pkl"
@@ -15,7 +16,7 @@ def predict_live_match(away_abbr: str, home_abbr: str):
     print(f"\n=== Live prediction: {away_abbr} @ {home_abbr} ===")
 
     # 1) Bygg feature-row basert på live form
-    X = build_live_features(away_abbr, home_abbr)
+    X = build_live_features(away_abbr, home_abbr, windows=DEFAULT_WINDOWS)
     print("\nInput-features til modellen:")
     print(X)
 
@@ -39,12 +40,12 @@ def predict_live_match(away_abbr: str, home_abbr: str):
     print(f"- Klasse {best_class} med sannsynlighet {best_prob:.3f}")
 
     # Hvis du vet hva klassene betyr, kan du mappe her, f.eks:
-    #   0 = borteseier, 1 = OT/SO, 2 = hjemmeseier
+    #   0 = hjemmeseier, 1 = OT/SO, 2 = borteseier
     # Da kan du lage noe slikt:
     label_map = {
-        0: "Borteseier",
+        0: "Hjemmeseier",
         1: "Overtid / straffer",
-        2: "Hjemmeseier",
+        2: "Borteseier",
     }
 
     if int(best_class) in label_map:

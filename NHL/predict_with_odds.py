@@ -1,10 +1,8 @@
 # predict_with_odds.py
-import pandas as pd
 from live.nt_odds import get_nhl_matches_range
 from live.live_feature_builder import build_live_features
 from utils.model_utils import load_model
-from pprint import pprint
-import numpy as np
+from utils.feature_engineering import DEFAULT_WINDOWS
 
 MODEL_PATH = "models/nhl_model.pkl"
 
@@ -16,13 +14,13 @@ def implied_probability(odds: float) -> float:
     return 1 / odds
 
 
-def normalize_probs(p1, p2, p3=None):
+def normalize_probs(*probs):
     """Sørger for at summen blir 1."""
-    if p3 is None:
-        total = p1 + p2
-        return p1 / total, p2 / total
-    total = p1 + p2 + p3
-    return p1 / total, p2 / total, p3 / total
+    clean = [p if p is not None else 0.0 for p in probs]
+    total = sum(clean)
+    if total <= 0:
+        return tuple(0.0 for _ in clean)
+    return tuple(p / total for p in clean)
 
 
 def predict_match(model, home_abbr, away_abbr):
@@ -31,18 +29,20 @@ def predict_match(model, home_abbr, away_abbr):
     Returnerer et dict med sannsynligheter.
     """
 
-    X = build_live_features(away_abbr, home_abbr)
+    X = build_live_features(away_abbr, home_abbr, windows=DEFAULT_WINDOWS)
     probs = model.predict_proba(X)[0]
+    class_probs = dict(zip(model.classes_, probs))
 
-    # RANDOM FOREST output: [P(Home tap), P(Home win)]
-    p_loss = probs[0]
-    p_win = probs[1]
+    home_prob = class_probs.get(0, 0.0)
+    draw_prob = class_probs.get(1, 0.0)
+    away_prob = class_probs.get(2, 0.0)
 
-    p_win, p_loss = normalize_probs(p_win, p_loss)
+    home_prob, draw_prob, away_prob = normalize_probs(home_prob, draw_prob, away_prob)
 
     return {
-        "model_home_win_prob": p_win,
-        "model_home_loss_prob": p_loss,
+        "model_home_win_prob": home_prob,
+        "model_draw_prob": draw_prob,
+        "model_away_win_prob": away_prob,
     }
 
 
@@ -76,20 +76,21 @@ def make_report(days=3):
 
         pred = predict_match(model, home_abbr, away_abbr)
 
-        imp_H = implied_probability(g["odds_home"])
-        imp_D = implied_probability(g["odds_draw"])
-        imp_A = implied_probability(g["odds_away"])
+        raw_imp_H = implied_probability(g["odds_home"])
+        raw_imp_D = implied_probability(g["odds_draw"])
+        raw_imp_A = implied_probability(g["odds_away"])
 
         # Normalize markedet
-        if imp_D is None:
-            imp_H, imp_A = normalize_probs(imp_H, imp_A)
-        else:
-            imp_H, imp_D, imp_A = normalize_probs(imp_H, imp_D, imp_A)
+        imp_H, imp_D, imp_A = normalize_probs(
+            raw_imp_H if raw_imp_H is not None else 0.0,
+            raw_imp_D if raw_imp_D is not None else 0.0,
+            raw_imp_A if raw_imp_A is not None else 0.0,
+        )
 
-        value_H = evaluate_value(pred["model_home_win_prob"], imp_H)
-        value_A = evaluate_value(pred["model_home_loss_prob"], imp_A)
+        value_H = evaluate_value(pred["model_home_win_prob"], imp_H if raw_imp_H is not None else None)
+        value_D = evaluate_value(pred["model_draw_prob"], imp_D if raw_imp_D is not None else None)
+        value_A = evaluate_value(pred["model_away_win_prob"], imp_A if raw_imp_A is not None else None)
 
-        # draw modelleres ikke, så den hopper vi
         game_entry = {
             "match": f"{home_abbr} vs {away_abbr}",
             "start": g["startTime"],
@@ -101,15 +102,18 @@ def make_report(days=3):
 
             # modeled probabilities
             "model_home_win": round(pred["model_home_win_prob"], 3),
-            "model_away_win": round(pred["model_home_loss_prob"], 3),
+            "model_draw": round(pred["model_draw_prob"], 3),
+            "model_away_win": round(pred["model_away_win_prob"], 3),
 
             # implied probabilities
-            "implied_home_prob": round(imp_H, 3),
-            "implied_away_prob": round(imp_A, 3),
+            "implied_home_prob": round(imp_H, 3) if raw_imp_H is not None else None,
+            "implied_draw_prob": round(imp_D, 3) if raw_imp_D is not None else None,
+            "implied_away_prob": round(imp_A, 3) if raw_imp_A is not None else None,
 
             # VALUE
-            "value_home": round(value_H, 3),
-            "value_away": round(value_A, 3),
+            "value_home": round(value_H, 3) if value_H is not None else None,
+            "value_draw": round(value_D, 3) if value_D is not None else None,
+            "value_away": round(value_A, 3) if value_A is not None else None,
         }
 
         report.append(game_entry)
@@ -120,12 +124,14 @@ def make_report(days=3):
 if __name__ == "__main__":
     print("=== NHL Value Betting Report (Next 3 days) ===\n")
     rep = make_report(3)
+    if not rep:
+        raise SystemExit(0)
 
     for r in rep:
         print("--------------------------------------------------")
         print(r["match"], "|", r["start"])
-        print(f" Odds: H={r['odds_home']}   A={r['odds_away']}")
-        print(f" Model: H={r['model_home_win']}   A={r['model_away_win']}")
-        print(f" Market: H={r['implied_home_prob']}   A={r['implied_away_prob']}")
-        print(f" VALUE:  H={r['value_home']}   A={r['value_away']}")
+        print(f" Odds: H={r['odds_home']}   D={r['odds_draw']}   A={r['odds_away']}")
+        print(f" Model: H={r['model_home_win']}   D={r['model_draw']}   A={r['model_away_win']}")
+        print(f" Market: H={r['implied_home_prob']}   D={r['implied_draw_prob']}   A={r['implied_away_prob']}")
+        print(f" VALUE:  H={r['value_home']}   D={r['value_draw']}   A={r['value_away']}")
     print("--------------------------------------------------")

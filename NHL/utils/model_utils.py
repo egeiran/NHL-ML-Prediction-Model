@@ -1,9 +1,27 @@
 # nhl/model_utils.py
 import os
 import pickle
+from pathlib import Path
 from typing import List
 
 from sklearn.ensemble import RandomForestClassifier
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODELS_DIR = BASE_DIR / "models"
+
+
+def _resolve_model_path(path: str) -> Path:
+    """
+    Returnerer en absolutt sti til modellfilen.
+    Prøver først gitt sti, deretter BASE_DIR/models/<filnavn>.
+    """
+    p = Path(path)
+    if p.is_file():
+        return p
+    fallback = MODELS_DIR / p.name
+    if fallback.is_file():
+        return fallback
+    return p
 
 
 def train_random_forest(X_train, y_train) -> RandomForestClassifier:
@@ -25,8 +43,9 @@ def save_model(model, path: str = "models/nhl_model.pkl") -> None:
     """
     Lagrer modellen til disk med pickle.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
+    resolved = _resolve_model_path(path)
+    os.makedirs(resolved.parent, exist_ok=True)
+    with open(resolved, "wb") as f:
         pickle.dump(model, f)
 
 
@@ -34,7 +53,8 @@ def load_model(path: str = "models/nhl_model.pkl"):
     """
     Laster en tidligere trent modell.
     """
-    with open(path, "rb") as f:
+    resolved = _resolve_model_path(path)
+    with open(resolved, "rb") as f:
         return pickle.load(f)
 
 

@@ -1,21 +1,45 @@
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+from pathlib import Path
 
-NT_BASE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
-TEAM_CSV_PATH = "data/team_info.csv"
+NT_BASE_ALL = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
+NT_BASE_RANGE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"  # bruke HKY + params, daterange feiler uten /HKY
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEAM_CSV_PATH = BASE_DIR / "data" / "team_info.csv"
+
+
+def _normalize(name: str) -> str:
+    return "".join(ch for ch in name.upper() if ch.isalnum())
 
 
 def load_team_map():
-    """Lager mapping fra NT sine lagnavn → NHL-abbreviation."""
+    """Lager mapping fra NT sine lagnavn → NHL-abbreviation med flere varianter."""
     df = pd.read_csv(TEAM_CSV_PATH)
     mapping = {}
+    manual_alias = {
+        "UTAHMAMMOTH": "ARI",  # nytt navn, bruker ARI-data inntil videre
+        "UTAH": "ARI",
+        "UTA": "ARI",
+    }
 
-    # Lag gjerne fullnavn slik NT bruker dem:
     for _, row in df.iterrows():
-        # Eksempel: "New York Rangers"
-        full_name = f"{row['shortName']} {row['teamName']}"
-        mapping[full_name] = row["abbreviation"]
+        abbr = row["abbreviation"]
+        short = str(row["shortName"])
+        team = str(row["teamName"])
+
+        variants = {
+            short,
+            team,
+            f"{short} {team}",
+            abbr,
+        }
+
+        for v in variants:
+            mapping[_normalize(v)] = abbr
+
+    # Legg inn manuelle alias som ikke finnes i team_info.csv
+    mapping.update(manual_alias)
 
     return mapping
 
@@ -23,55 +47,97 @@ def load_team_map():
 TEAM_MAP = load_team_map()
 
 
-def get_hockey_events():
-    """Returnerer ALLE hockeyevents (NHL + andre ligaer) fra Norsk Tipping."""
-    r = requests.get(NT_BASE)
+def _fetch_events_range(days: int):
+    """
+    Bruker NT sitt daterange-endepunkt slik at vi får hele intervallet.
+    Fra-dato settes til 00:00, til-dato til 23:59 som NT krever.
+    """
+    today = datetime.utcnow().date()
+    end_date = today + timedelta(days=days)
+    params = {
+        "eventType": "HKY",
+        "fromDateTime": f"{today:%Y-%m-%d}T0000",
+        "toDateTime": f"{end_date:%Y-%m-%d}T2359",
+    }
+    r = requests.get(NT_BASE_RANGE, params=params)
     if r.status_code != 200:
-        raise RuntimeError(f"NT API error: {r.status_code}")
+        raise RuntimeError(f"NT range API error: {r.status_code} {r.text}")
+    return r.json().get("eventList", [])
 
-    return r.json()["eventList"]
 
-
-def get_nhl_matches(days_ahead=0):
+def get_hockey_events(days: int):
     """
-    Returnerer NHL-kamper som spilles today + days_ahead.
-    Standard = i dag.
+    Returnerer hockey-events for intervallet [i dag, i dag + days].
+    Faller tilbake til gamle /events/HKY hvis daterange feiler.
     """
+    events = _fetch_events_range(days)
+    if events:
+        return events
 
-    target_date = (datetime.now() + timedelta(days=days_ahead)).date()
+    # Fallback til gamle all-in-one endepunkt
+    r = requests.get(NT_BASE_ALL)
+    if r.status_code != 200:
+        raise RuntimeError(f"NT API error (fallback): {r.status_code}")
+    return r.json().get("eventList", [])
 
-    events = get_hockey_events()
+
+def _parse_start_time(start: str):
+    if not start:
+        return None
+    try:
+        return datetime.fromisoformat(start.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def get_nhl_matches_range(days=3):
+    """
+    Returnerer NHL-kamper fra Norsk Tipping for intervallet [i dag, i dag + days].
+    Bruker én fetch og filtrerer på dato i startTime.
+    """
+    events = get_hockey_events(days)
+    today = datetime.utcnow().date()
+    max_date = today + timedelta(days=days)
+
     nhl_games = []
 
     for ev in events:
         # vi skal kun ha NHL
-        if ev["tournament"]["name"] != "USA - NHL":
+        tournament_name = ev.get("tournament", {}).get("name", "")
+        if "NHL" not in tournament_name.upper():
             continue
 
-        # konverter startTime → dato
-        start_time = datetime.fromisoformat(ev["startTime"].replace("Z", "+00:00"))
-        if start_time.date() != target_date:
+        start_time = _parse_start_time(ev.get("startTime"))
+        if not start_time:
             continue
 
-        # odds-marked (1X2)
-        if "mainMarket" not in ev:
-            continue  # kamp mangler odds
+        start_date = start_time.date()
+        if start_date < today or start_date > max_date:
+            continue
 
-        market = ev["mainMarket"]
-        selections = market.get("selections", [])
+        market = ev.get("mainMarket", {}) or {}
+        selections = market.get("selections", []) or []
 
-        odds = {s["selectionValue"]: float(s["selectionOdds"]) for s in selections}
+        # Odds kan mangle (ikke prissatt ennå). Vi lar dem stå som None.
+        odds = {}
+        for s in selections:
+            try:
+                odds[s["selectionValue"]] = float(s["selectionOdds"])
+            except Exception:
+                continue
 
-        home = ev["homeParticipant"]
-        away = ev["awayParticipant"]
+        home = ev.get("homeParticipant")
+        away = ev.get("awayParticipant")
+        home_abbr = TEAM_MAP.get(_normalize(home)) if home else None
+        away_abbr = TEAM_MAP.get(_normalize(away)) if away else None
 
         game_info = {
-            "eventId": ev["eventId"],
-            "startTime": ev["startTime"],
+            "eventId": ev.get("eventId"),
+            "startTime": ev.get("startTime"),
             "home": home,
             "away": away,
-            "home_abbr": TEAM_MAP.get(home),
-            "away_abbr": TEAM_MAP.get(away),
+            "home_abbr": home_abbr,
+            "away_abbr": away_abbr,
             "odds_home": odds.get("H"),
             "odds_draw": odds.get("D"),
             "odds_away": odds.get("A"),
@@ -82,12 +148,16 @@ def get_nhl_matches(days_ahead=0):
     return nhl_games
 
 
-def get_nhl_matches_range(days=3):
-    """Returnerer NHL-kamper for de neste `days` dagene."""
-    all_games = []
-    for d in range(days + 1):
-        all_games.extend(get_nhl_matches(days_ahead=d))
-    return all_games
+def get_nhl_matches(days_ahead=0):
+    """
+    Bakoverkompatibel: returnerer kamper for én dato (i dag + days_ahead).
+    """
+    today = datetime.utcnow().date()
+    target_date = today + timedelta(days=days_ahead)
+    return [
+        g for g in get_nhl_matches_range(days_ahead)
+        if _parse_start_time(g.get("startTime")) and _parse_start_time(g.get("startTime")).date() == target_date
+    ]
 
 
 if __name__ == "__main__":

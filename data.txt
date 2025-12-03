@@ -1,0 +1,2433 @@
+{
+  "eventList": [
+    {
+      "eventId": "7744594.1",
+      "homeParticipant": "Ocelari Trinec",
+      "homeParticipantShortName": "Ocelari T",
+      "awayParticipant": "Mountfield HK",
+      "awayParticipantShortName": "Mountfiel",
+      "eventName": "Ocelari Trinec - Mountfield HK",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:00:00.000+01:00",
+      "tournament": {
+        "id": "27922",
+        "name": "Tsjekkia - Extraliga"
+      },
+      "country": {
+        "id": "119",
+        "name": "Tsjekkia"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393134.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324403047.1",
+            "selectionValue": "H",
+            "selectionName": "Ocelari Trinec",
+            "selectionShortName": "Ocelari T",
+            "selectionOdds": "1.72"
+          },
+          {
+            "selectionId": "324403048.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.95"
+          },
+          {
+            "selectionId": "324403049.1",
+            "selectionValue": "A",
+            "selectionName": "Mountfield HK",
+            "selectionShortName": "Mountfiel",
+            "selectionOdds": "3.25"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:00:28.000+01:00",
+        "betStop": "2025-12-03T17:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742976.1",
+      "homeParticipant": "Pelicans Lahti",
+      "homeParticipantShortName": "Pelicans",
+      "awayParticipant": "KooKoo",
+      "awayParticipantShortName": "KooKoo",
+      "eventName": "Pelicans Lahti - KooKoo",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "28499",
+        "name": "Finland - Liiga"
+      },
+      "country": {
+        "id": "240",
+        "name": "Finland"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393347.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324405662.1",
+            "selectionValue": "H",
+            "selectionName": "Pelicans Lahti",
+            "selectionShortName": "Pelicans",
+            "selectionOdds": "3.05"
+          },
+          {
+            "selectionId": "324405663.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.80"
+          },
+          {
+            "selectionId": "324405664.1",
+            "selectionValue": "A",
+            "selectionName": "KooKoo",
+            "selectionShortName": "KooKoo",
+            "selectionOdds": "1.82"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:31:21.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742921.1",
+      "homeParticipant": "Tappara Tampere",
+      "homeParticipantShortName": "Tappara T",
+      "awayParticipant": "JYP Jyväskylä",
+      "awayParticipantShortName": "JYP Jyvas",
+      "eventName": "Tappara Tampere - JYP Jyväskylä",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "28499",
+        "name": "Finland - Liiga"
+      },
+      "country": {
+        "id": "240",
+        "name": "Finland"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393348.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324405665.1",
+            "selectionValue": "H",
+            "selectionName": "Tappara Tampere",
+            "selectionShortName": "Tappara T",
+            "selectionOdds": "1.62"
+          },
+          {
+            "selectionId": "324405666.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.10"
+          },
+          {
+            "selectionId": "324405667.1",
+            "selectionValue": "A",
+            "selectionName": "JYP Jyväskylä",
+            "selectionShortName": "JYP Jyvas",
+            "selectionOdds": "3.90"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:31:21.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742978.1",
+      "homeParticipant": "TPS Turku",
+      "homeParticipantShortName": "TPS Turku",
+      "awayParticipant": "Kiekko-Espoo",
+      "awayParticipantShortName": "Kiekko-Es",
+      "eventName": "TPS Turku - Kiekko-Espoo",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "28499",
+        "name": "Finland - Liiga"
+      },
+      "country": {
+        "id": "240",
+        "name": "Finland"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393337.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324405641.1",
+            "selectionValue": "H",
+            "selectionName": "TPS Turku",
+            "selectionShortName": "TPS Turku",
+            "selectionOdds": "2.10"
+          },
+          {
+            "selectionId": "324405642.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.55"
+          },
+          {
+            "selectionId": "324405643.1",
+            "selectionValue": "A",
+            "selectionName": "Kiekko-Espoo",
+            "selectionShortName": "Kiekko-Es",
+            "selectionOdds": "2.60"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:31:20.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742940.1",
+      "homeParticipant": "HC Vitkovice",
+      "homeParticipantShortName": "HC Vitkov",
+      "awayParticipant": "HC Olomouc",
+      "awayParticipantShortName": "HC Olomou",
+      "eventName": "HC Vitkovice - HC Olomouc",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "27922",
+        "name": "Tsjekkia - Extraliga"
+      },
+      "country": {
+        "id": "119",
+        "name": "Tsjekkia"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393280.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324405471.1",
+            "selectionValue": "H",
+            "selectionName": "HC Vitkovice",
+            "selectionShortName": "HC Vitkov",
+            "selectionOdds": "1.72"
+          },
+          {
+            "selectionId": "324405472.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324405473.1",
+            "selectionValue": "A",
+            "selectionName": "HC Olomouc",
+            "selectionShortName": "HC Olomou",
+            "selectionOdds": "3.25"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:30:26.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742975.1",
+      "homeParticipant": "HIFK Helsinki",
+      "homeParticipantShortName": "HIFK Hels",
+      "awayParticipant": "Ässät Pori",
+      "awayParticipantShortName": "Assat Por",
+      "eventName": "HIFK Helsinki - Ässät Pori",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "28499",
+        "name": "Finland - Liiga"
+      },
+      "country": {
+        "id": "240",
+        "name": "Finland"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393351.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324405672.1",
+            "selectionValue": "H",
+            "selectionName": "HIFK Helsinki",
+            "selectionShortName": "HIFK Hels",
+            "selectionOdds": "2.60"
+          },
+          {
+            "selectionId": "324405673.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.65"
+          },
+          {
+            "selectionId": "324405674.1",
+            "selectionValue": "A",
+            "selectionName": "Ässät Pori",
+            "selectionShortName": "Assat Por",
+            "selectionOdds": "2.10"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T23:31:22.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7794325.1",
+      "homeParticipant": "Lukko Rauma",
+      "homeParticipantShortName": "Lukko Rau",
+      "awayParticipant": "EV Zug",
+      "awayParticipantShortName": "EV Zug",
+      "eventName": "Lukko Rauma - EV Zug",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T17:30:00.000+01:00",
+      "tournament": {
+        "id": "28022",
+        "name": "Champions Hockey League - International"
+      },
+      "country": {
+        "id": "116",
+        "name": "Internasjonal"
+      },
+      "broadcastingInfo": [
+        "VIAPLAY"
+      ],
+      "mainMarket": {
+        "marketId": "68381783.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324318885.1",
+            "selectionValue": "H",
+            "selectionName": "Lukko Rauma",
+            "selectionShortName": "Lukko Rau",
+            "selectionOdds": "2.10"
+          },
+          {
+            "selectionId": "324318886.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.85"
+          },
+          {
+            "selectionId": "324318887.1",
+            "selectionValue": "A",
+            "selectionName": "EV Zug",
+            "selectionShortName": "EV Zug",
+            "selectionOdds": "2.45"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-02T05:30:13.000+01:00",
+        "betStop": "2025-12-03T17:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742614.1",
+      "homeParticipant": "EC Graz 99Ers",
+      "homeParticipantShortName": "EC Graz 9",
+      "awayParticipant": "Vienna Capitals",
+      "awayParticipantShortName": "Vienna Ca",
+      "eventName": "EC Graz 99Ers - Vienna Capitals",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T18:30:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393652.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324407438.1",
+            "selectionValue": "H",
+            "selectionName": "EC Graz 99Ers",
+            "selectionShortName": "EC Graz 9",
+            "selectionOdds": "1.42"
+          },
+          {
+            "selectionId": "324407440.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.70"
+          },
+          {
+            "selectionId": "324407441.1",
+            "selectionValue": "A",
+            "selectionName": "Vienna Capitals",
+            "selectionShortName": "Vienna Ca",
+            "selectionOdds": "4.90"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T00:30:21.000+01:00",
+        "betStop": "2025-12-03T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742932.1",
+      "homeParticipant": "FTC-Telekom",
+      "homeParticipantShortName": "FTC-Telek",
+      "awayParticipant": "Red Bull Salzburg",
+      "awayParticipantShortName": "Red Bull",
+      "eventName": "FTC-Telekom - Red Bull Salzburg",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T18:30:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68393661.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324407457.1",
+            "selectionValue": "H",
+            "selectionName": "FTC-Telekom",
+            "selectionShortName": "FTC-Telek",
+            "selectionOdds": "3.80"
+          },
+          {
+            "selectionId": "324407458.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324407459.1",
+            "selectionValue": "A",
+            "selectionName": "Red Bull Salzburg",
+            "selectionShortName": "Red Bull",
+            "selectionOdds": "1.60"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T00:30:21.000+01:00",
+        "betStop": "2025-12-03T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742937.1",
+      "homeParticipant": "Kalmar HC",
+      "homeParticipantShortName": "Kalmar HC",
+      "awayParticipant": "Ostersunds IK",
+      "awayParticipantShortName": "Ostersund",
+      "eventName": "Kalmar HC - Ostersunds IK",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394032.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410555.1",
+            "selectionValue": "H",
+            "selectionName": "Kalmar HC",
+            "selectionShortName": "Kalmar HC",
+            "selectionOdds": "1.50"
+          },
+          {
+            "selectionId": "324410558.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.60"
+          },
+          {
+            "selectionId": "324410559.1",
+            "selectionValue": "A",
+            "selectionName": "Ostersunds IK",
+            "selectionShortName": "Ostersund",
+            "selectionOdds": "4.10"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742655.1",
+      "homeParticipant": "IK Oskarshamn",
+      "homeParticipantShortName": "IK Oskars",
+      "awayParticipant": "Almtuna IS",
+      "awayParticipantShortName": "Almtuna I",
+      "eventName": "IK Oskarshamn - Almtuna IS",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394024.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410536.1",
+            "selectionValue": "H",
+            "selectionName": "IK Oskarshamn",
+            "selectionShortName": "IK Oskars",
+            "selectionOdds": "1.55"
+          },
+          {
+            "selectionId": "324410537.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324410539.1",
+            "selectionValue": "A",
+            "selectionName": "Almtuna IS",
+            "selectionShortName": "Almtuna I",
+            "selectionOdds": "4.10"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742579.1",
+      "homeParticipant": "IF Troja-Ljungby",
+      "homeParticipantShortName": "IF Troja-",
+      "awayParticipant": "MODO Hockey",
+      "awayParticipantShortName": "MODO Hock",
+      "eventName": "IF Troja-Ljungby - MODO Hockey",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394058.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410610.1",
+            "selectionValue": "H",
+            "selectionName": "IF Troja-Ljungby",
+            "selectionShortName": "IF Troja-",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324410611.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.30"
+          },
+          {
+            "selectionId": "324410612.1",
+            "selectionValue": "A",
+            "selectionName": "MODO Hockey",
+            "selectionShortName": "MODO Hock",
+            "selectionOdds": "1.57"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742934.1",
+      "homeParticipant": "BIK Karlskoga",
+      "homeParticipantShortName": "BIK Karls",
+      "awayParticipant": "Vimmerby HC",
+      "awayParticipantShortName": "Vimmerby",
+      "eventName": "BIK Karlskoga - Vimmerby HC",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394061.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410615.1",
+            "selectionValue": "H",
+            "selectionName": "BIK Karlskoga",
+            "selectionShortName": "BIK Karls",
+            "selectionOdds": "1.37"
+          },
+          {
+            "selectionId": "324410617.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.70"
+          },
+          {
+            "selectionId": "324410619.1",
+            "selectionValue": "A",
+            "selectionName": "Vimmerby HC",
+            "selectionShortName": "Vimmerby",
+            "selectionOdds": "5.40"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742661.1",
+      "homeParticipant": "IF Bjorkloven",
+      "homeParticipantShortName": "IF Bjorkl",
+      "awayParticipant": "Vasteras IK",
+      "awayParticipantShortName": "Vasteras",
+      "eventName": "IF Bjorkloven - Vasteras IK",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394046.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410584.1",
+            "selectionValue": "H",
+            "selectionName": "IF Bjorkloven",
+            "selectionShortName": "IF Bjorkl",
+            "selectionOdds": "1.35"
+          },
+          {
+            "selectionId": "324410586.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.90"
+          },
+          {
+            "selectionId": "324410587.1",
+            "selectionValue": "A",
+            "selectionName": "Vasteras IK",
+            "selectionShortName": "Vasteras",
+            "selectionOdds": "6.10"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742618.1",
+      "homeParticipant": "AIK IF",
+      "homeParticipantShortName": "AIK IF",
+      "awayParticipant": "Mora IK",
+      "awayParticipantShortName": "Mora IK",
+      "eventName": "AIK IF - Mora IK",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394029.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410548.1",
+            "selectionValue": "H",
+            "selectionName": "AIK IF",
+            "selectionShortName": "AIK IF",
+            "selectionOdds": "1.82"
+          },
+          {
+            "selectionId": "324410550.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324410551.1",
+            "selectionValue": "A",
+            "selectionName": "Mora IK",
+            "selectionShortName": "Mora IK",
+            "selectionOdds": "2.95"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:31.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742600.1",
+      "homeParticipant": "Nybro Vikings IF",
+      "homeParticipantShortName": "Nybro Vik",
+      "awayParticipant": "Sodertalje SK",
+      "awayParticipantShortName": "Sodertalj",
+      "eventName": "Nybro Vikings IF - Sodertalje SK",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:00:00.000+01:00",
+      "tournament": {
+        "id": "28492",
+        "name": "Sverige - Allsvenskan"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394009.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324410507.1",
+            "selectionValue": "H",
+            "selectionName": "Nybro Vikings IF",
+            "selectionShortName": "Nybro Vik",
+            "selectionOdds": "2.50"
+          },
+          {
+            "selectionId": "324410508.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.85"
+          },
+          {
+            "selectionId": "324410509.1",
+            "selectionValue": "A",
+            "selectionName": "Sodertalje SK",
+            "selectionShortName": "Sodertalj",
+            "selectionOdds": "2.05"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:03:29.000+01:00",
+        "betStop": "2025-12-03T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742659.1",
+      "homeParticipant": "Fehervar AV19",
+      "homeParticipantShortName": "Fehervar",
+      "awayParticipant": "HK Olimpija Ljubljana",
+      "awayParticipantShortName": "HK Olimpi",
+      "eventName": "Fehervar AV19 - HK Olimpija Ljubljana",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:15:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394212.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324412503.1",
+            "selectionValue": "H",
+            "selectionName": "Fehervar AV19",
+            "selectionShortName": "Fehervar",
+            "selectionOdds": "2.50"
+          },
+          {
+            "selectionId": "324412504.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.95"
+          },
+          {
+            "selectionId": "324412505.1",
+            "selectionValue": "A",
+            "selectionName": "HK Olimpija Ljubljana",
+            "selectionShortName": "HK Olimpi",
+            "selectionOdds": "2.05"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:15:06.000+01:00",
+        "betStop": "2025-12-03T19:15:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742615.1",
+      "homeParticipant": "EC Villacher SV",
+      "homeParticipantShortName": "EC Villac",
+      "awayParticipant": "HC Bolzano-Bozen Foxes",
+      "awayParticipantShortName": "HC Bolzan",
+      "eventName": "EC Villacher SV - HC Bolzano-Bozen Foxes",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:15:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394215.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324412510.1",
+            "selectionValue": "H",
+            "selectionName": "EC Villacher SV",
+            "selectionShortName": "EC Villac",
+            "selectionOdds": "2.25"
+          },
+          {
+            "selectionId": "324412511.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.95"
+          },
+          {
+            "selectionId": "324412512.1",
+            "selectionValue": "A",
+            "selectionName": "HC Bolzano-Bozen Foxes",
+            "selectionShortName": "HC Bolzan",
+            "selectionOdds": "2.25"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:15:06.000+01:00",
+        "betStop": "2025-12-03T19:15:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742628.1",
+      "homeParticipant": "Black Wings Linz",
+      "homeParticipantShortName": "Black Win",
+      "awayParticipant": "HC TWK Innsbruck",
+      "awayParticipantShortName": "HC TWK In",
+      "eventName": "Black Wings Linz - HC TWK Innsbruck",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:15:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394203.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324412484.1",
+            "selectionValue": "H",
+            "selectionName": "Black Wings Linz",
+            "selectionShortName": "Black Win",
+            "selectionOdds": "1.35"
+          },
+          {
+            "selectionId": "324412486.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "5.00"
+          },
+          {
+            "selectionId": "324412488.1",
+            "selectionValue": "A",
+            "selectionName": "HC TWK Innsbruck",
+            "selectionShortName": "HC TWK In",
+            "selectionOdds": "5.60"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:15:06.000+01:00",
+        "betStop": "2025-12-03T19:15:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742641.1",
+      "homeParticipant": "HC Fribourg-Gotteron",
+      "homeParticipantShortName": "HC Fribou",
+      "awayParticipant": "SC Rapperswil-Jona Lakers",
+      "awayParticipantShortName": "SC Rapper",
+      "eventName": "HC Fribourg-Gotteron - SC Rapperswil-Jona Lakers",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:45:00.000+01:00",
+      "tournament": {
+        "id": "28483",
+        "name": "National League - Switzerland"
+      },
+      "country": {
+        "id": "169",
+        "name": "Sveits"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394683.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324415386.1",
+            "selectionValue": "H",
+            "selectionName": "HC Fribourg-Gotteron",
+            "selectionShortName": "HC Fribou",
+            "selectionOdds": "1.60"
+          },
+          {
+            "selectionId": "324415388.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324415389.1",
+            "selectionValue": "A",
+            "selectionName": "SC Rapperswil-Jona Lakers",
+            "selectionShortName": "SC Rapper",
+            "selectionOdds": "3.85"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:45:25.000+01:00",
+        "betStop": "2025-12-03T19:45:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742636.1",
+      "homeParticipant": "SC Bern",
+      "homeParticipantShortName": "SC Bern",
+      "awayParticipant": "EHC Biel",
+      "awayParticipantShortName": "EHC Biel",
+      "eventName": "SC Bern - EHC Biel",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:45:00.000+01:00",
+      "tournament": {
+        "id": "28483",
+        "name": "National League - Switzerland"
+      },
+      "country": {
+        "id": "169",
+        "name": "Sveits"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394681.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324415382.1",
+            "selectionValue": "H",
+            "selectionName": "SC Bern",
+            "selectionShortName": "SC Bern",
+            "selectionOdds": "1.90"
+          },
+          {
+            "selectionId": "324415383.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.90"
+          },
+          {
+            "selectionId": "324415384.1",
+            "selectionValue": "A",
+            "selectionName": "EHC Biel",
+            "selectionShortName": "EHC Biel",
+            "selectionOdds": "2.80"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:45:25.000+01:00",
+        "betStop": "2025-12-03T19:45:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742624.1",
+      "homeParticipant": "Pustertal Wolfe",
+      "homeParticipantShortName": "Pustertal",
+      "awayParticipant": "KAC Klagenfurt",
+      "awayParticipantShortName": "KAC Klage",
+      "eventName": "Pustertal Wolfe - KAC Klagenfurt",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:45:00.000+01:00",
+      "tournament": {
+        "id": "27659",
+        "name": "Østerrike - ICE Hockey League"
+      },
+      "country": {
+        "id": "225",
+        "name": "Østerrike"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394666.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324415351.1",
+            "selectionValue": "H",
+            "selectionName": "Pustertal Wolfe",
+            "selectionShortName": "Pustertal",
+            "selectionOdds": "2.30"
+          },
+          {
+            "selectionId": "324415352.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.90"
+          },
+          {
+            "selectionId": "324415353.1",
+            "selectionValue": "A",
+            "selectionName": "KAC Klagenfurt",
+            "selectionShortName": "KAC Klage",
+            "selectionOdds": "2.25"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:45:18.000+01:00",
+        "betStop": "2025-12-03T19:45:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7742643.1",
+      "homeParticipant": "HC Davos",
+      "homeParticipantShortName": "HC Davos",
+      "awayParticipant": "Geneve-Servette HC",
+      "awayParticipantShortName": "Geneve-Se",
+      "eventName": "HC Davos - Geneve-Servette HC",
+      "sportId": "HKY",
+      "startTime": "2025-12-03T19:45:00.000+01:00",
+      "tournament": {
+        "id": "28483",
+        "name": "National League - Switzerland"
+      },
+      "country": {
+        "id": "169",
+        "name": "Sveits"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68394685.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324415391.1",
+            "selectionValue": "H",
+            "selectionName": "HC Davos",
+            "selectionShortName": "HC Davos",
+            "selectionOdds": "1.80"
+          },
+          {
+            "selectionId": "324415393.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.10"
+          },
+          {
+            "selectionId": "324415394.1",
+            "selectionValue": "A",
+            "selectionName": "Geneve-Servette HC",
+            "selectionShortName": "Geneve-Se",
+            "selectionOdds": "3.00"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T01:45:25.000+01:00",
+        "betStop": "2025-12-03T19:45:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746192.1",
+      "homeParticipant": "New Jersey Devils",
+      "homeParticipantShortName": "New Jerse",
+      "awayParticipant": "Dallas Stars",
+      "awayParticipantShortName": "Dallas St",
+      "eventName": "New Jersey Devils - Dallas Stars",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:00:00.000+01:00",
+      "tournament": {
+        "id": "28005",
+        "name": "USA - NHL"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397619.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324423007.1",
+            "selectionValue": "H",
+            "selectionName": "New Jersey Devils",
+            "selectionShortName": "New Jerse",
+            "selectionOdds": "2.20"
+          },
+          {
+            "selectionId": "324423008.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324423009.1",
+            "selectionValue": "A",
+            "selectionName": "Dallas Stars",
+            "selectionShortName": "Dallas St",
+            "selectionOdds": "2.45"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:58.000+01:00",
+        "betStop": "2025-12-04T01:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746138.1",
+      "homeParticipant": "Grand Rapids Griffins",
+      "homeParticipantShortName": "Grand Rap",
+      "awayParticipant": "Cleveland Monsters",
+      "awayParticipantShortName": "Cleveland",
+      "eventName": "Grand Rapids Griffins - Cleveland Monsters",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:00:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397599.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422959.1",
+            "selectionValue": "H",
+            "selectionName": "Grand Rapids Griffins",
+            "selectionShortName": "Grand Rap",
+            "selectionOdds": "1.82"
+          },
+          {
+            "selectionId": "324422961.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.90"
+          },
+          {
+            "selectionId": "324422962.1",
+            "selectionValue": "A",
+            "selectionName": "Cleveland Monsters",
+            "selectionShortName": "Cleveland",
+            "selectionOdds": "3.00"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:46.000+01:00",
+        "betStop": "2025-12-04T01:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746135.1",
+      "homeParticipant": "Belleville Senators",
+      "homeParticipantShortName": "Bellevill",
+      "awayParticipant": "Toronto Marlies",
+      "awayParticipantShortName": "Toronto M",
+      "eventName": "Belleville Senators - Toronto Marlies",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:00:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397597.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422954.1",
+            "selectionValue": "H",
+            "selectionName": "Belleville Senators",
+            "selectionShortName": "Bellevill",
+            "selectionOdds": "2.45"
+          },
+          {
+            "selectionId": "324422956.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.80"
+          },
+          {
+            "selectionId": "324422958.1",
+            "selectionValue": "A",
+            "selectionName": "Toronto Marlies",
+            "selectionShortName": "Toronto M",
+            "selectionOdds": "2.10"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:46.000+01:00",
+        "betStop": "2025-12-04T01:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746427.1",
+      "homeParticipant": "Rochester Americans",
+      "homeParticipantShortName": "Rochester",
+      "awayParticipant": "Utica Comets",
+      "awayParticipantShortName": "Utica Com",
+      "eventName": "Rochester Americans - Utica Comets",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:05:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397770.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324423696.1",
+            "selectionValue": "H",
+            "selectionName": "Rochester Americans",
+            "selectionShortName": "Rochester",
+            "selectionOdds": "1.72"
+          },
+          {
+            "selectionId": "324423697.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.10"
+          },
+          {
+            "selectionId": "324423698.1",
+            "selectionValue": "A",
+            "selectionName": "Utica Comets",
+            "selectionShortName": "Utica Com",
+            "selectionOdds": "3.20"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:05:35.000+01:00",
+        "betStop": "2025-12-04T01:05:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746492.1",
+      "homeParticipant": "Philadelphia Flyers",
+      "homeParticipantShortName": "Philadelp",
+      "awayParticipant": "Buffalo Sabres",
+      "awayParticipantShortName": "Buffalo S",
+      "eventName": "Philadelphia Flyers - Buffalo Sabres",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:30:00.000+01:00",
+      "tournament": {
+        "id": "28005",
+        "name": "USA - NHL"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397892.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424090.1",
+            "selectionValue": "H",
+            "selectionName": "Philadelphia Flyers",
+            "selectionShortName": "Philadelp",
+            "selectionOdds": "2.30"
+          },
+          {
+            "selectionId": "324424091.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324424093.1",
+            "selectionValue": "A",
+            "selectionName": "Buffalo Sabres",
+            "selectionShortName": "Buffalo S",
+            "selectionOdds": "2.30"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:31:21.000+01:00",
+        "betStop": "2025-12-04T01:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746197.1",
+      "homeParticipant": "Montreal Canadiens",
+      "homeParticipantShortName": "Montreal",
+      "awayParticipant": "Winnipeg Jets",
+      "awayParticipantShortName": "Winnipeg",
+      "eventName": "Montreal Canadiens - Winnipeg Jets",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T01:30:00.000+01:00",
+      "tournament": {
+        "id": "28005",
+        "name": "USA - NHL"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397885.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424071.1",
+            "selectionValue": "H",
+            "selectionName": "Montreal Canadiens",
+            "selectionShortName": "Montreal",
+            "selectionOdds": "2.40"
+          },
+          {
+            "selectionId": "324424072.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324424073.1",
+            "selectionValue": "A",
+            "selectionName": "Winnipeg Jets",
+            "selectionShortName": "Winnipeg",
+            "selectionOdds": "2.20"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:31:21.000+01:00",
+        "betStop": "2025-12-04T01:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746147.1",
+      "homeParticipant": "Milwaukee Admirals",
+      "homeParticipantShortName": "Milwaukee",
+      "awayParticipant": "Iowa Wild",
+      "awayParticipantShortName": "Iowa Wild",
+      "eventName": "Milwaukee Admirals - Iowa Wild",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T02:00:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397999.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424576.1",
+            "selectionValue": "H",
+            "selectionName": "Milwaukee Admirals",
+            "selectionShortName": "Milwaukee",
+            "selectionOdds": "1.57"
+          },
+          {
+            "selectionId": "324424577.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324424578.1",
+            "selectionValue": "A",
+            "selectionName": "Iowa Wild",
+            "selectionShortName": "Iowa Wild",
+            "selectionOdds": "4.00"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T08:01:01.000+01:00",
+        "betStop": "2025-12-04T02:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746164.1",
+      "homeParticipant": "Chicago Wolves",
+      "homeParticipantShortName": "Chicago W",
+      "awayParticipant": "Manitoba Moose",
+      "awayParticipantShortName": "Manitoba",
+      "eventName": "Chicago Wolves - Manitoba Moose",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T02:00:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398005.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424589.1",
+            "selectionValue": "H",
+            "selectionName": "Chicago Wolves",
+            "selectionShortName": "Chicago W",
+            "selectionOdds": "2.25"
+          },
+          {
+            "selectionId": "324424590.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.75"
+          },
+          {
+            "selectionId": "324424591.1",
+            "selectionValue": "A",
+            "selectionName": "Manitoba Moose",
+            "selectionShortName": "Manitoba",
+            "selectionOdds": "2.30"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T08:01:04.000+01:00",
+        "betStop": "2025-12-04T02:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746325.1",
+      "homeParticipant": "Bakersfield Condors",
+      "homeParticipantShortName": "Bakersfie",
+      "awayParticipant": "Tucson Roadrunners",
+      "awayParticipantShortName": "Tucson Ro",
+      "eventName": "Bakersfield Condors - Tucson Roadrunners",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T03:30:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398061.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424865.1",
+            "selectionValue": "H",
+            "selectionName": "Bakersfield Condors",
+            "selectionShortName": "Bakersfie",
+            "selectionOdds": "2.15"
+          },
+          {
+            "selectionId": "324424866.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.85"
+          },
+          {
+            "selectionId": "324424867.1",
+            "selectionValue": "A",
+            "selectionName": "Tucson Roadrunners",
+            "selectionShortName": "Tucson Ro",
+            "selectionOdds": "2.40"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T09:30:33.000+01:00",
+        "betStop": "2025-12-04T03:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746151.1",
+      "homeParticipant": "Coachella Valley Firebirds",
+      "homeParticipantShortName": "Coachella",
+      "awayParticipant": "Texas Stars",
+      "awayParticipantShortName": "Texas Sta",
+      "eventName": "Coachella Valley Firebirds - Texas Stars",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T03:30:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398070.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424884.1",
+            "selectionValue": "H",
+            "selectionName": "Coachella Valley Firebirds",
+            "selectionShortName": "Coachella",
+            "selectionOdds": "2.10"
+          },
+          {
+            "selectionId": "324424885.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "3.85"
+          },
+          {
+            "selectionId": "324424886.1",
+            "selectionValue": "A",
+            "selectionName": "Texas Stars",
+            "selectionShortName": "Texas Sta",
+            "selectionOdds": "2.45"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T09:30:33.000+01:00",
+        "betStop": "2025-12-04T03:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746395.1",
+      "homeParticipant": "Anaheim Ducks",
+      "homeParticipantShortName": "Anaheim D",
+      "awayParticipant": "Utah Mammoth",
+      "awayParticipantShortName": "Utah Mamm",
+      "eventName": "Anaheim Ducks - Utah Mammoth",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T04:00:00.000+01:00",
+      "tournament": {
+        "id": "28005",
+        "name": "USA - NHL"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398046.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424688.1",
+            "selectionValue": "H",
+            "selectionName": "Anaheim Ducks",
+            "selectionShortName": "Anaheim D",
+            "selectionOdds": "2.35"
+          },
+          {
+            "selectionId": "324424689.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.30"
+          },
+          {
+            "selectionId": "324424690.1",
+            "selectionValue": "A",
+            "selectionName": "Utah Mammoth",
+            "selectionShortName": "Utah Mamm",
+            "selectionOdds": "2.40"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T09:01:48.000+01:00",
+        "betStop": "2025-12-04T04:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746205.1",
+      "homeParticipant": "San Jose Sharks",
+      "homeParticipantShortName": "San Jose",
+      "awayParticipant": "Washington Capitals",
+      "awayParticipantShortName": "Washingto",
+      "eventName": "San Jose Sharks - Washington Capitals",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T04:00:00.000+01:00",
+      "tournament": {
+        "id": "28005",
+        "name": "USA - NHL"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398038.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424671.1",
+            "selectionValue": "H",
+            "selectionName": "San Jose Sharks",
+            "selectionShortName": "San Jose",
+            "selectionOdds": "2.90"
+          },
+          {
+            "selectionId": "324424672.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324424673.1",
+            "selectionValue": "A",
+            "selectionName": "Washington Capitals",
+            "selectionShortName": "Washingto",
+            "selectionOdds": "2.00"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T09:01:19.000+01:00",
+        "betStop": "2025-12-04T04:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746158.1",
+      "homeParticipant": "Abbotsford Canucks",
+      "homeParticipantShortName": "Abbotsfor",
+      "awayParticipant": "Calgary Wranglers",
+      "awayParticipantShortName": "Calgary W",
+      "eventName": "Abbotsford Canucks - Calgary Wranglers",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T04:00:00.000+01:00",
+      "tournament": {
+        "id": "29541",
+        "name": "AHL - USA"
+      },
+      "country": {
+        "id": "196",
+        "name": "USA"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68398107.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324424992.1",
+            "selectionValue": "H",
+            "selectionName": "Abbotsford Canucks",
+            "selectionShortName": "Abbotsfor",
+            "selectionOdds": "2.90"
+          },
+          {
+            "selectionId": "324424993.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324424994.1",
+            "selectionValue": "A",
+            "selectionName": "Calgary Wranglers",
+            "selectionShortName": "Calgary W",
+            "selectionOdds": "1.85"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T10:00:33.000+01:00",
+        "betStop": "2025-12-04T04:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7823816.1",
+      "homeParticipant": "Narvik IK",
+      "homeParticipantShortName": "Narvik IK",
+      "awayParticipant": "Stavanger Oilers",
+      "awayParticipantShortName": "Stavanger",
+      "eventName": "Narvik IK - Stavanger Oilers",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T18:30:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SU"
+      ],
+      "mainMarket": {
+        "marketId": "68376821.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324305075.1",
+            "selectionValue": "H",
+            "selectionName": "Narvik IK",
+            "selectionShortName": "Narvik IK",
+            "selectionOdds": "5.10"
+          },
+          {
+            "selectionId": "324305076.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.60"
+          },
+          {
+            "selectionId": "324305077.1",
+            "selectionValue": "A",
+            "selectionName": "Stavanger Oilers",
+            "selectionShortName": "Stavanger",
+            "selectionOdds": "1.50"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-01T21:13:51.000+01:00",
+        "betStop": "2025-12-04T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7823817.1",
+      "homeParticipant": "Lillehammer IK",
+      "homeParticipantShortName": "Lillehamm",
+      "awayParticipant": "Nidaros Hockey",
+      "awayParticipantShortName": "Nidaros H",
+      "eventName": "Lillehammer IK - Nidaros Hockey",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T18:30:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SU"
+      ],
+      "mainMarket": {
+        "marketId": "68370516.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324271508.1",
+            "selectionValue": "H",
+            "selectionName": "Lillehammer IK",
+            "selectionShortName": "Lillehamm",
+            "selectionOdds": "1.35"
+          },
+          {
+            "selectionId": "324271509.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "5.20"
+          },
+          {
+            "selectionId": "324271510.1",
+            "selectionValue": "A",
+            "selectionName": "Nidaros Hockey",
+            "selectionShortName": "Nidaros H",
+            "selectionOdds": "6.60"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-01T11:31:00.000+01:00",
+        "betStop": "2025-12-04T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7823822.1",
+      "homeParticipant": "Sparta Sarpsborg",
+      "homeParticipantShortName": "Sparta Sa",
+      "awayParticipant": "Lørenskog IK",
+      "awayParticipantShortName": "Lørenskog",
+      "eventName": "Sparta Sarpsborg - Lørenskog IK",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T18:30:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SU"
+      ],
+      "mainMarket": {
+        "marketId": "68370651.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324272352.1",
+            "selectionValue": "H",
+            "selectionName": "Sparta Sarpsborg",
+            "selectionShortName": "Sparta Sa",
+            "selectionOdds": "1.55"
+          },
+          {
+            "selectionId": "324272353.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.30"
+          },
+          {
+            "selectionId": "324272354.1",
+            "selectionValue": "A",
+            "selectionName": "Lørenskog IK",
+            "selectionShortName": "Lørenskog",
+            "selectionOdds": "4.80"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-01T11:39:00.000+01:00",
+        "betStop": "2025-12-04T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7823821.1",
+      "homeParticipant": "Stjernen Hockey",
+      "homeParticipantShortName": "Stjernen",
+      "awayParticipant": "Storhamar Hockey",
+      "awayParticipantShortName": "Storhamar Håndball",
+      "eventName": "Stjernen Hockey - Storhamar Hockey",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T18:30:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SU"
+      ],
+      "mainMarket": {
+        "marketId": "68370463.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324271306.1",
+            "selectionValue": "H",
+            "selectionName": "Stjernen Hockey",
+            "selectionShortName": "Stjernen",
+            "selectionOdds": "8.00"
+          },
+          {
+            "selectionId": "324271308.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "5.50"
+          },
+          {
+            "selectionId": "324271309.1",
+            "selectionValue": "A",
+            "selectionName": "Storhamar Hockey",
+            "selectionShortName": "Storhamar Håndball",
+            "selectionOdds": "1.28"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-01T11:25:00.000+01:00",
+        "betStop": "2025-12-04T18:30:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7829038.1",
+      "eventName": "EHL Spesialer Torsdag 04.12",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T18:59:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SP1"
+      ]
+    },
+    {
+      "eventId": "7746280.1",
+      "homeParticipant": "Leksands IF",
+      "homeParticipantShortName": "Leksands",
+      "awayParticipant": "Brynäs IF",
+      "awayParticipantShortName": "Brynäs IF",
+      "eventName": "Leksands IF - Brynäs IF",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397604.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422971.1",
+            "selectionValue": "H",
+            "selectionName": "Leksands IF",
+            "selectionShortName": "Leksands",
+            "selectionOdds": "3.65"
+          },
+          {
+            "selectionId": "324422972.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.40"
+          },
+          {
+            "selectionId": "324422973.1",
+            "selectionValue": "A",
+            "selectionName": "Brynäs IF",
+            "selectionShortName": "Brynäs IF",
+            "selectionOdds": "1.72"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:52.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746375.1",
+      "homeParticipant": "Frölunda HC",
+      "homeParticipantShortName": "Frolunda",
+      "awayParticipant": "Djurgården IF",
+      "awayParticipantShortName": "Djurgarde",
+      "eventName": "Frölunda HC - Djurgården IF",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397614.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422993.1",
+            "selectionValue": "H",
+            "selectionName": "Frölunda HC",
+            "selectionShortName": "Frolunda",
+            "selectionOdds": "1.55"
+          },
+          {
+            "selectionId": "324422996.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.60"
+          },
+          {
+            "selectionId": "324422997.1",
+            "selectionValue": "A",
+            "selectionName": "Djurgården IF",
+            "selectionShortName": "Djurgarde",
+            "selectionOdds": "4.70"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:54.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746501.1",
+      "homeParticipant": "HC Örebro",
+      "homeParticipantShortName": "HC Örebro",
+      "awayParticipant": "Färjestads BK",
+      "awayParticipantShortName": "Farjestad",
+      "eventName": "HC Örebro - Färjestads BK",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397609.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422983.1",
+            "selectionValue": "H",
+            "selectionName": "HC Örebro",
+            "selectionShortName": "HC Örebro",
+            "selectionOdds": "2.80"
+          },
+          {
+            "selectionId": "324422984.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324422985.1",
+            "selectionValue": "A",
+            "selectionName": "Färjestads BK",
+            "selectionShortName": "Farjestad",
+            "selectionOdds": "2.15"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:54.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746286.1",
+      "homeParticipant": "Rögle BK",
+      "homeParticipantShortName": "Rögle BK",
+      "awayParticipant": "Timrå IK",
+      "awayParticipantShortName": "Timrå IK",
+      "eventName": "Rögle BK - Timrå IK",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397606.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422976.1",
+            "selectionValue": "H",
+            "selectionName": "Rögle BK",
+            "selectionShortName": "Rögle BK",
+            "selectionOdds": "1.80"
+          },
+          {
+            "selectionId": "324422977.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.20"
+          },
+          {
+            "selectionId": "324422978.1",
+            "selectionValue": "A",
+            "selectionName": "Timrå IK",
+            "selectionShortName": "Timrå IK",
+            "selectionOdds": "3.45"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:52.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746278.1",
+      "homeParticipant": "HV71",
+      "homeParticipantShortName": "HV71",
+      "awayParticipant": "Skellefteå AIK",
+      "awayParticipantShortName": "Skellefte",
+      "eventName": "HV71 - Skellefteå AIK",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397615.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422998.1",
+            "selectionValue": "H",
+            "selectionName": "HV71",
+            "selectionShortName": "HV71",
+            "selectionOdds": "3.75"
+          },
+          {
+            "selectionId": "324422999.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.40"
+          },
+          {
+            "selectionId": "324423000.1",
+            "selectionValue": "A",
+            "selectionName": "Skellefteå AIK",
+            "selectionShortName": "Skellefte",
+            "selectionOdds": "1.72"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:54.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746368.1",
+      "homeParticipant": "Luleå Hockey",
+      "homeParticipantShortName": "Lulea Hoc",
+      "awayParticipant": "Växjö Lakers",
+      "awayParticipantShortName": "Vaxjo Lak",
+      "eventName": "Luleå Hockey - Växjö Lakers",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397613.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422992.1",
+            "selectionValue": "H",
+            "selectionName": "Luleå Hockey",
+            "selectionShortName": "Lulea Hoc",
+            "selectionOdds": "2.00"
+          },
+          {
+            "selectionId": "324422994.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324422995.1",
+            "selectionValue": "A",
+            "selectionName": "Växjö Lakers",
+            "selectionShortName": "Vaxjo Lak",
+            "selectionOdds": "3.00"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:54.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7746372.1",
+      "homeParticipant": "Malmö IF",
+      "homeParticipantShortName": "Malmö IF",
+      "awayParticipant": "Linköpings HC",
+      "awayParticipantShortName": "Linkoping",
+      "eventName": "Malmö IF - Linköpings HC",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "27737",
+        "name": "Sverige - SHL"
+      },
+      "country": {
+        "id": "102",
+        "name": "Sverige"
+      },
+      "broadcastingInfo": [],
+      "mainMarket": {
+        "marketId": "68397603.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324422968.1",
+            "selectionValue": "H",
+            "selectionName": "Malmö IF",
+            "selectionShortName": "Malmö IF",
+            "selectionOdds": "2.10"
+          },
+          {
+            "selectionId": "324422969.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324422970.1",
+            "selectionValue": "A",
+            "selectionName": "Linköpings HC",
+            "selectionShortName": "Linkoping",
+            "selectionOdds": "2.85"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-03T07:00:52.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    },
+    {
+      "eventId": "7823824.1",
+      "homeParticipant": "Vålerenga Ishockey",
+      "homeParticipantShortName": "Vålerenga",
+      "awayParticipant": "Frisk Asker Ishockey",
+      "awayParticipantShortName": "Frisk Ask",
+      "eventName": "Vålerenga Ishockey - Frisk Asker Ishockey",
+      "sportId": "HKY",
+      "startTime": "2025-12-04T19:00:00.000+01:00",
+      "tournament": {
+        "id": "36014",
+        "name": "Elitehockeyligaen - Norway"
+      },
+      "country": {
+        "id": "81",
+        "name": "Norge"
+      },
+      "broadcastingInfo": [
+        "TV2-SP1"
+      ],
+      "mainMarket": {
+        "marketId": "68377026.1",
+        "marketName": "HUB",
+        "selections": [
+          {
+            "selectionId": "324305904.1",
+            "selectionValue": "H",
+            "selectionName": "Vålerenga Ishockey",
+            "selectionShortName": "Vålerenga",
+            "selectionOdds": "2.35"
+          },
+          {
+            "selectionId": "324305905.1",
+            "selectionValue": "D",
+            "selectionName": "Uavgjort",
+            "selectionShortName": "Uavgjort",
+            "selectionOdds": "4.00"
+          },
+          {
+            "selectionId": "324305906.1",
+            "selectionValue": "A",
+            "selectionName": "Frisk Asker Ishockey",
+            "selectionShortName": "Frisk Ask",
+            "selectionOdds": "2.45"
+          }
+        ],
+        "marketLineType": "MONEY",
+        "betStart": "2025-12-01T21:25:51.000+01:00",
+        "betStop": "2025-12-04T19:00:00.000+01:00",
+        "live": false
+      }
+    }
+  ]
+}
