@@ -1,0 +1,49 @@
+name: Daily Bet Update
+
+on:
+  schedule:
+    - cron: "0 8 * * *"  # 08:00 UTC ~= 10:00 norsk tid (CET/CEST)
+  workflow_dispatch:
+
+permissions:
+  contents: write  # trengs for å pushe bet_history.csv
+
+jobs:
+  update-bets:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: daily-bet-update
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r NHL/requirements-api.txt
+
+      - name: Run daily bet update
+        working-directory: NHL
+        run: |
+          python bet_tracker.py
+
+      - name: Commit and push changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add NHL/data/bet_history.csv
+          git commit -m "chore: update bet history"
+          git push

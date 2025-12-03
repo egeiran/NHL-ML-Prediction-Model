@@ -136,6 +136,7 @@ Prediction Model/
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.01 }
    ```
+5. **GitHub Actions (daglig auto-oppdatering)**: Workflow `/.github/workflows/daily-bet-update.yml` kjører daglig (cron) og committer/pusher ny `bet_history.csv`. Sørg for at Actions er aktivert i repoet og at default branch-navn stemmer (workflow bruker `contents: write` via `GITHUB_TOKEN`).
 
 ## 🐛 Feilsøking
 
