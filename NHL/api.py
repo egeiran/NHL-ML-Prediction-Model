@@ -419,21 +419,13 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
     """
     days = max(0, min(req.days_ahead, 10))
 
-    prefetched = None
-    if req.value_games:
-        prefetched = []
-        for g in req.value_games:
-            if hasattr(g, "model_dump"):
-                prefetched.append(g.model_dump())
-            elif isinstance(g, dict):
-                prefetched.append(g)
-
     result = update_daily_bets(
         days_ahead=days,
         stake_per_bet=req.stake_per_bet,
         min_value=req.min_value,
-        prefetched_report=prefetched,
-        take_all_prefetched=prefetched is not None,
+        # All rapportbygging skjer på serveren for å unngå manipulert input
+        prefetched_report=None,
+        take_all_prefetched=False,
     )
     return result["portfolio"]
 

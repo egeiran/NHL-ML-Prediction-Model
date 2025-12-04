@@ -7,6 +7,7 @@ NT_BASE_ALL = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
 NT_BASE_RANGE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"  # bruke HKY + params, daterange feiler uten /HKY
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEAM_CSV_PATH = BASE_DIR / "data" / "team_info.csv"
+HTTP_TIMEOUT = 5
 
 
 def _normalize(name: str) -> str:
@@ -59,7 +60,7 @@ def _fetch_events_range(days: int):
         "fromDateTime": f"{today:%Y-%m-%d}T0000",
         "toDateTime": f"{end_date:%Y-%m-%d}T2359",
     }
-    r = requests.get(NT_BASE_RANGE, params=params)
+    r = requests.get(NT_BASE_RANGE, params=params, timeout=HTTP_TIMEOUT)
     if r.status_code != 200:
         raise RuntimeError(f"NT range API error: {r.status_code} {r.text}")
     return r.json().get("eventList", [])
@@ -75,7 +76,7 @@ def get_hockey_events(days: int):
         return events
 
     # Fallback til gamle all-in-one endepunkt
-    r = requests.get(NT_BASE_ALL)
+    r = requests.get(NT_BASE_ALL, timeout=HTTP_TIMEOUT)
     if r.status_code != 200:
         raise RuntimeError(f"NT API error (fallback): {r.status_code}")
     return r.json().get("eventList", [])

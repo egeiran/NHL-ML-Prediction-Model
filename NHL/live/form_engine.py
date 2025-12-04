@@ -69,9 +69,10 @@ def compute_team_form_from_games(
             goals_against.append(ga)
             wins.append(1 if gf > ga else 0)
 
-        result[f"form_goals_for_w{w}"] = round(sum(goals_for) / len(subset), 2)
-        result[f"form_goals_against_w{w}"] = round(sum(goals_against) / len(subset), 2)
-        result[f"form_win_rate_w{w}"] = round(sum(wins) / len(subset), 2)
+        # Behold full presisjon som i treningspipen (ingen nedrunding)
+        result[f"form_goals_for_w{w}"] = sum(goals_for) / len(subset)
+        result[f"form_goals_against_w{w}"] = sum(goals_against) / len(subset)
+        result[f"form_win_rate_w{w}"] = sum(wins) / len(subset)
 
     return result
 

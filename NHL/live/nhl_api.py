@@ -11,6 +11,7 @@ _recent_games_cache = {}
 MAX_DAYS_BACK = 120  # begrenser hvor langt tilbake vi søker (redusert for hastighet)
 RETRY_PAUSE = 0.4
 MAX_RETRIES = 3
+HTTP_TIMEOUT = 5
 
 
 def _parse_dt(date_str: str):
@@ -24,7 +25,7 @@ def get_json(url):
     last_exc = None
     for attempt in range(MAX_RETRIES):
         try:
-            r = requests.get(url)
+            r = requests.get(url, timeout=HTTP_TIMEOUT)
             if r.status_code == 429 and attempt < MAX_RETRIES - 1:
                 time.sleep(RETRY_PAUSE * (attempt + 1))
                 continue
