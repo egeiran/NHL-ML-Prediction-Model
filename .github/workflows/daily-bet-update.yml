@@ -44,20 +44,20 @@ jobs:
             exit 0
           fi
           url=$(python - <<'PY'
-import os, sys, json
-data_str = sys.stdin.read().strip()
-if not data_str:
-    sys.exit(0)
-try:
-    data = json.loads(data_str)
-except Exception:
-    sys.exit(0)
-target = os.environ.get("ARTIFACT_NAME", "nhl-model")
-for art in data.get("artifacts", []):
-    if art.get("name") == target and not art.get("expired"):
-        print(art.get("archive_download_url", ""))
-        break
-PY
+          import os, sys, json
+          data_str = sys.stdin.read().strip()
+          if not data_str:
+              sys.exit(0)
+          try:
+              data = json.loads(data_str)
+          except Exception:
+              sys.exit(0)
+          target = os.environ.get("ARTIFACT_NAME", "nhl-model")
+          for art in data.get("artifacts", []):
+              if art.get("name") == target and not art.get("expired"):
+                  print(art.get("archive_download_url", ""))
+                  break
+          PY
           )
           if [ -z "$url" ]; then
             echo "No model artifact found, will train if needed."
