@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NHL Frontend (Next.js 16)
 
-## Getting Started
+Next.js-app som viser modellens NHL-odds, value-board og bankroll/portefølje basert på FastAPI-backenden i `../NHL`.
 
-First, run the development server:
-
+## 📦 Kom i gang
+Krav: Node 20+. Installer avhengigheter og start dev-server:
 ```bash
+cd nhl-frontend
+npm install
+# pek mot API-et hvis det ikke kjører lokalt:
+export NEXT_PUBLIC_API_BASE=http://localhost:8000
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Appen kjører på `http://localhost:3000`. Prod: `npm run build && npm start`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔌 API-tilkobling
+- Default i utvikling: `http://localhost:8000`. Sett `NEXT_PUBLIC_API_BASE` for et annet endepunkt.
+- Bruker backend-rutene `/teams`, `/predict`, `/value-report` (alias `/value_report`), `/portfolio` og `/portfolio/update`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🖥️ Funksjoner
+- **Value board:** Kampene for i dag + 7 dager, med modellodds, markedodds og “best value” per utfall.
+- **Portefølje:** Viser investert vs. verdi over tid (graf) og nøkkelstatistikk/ROI. Manuell oppdatering kaller `/portfolio/update`.
+- **Egendefinert matchup:** Velg hjemmelag/bortelag, få sannsynligheter (Home/OT/Away), siste 5 kamper og nøkkelstatistikk.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📂 Viktige filer
+- `app/page.tsx` – Hovedsiden.
+- `components/` – Value board, portefølje, matchup-komponenter.
+- `lib/format.ts` – Formatteringshjelpere.
+- `types/index.ts` – Frontend-typer for API-responsene.
 
-## Learn More
+## 🛠️ Scripts
+- `npm run dev` – Start utviklingsserver.
+- `npm run build` – Bygg for produksjon.
+- `npm start` – Start produsert build.
+- `npm run lint` – ESLint.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧰 Stack
+- Next.js 16 (App Router), React 19, TypeScript.
+- Tailwind CSS v4, lucide-react.
