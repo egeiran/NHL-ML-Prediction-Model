@@ -30,6 +30,50 @@ jobs:
           pip install --upgrade pip
           pip install -r NHL/requirements-api.txt
 
+      - name: Download latest model artifact (best effort)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_NAME: nhl-model
+        run: |
+          set -euo pipefail
+          mkdir -p NHL/models
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100"
+          url=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api" | python - <<'PY'
+import os, sys, json
+data = json.load(sys.stdin)
+target = os.environ.get("ARTIFACT_NAME", "nhl-model")
+for art in data.get("artifacts", []):
+    if art.get("name") == target and not art.get("expired"):
+        print(art.get("archive_download_url", ""))
+        break
+PY
+)
+          if [ -z "$url" ]; then
+            echo "No model artifact found, will train if needed."
+            exit 0
+          fi
+          echo "Downloading model artifact: $ARTIFACT_NAME"
+          curl -L -H "Authorization: Bearer $GH_TOKEN" -o /tmp/model.zip "$url"
+          unzip -o /tmp/model.zip -d NHL/models
+
+      - name: Ensure model artifact
+        working-directory: NHL
+        run: |
+          if [ -f models/nhl_model.pkl ]; then
+            echo "Existing model found"
+          else
+            echo "Model missing, training a fresh one..."
+            python train_model.py
+          fi
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhl-model
+          path: NHL/models/nhl_model.pkl
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Run daily bet update
         working-directory: NHL
         run: |

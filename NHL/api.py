@@ -201,6 +201,7 @@ class PortfolioUpdateRequest(BaseModel):
     days_ahead: int = 1
     stake_per_bet: float = 100.0
     min_value: float = 0.01
+    value_games: Optional[List[ValueGameResponse]] = None
 
 
 @app.get("/")
@@ -417,10 +418,22 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
     Kjører daglig oppdatering: avregner ferdige kamper og legger til dagens beste value-bet.
     """
     days = max(0, min(req.days_ahead, 10))
+
+    prefetched = None
+    if req.value_games:
+        prefetched = []
+        for g in req.value_games:
+            if hasattr(g, "model_dump"):
+                prefetched.append(g.model_dump())
+            elif isinstance(g, dict):
+                prefetched.append(g)
+
     result = update_daily_bets(
         days_ahead=days,
         stake_per_bet=req.stake_per_bet,
         min_value=req.min_value,
+        prefetched_report=prefetched,
+        take_all_prefetched=prefetched is not None,
     )
     return result["portfolio"]
 

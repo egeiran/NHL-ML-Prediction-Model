@@ -8,7 +8,7 @@ BASE = "https://api-web.nhle.com/v1"
 # Enkle caches for å redusere antall kall og unngå 429-rate limits
 _scoreboard_cache = {}
 _recent_games_cache = {}
-MAX_DAYS_BACK = 200  # begrenser hvor langt tilbake vi søker
+MAX_DAYS_BACK = 120  # begrenser hvor langt tilbake vi søker (redusert for hastighet)
 RETRY_PAUSE = 0.4
 MAX_RETRIES = 3
 

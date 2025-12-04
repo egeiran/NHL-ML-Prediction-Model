@@ -130,7 +130,7 @@ Prediction Model/
    ```
    Dette:
    - Avregner ferdige kamper og oppdaterer profit.
-   - Legger til beste value-bet per dag frem i tid (standard stake 100 kr).
+   - Legger til beste value-bets per dag frem i tid (standard stake 100 kr).
 3. **Graf / frontend**: hent `GET /portfolio` fra backend for data (investert vs. verdi). `POST /portfolio/update` kan brukes fra et cron kall hvis du vil trigge via API.
 4. **Tilpasninger**: juster stake/minimum value i `bet_tracker.update_daily_bets` eller ved å sende body til `/portfolio/update`:
    ```json

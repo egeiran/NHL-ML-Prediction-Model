@@ -75,6 +75,42 @@ def _parse_iso(dt: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def normalize_event_id(
+    raw_event_id: Any,
+    home_abbr: Optional[str],
+    away_abbr: Optional[str],
+    start_time: Optional[str],
+    date_str: Optional[str] = None,
+) -> str:
+    """
+    Sikrer stabil event_id:
+      - numeric ids får fjernet .0
+      - ellers faller vi tilbake til H-A-YYYY-MM-DD når mulig
+    """
+    raw_str = str(raw_event_id).strip() if raw_event_id is not None else ""
+    if raw_str:
+        try:
+            as_float = float(raw_str)
+            if as_float.is_integer():
+                return str(int(as_float))
+            # Ikke-heltallige tall-id'er er ustabile -> vi lager vår egen nedenfor
+            raw_str = ""
+        except Exception:
+            return raw_str
+
+    parsed_start = _parse_iso(start_time)
+    date_part = (date_str or "")[:10]
+    if not date_part and parsed_start:
+        date_part = parsed_start.strftime("%Y-%m-%d")
+
+    if home_abbr and away_abbr and date_part:
+        return f"{home_abbr}-{away_abbr}-{date_part}"
+    if home_abbr and away_abbr and start_time:
+        return f"{home_abbr}-{away_abbr}-{start_time}"
+
+    return raw_str or str(raw_event_id or "").strip()
+
+
 def _read_csv(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
@@ -231,8 +267,16 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
         start_dt = _parse_iso(raw_start)
         date_str = start_dt.strftime("%Y-%m-%d") if start_dt else ""
 
+        event_id = normalize_event_id(
+            game.get("eventId"),
+            home_abbr,
+            away_abbr,
+            raw_start,
+            date_str,
+        )
+
         report.append({
-            "event_id": str(game.get("eventId") or f"{home_abbr}-{away_abbr}-{raw_start}"),
+            "event_id": event_id,
             "date": date_str,
             "start_time": start_dt.isoformat() if start_dt else raw_start,
             "home": game.get("home"),
@@ -259,9 +303,28 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
 
 
 def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, Any]]:
-    selection = game.get("best_value")
+    selection = game.get("best_value") or game.get("selection")
     if not selection:
         return None
+
+    raw_start = game.get("start_time") or ""
+    start_dt = _parse_iso(raw_start)
+    start_time = start_dt.isoformat() if start_dt else (raw_start if isinstance(raw_start, str) else "")
+
+    date_str = game.get("date") or ""
+    if not date_str and start_dt:
+        date_str = start_dt.strftime("%Y-%m-%d")
+    elif not date_str and isinstance(raw_start, str) and len(raw_start) >= 10:
+        date_str = raw_start[:10]
+
+    home_abbr = (game.get("home_abbr") or game.get("home") or "") or None
+    away_abbr = (game.get("away_abbr") or game.get("away") or "") or None
+    if isinstance(home_abbr, str) and home_abbr:
+        home_abbr = home_abbr.upper()
+    if isinstance(away_abbr, str) and away_abbr:
+        away_abbr = away_abbr.upper()
+
+    event_id = normalize_event_id(game.get("event_id"), home_abbr, away_abbr, start_time, date_str)
 
     odds_lookup = {
         "home": game.get("odds_home"),
@@ -290,11 +353,11 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
 
     now_iso = datetime.utcnow().isoformat()
     return {
-        "date": game.get("date"),
-        "event_id": game.get("event_id"),
-        "start_time": game.get("start_time"),
-        "home_abbr": game.get("home_abbr"),
-        "away_abbr": game.get("away_abbr"),
+        "date": date_str,
+        "event_id": event_id,
+        "start_time": start_time,
+        "home_abbr": home_abbr,
+        "away_abbr": away_abbr,
         "selection": selection,
         "odds": float(odds),
         "model_prob": float(model_lookup.get(selection) or 0.0),
@@ -355,7 +418,20 @@ def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
 
 
 def _existing_keys(history: Sequence[Dict[str, Any]]) -> set:
-    return {f"{row.get('event_id')}|{row.get('selection')}" for row in history}
+    keys = set()
+    for row in history:
+        selection = row.get("selection")
+        raw_event_id = row.get("event_id")
+        keys.add(f"{raw_event_id}|{selection}")
+        norm_event_id = normalize_event_id(
+            raw_event_id,
+            row.get("home_abbr"),
+            row.get("away_abbr"),
+            row.get("start_time"),
+            row.get("date"),
+        )
+        keys.add(f"{norm_event_id}|{selection}")
+    return keys
 
 
 def record_new_bets(
@@ -363,12 +439,17 @@ def record_new_bets(
     days_ahead: int = 1,
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = 0.0,
+    prefetched_report: Optional[List[Dict[str, Any]]] = None,
+    take_all_prefetched: bool = True,
 ) -> int:
     """
-    Velger beste value-bet per dag og legger til hvis den ikke allerede finnes.
+    Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle fra prefetched_report.
     """
-    report = _build_value_report(days_ahead)
-    candidates = _choose_best_per_day(report, min_value=min_value)
+    report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
+    if take_all_prefetched and prefetched_report is not None:
+        candidates = report
+    else:
+        candidates = _choose_best_per_day(report, min_value=min_value)
 
     existing_keys = _existing_keys(history)
     created = 0
@@ -391,9 +472,11 @@ def record_new_bets(
 
 def update_daily_bets(
     history_path: Path = BET_HISTORY_PATH,
-    days_ahead: int = 1,
+    days_ahead: int = 3,
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = 0.01,
+    prefetched_report: Optional[List[Dict[str, Any]]] = None,
+    take_all_prefetched: bool = False,
 ) -> Dict[str, Any]:
     """
     Hovedinngangen som kan kjøres i cron/GitHub Actions.
@@ -405,6 +488,8 @@ def update_daily_bets(
         days_ahead=days_ahead,
         stake_per_bet=stake_per_bet,
         min_value=min_value,
+        prefetched_report=prefetched_report,
+        take_all_prefetched=take_all_prefetched,
     )
     save_history(history, history_path)
     portfolio = build_portfolio_payload(history)
