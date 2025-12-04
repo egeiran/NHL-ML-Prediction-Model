@@ -39,15 +39,15 @@ jobs:
           mkdir -p NHL/models
           api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100"
           url=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" "$api" | python - <<'PY'
-import os, sys, json
-data = json.load(sys.stdin)
-target = os.environ.get("ARTIFACT_NAME", "nhl-model")
-for art in data.get("artifacts", []):
-    if art.get("name") == target and not art.get("expired"):
-        print(art.get("archive_download_url", ""))
-        break
-PY
-)
+          import os, sys, json
+          data = json.load(sys.stdin)
+          target = os.environ.get("ARTIFACT_NAME", "nhl-model")
+          for art in data.get("artifacts", []):
+              if art.get("name") == target and not art.get("expired"):
+                  print(art.get("archive_download_url", ""))
+                  break
+          PY
+          )
           if [ -z "$url" ]; then
             echo "No model artifact found, will train if needed."
             exit 0
