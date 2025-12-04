@@ -48,22 +48,28 @@ def load_and_prepare_games(
 
     # Kun grunnseriekamper
     games = games[games["type"] == "R"].copy()
+    games = games[~games["outcome"].str.contains("tbc", na=False)].copy()
 
     # Dato i datetime-format
     games["date"] = pd.to_datetime(games["date_time_GMT"])
 
     # Encode outcome til 0/1/2
     def encode_outcome(o: str) -> int:
-        if isinstance(o, str):
-            o = o.lower()
-            if o.startswith("home win"):
-                return 0  # hjemmeseier
-            if o.startswith("away win"):
-                return 2  # borteseier
-        # alt annet (OT/SO/etc.) regner vi som "uavgjort-type" (1)
-        return 1
+        if not isinstance(o, str):
+            return -1
+        o = o.lower().strip()
+        if not o or "tbc" in o:
+            return -1  # kamp ikke spilt/ukjent label
+        if "ot" in o or "so" in o:
+            return 1  # uavgjort-type for OT/SO
+        if o.startswith("home win"):
+            return 0  # hjemmeseier
+        if o.startswith("away win"):
+            return 2  # borteseier
+        return -1  # ukjent label droppes senere
 
     games["outcome_code"] = games["outcome"].apply(encode_outcome)
+    games = games[games["outcome_code"] >= 0].copy()
 
     return games, id_to_abbr, abbr_to_id
 

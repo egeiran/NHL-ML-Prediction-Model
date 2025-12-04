@@ -2,8 +2,10 @@
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score,
+    balanced_accuracy_score,
     confusion_matrix,
     classification_report,
+    f1_score,
 )
 
 from utils.data_loader import load_and_prepare_games
@@ -35,7 +37,7 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
+        test_size=0.1,
         random_state=42,
         stratify=y,
     )
@@ -46,7 +48,11 @@ def main():
     print("\n=== Evaluating Model ===")
     preds = model.predict(X_test)
     acc = accuracy_score(y_test, preds)
-    print(f"Accuracy: {acc:.3f}\n")
+    bal_acc = balanced_accuracy_score(y_test, preds)
+    macro_f1 = f1_score(y_test, preds, average="macro")
+    print(f"Accuracy: {acc:.3f}")
+    print(f"Balanced Accuracy: {bal_acc:.3f}")
+    print(f"Macro F1: {macro_f1:.3f}\n")
 
     print("Confusion Matrix:")
     print(confusion_matrix(y_test, preds))

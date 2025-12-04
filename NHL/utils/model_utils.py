@@ -29,8 +29,10 @@ def train_random_forest(X_train, y_train) -> RandomForestClassifier:
     Trener en RandomForest-modell med fornuftige standardparametre.
     """
     model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=15,
+        n_estimators=500,
+        max_depth=18,
+        min_samples_leaf=2,
+        max_features="sqrt",
         random_state=42,
         class_weight="balanced",
         n_jobs=-1,  # bruk alle CPU-kjerner
