@@ -83,8 +83,8 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-xs text-white/70">
-        <LegendSwatch color="#34d399" label="Total verdi" value={formatCurrency(activePoint.value)} />
-        <LegendSwatch color="#38bdf8" label="Total innsats" value={formatCurrency(activePoint.invested)} />
+        <LegendSwatch color="#34d399" label="Netto resultat" value={formatCurrency(activePoint.value)} />
+        <LegendSwatch color="#38bdf8" label="Dagens innsats" value={formatCurrency(activePoint.invested)} />
         <span className="text-white/50">
           {formatDateLabel(startPoint.date)} – {formatDateLabel(endPoint.date)}
         </span>
@@ -205,9 +205,9 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
           >
             <div className="text-[10px] uppercase tracking-wide text-white/60">Dag {hoverIndex + 1}</div>
             <div className="font-semibold text-white">{formatDateLabel(activePoint.date)}</div>
-            <div className="mt-1 text-white/80">Verdi: <span className="font-semibold text-white">{formatCurrency(activePoint.value)}</span></div>
-            <div className="text-white/80">Innsats: <span className="font-semibold text-white">{formatCurrency(activePoint.invested)}</span></div>
-            <div className="text-white/80">Åpne spill: <span className="font-semibold text-white">{activePoint.open_bets}</span></div>
+            <div className="mt-1 text-white/80">Resultat: <span className="font-semibold text-white">{formatCurrency(activePoint.value)}</span></div>
+            <div className="text-white/80">Innsats den dagen: <span className="font-semibold text-white">{formatCurrency(activePoint.invested)}</span></div>
+            <div className="text-white/80">Spill den dagen: <span className="font-semibold text-white">{activePoint.bets_placed}</span></div>
           </div>
         )}
       </div>

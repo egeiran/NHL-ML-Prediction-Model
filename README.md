@@ -13,6 +13,7 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
   ```
 - Sørg for modellfil i `models/nhl_model.pkl`. Kjør `python train_model.py` hvis den mangler.
 - Start API-serveren: `python api.py` (kjører på `http://localhost:8000`, docs på `/docs`).
+- CORS: alle localhost-porter er tillatt, men sett `FRONTEND_ORIGINS` hvis frontend kjører på et annet domene/host.
 
 ### 2. Frontend (Next.js 16)
 - Krav: Node 20+.
@@ -32,7 +33,7 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
   ```json
   { "home_team": "BOS", "away_team": "MTL" }
   ```
-- `GET /value-report?days=7` – Modellodds vs. Norsk Tipping-odds (0–10 dager frem). Alias: `/value_report`.
+- `GET /value-report?days=3` – Modellodds vs. Norsk Tipping-odds (0–10 dager frem). Alias: `/value_report`.
 - `GET /portfolio` – Tidsserie + sammendrag + bet-liste fra `data/bet_history.csv`.
 - `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `value_games` (prefetch fra frontend).
 
@@ -102,7 +103,7 @@ Prediction Model/
    ```
    - Avregner ferdige kamper og oppdaterer profit.
    - Legger til beste value-bets per dag (standard stake 100 kr, min value 0.01).
-3. **Graf / frontend**: `GET /portfolio` for data (investert vs. verdi). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
+3. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
 4. **Tilpasninger**: juster stake/value i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.01 }

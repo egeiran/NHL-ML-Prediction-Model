@@ -87,6 +87,7 @@ export interface PortfolioPoint {
     settled_return: number;
     open_stake: number;
     open_bets: number;
+    bets_placed: number;
 }
 
 export interface PortfolioSummary {
@@ -95,8 +96,10 @@ export interface PortfolioSummary {
     total_staked: number;
     settled_return: number;
     current_value: number;
+    open_stake: number;
     profit: number;
     roi: number;
+    win_rate: number;
 }
 
 export interface PortfolioResponse {

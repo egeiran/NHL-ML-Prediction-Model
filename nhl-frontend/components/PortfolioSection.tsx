@@ -1,7 +1,7 @@
 import { RefreshCw, TrendingUp, Wallet } from 'lucide-react';
 
 import ValueOverTimeChart from '@/components/ValueOverTimeChart';
-import { formatCurrency, formatDateLabel, formatRoi } from '@/lib/format';
+import { formatCurrency, formatDateLabel, formatPercent, formatRoi } from '@/lib/format';
 import { PortfolioResponse } from '@/types';
 
 type PortfolioSectionProps = {
@@ -26,6 +26,11 @@ export default function PortfolioSection({
   const portfolioSeries = portfolio?.timeseries ?? [];
   const portfolioSummary = portfolio?.summary;
   const latestPoint = portfolioSeries[portfolioSeries.length - 1] || null;
+  const settledCount = portfolioSummary ? portfolioSummary.total_bets - portfolioSummary.open_bets : 0;
+  const completionPct =
+    portfolioSummary && portfolioSummary.total_bets
+      ? ((settledCount / portfolioSummary.total_bets) * 100).toFixed(0)
+      : '0';
 
   return (
     <section className="mb-10">
@@ -37,7 +42,7 @@ export default function PortfolioSection({
             </div>
             <div>
               <div className="text-sm uppercase tracking-wide text-white/60">Bankroll-spor</div>
-              <div className="text-xl font-semibold text-white">Beste value-bets per dag (100 kr x antall matcher innsats)</div>
+              <div className="text-xl font-semibold text-white">Beste value-bets per dag (100 kr flat innsats – kun gevinst legges til)</div>
               <div className="text-sm text-white/60">Data fra /portfolio endepunktet</div>
             </div>
           </div>
@@ -92,7 +97,7 @@ export default function PortfolioSection({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-white/60">
                   <TrendingUp className="h-4 w-4 text-emerald-300" />
-                  Verdi og innsats over tid
+                  Resultat og daglig innsats
                 </div>
                 <div className="text-xs text-white/50">{portfolioSeries.length} datapunkt(er)</div>
               </div>
@@ -101,33 +106,34 @@ export default function PortfolioSection({
               </div>
               {latestPoint && (
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-white/70">
-                  <span>Verdi nå: <strong className="text-white">{formatCurrency(latestPoint.value)}</strong></span>
-                  <span>Investert: <strong className="text-white">{formatCurrency(latestPoint.invested)}</strong></span>
-                  <span>Åpne spill: <strong className="text-white">{latestPoint.open_bets}</strong></span>
+                  <span>Netto resultat: <strong className="text-white">{formatCurrency(latestPoint.value)}</strong></span>
+                  <span>Innsats den dagen: <strong className="text-white">{formatCurrency(latestPoint.invested)}</strong></span>
+                  <span>Spill den dagen: <strong className="text-white">{latestPoint.bets_placed}</strong></span>
                 </div>
               )}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <StatBlock
-                label="Investert totalt"
-                value={formatCurrency(portfolioSummary.total_staked)}
-                note={`${portfolioSummary.total_bets} spill`}
+                label="Ferdigstilt"
+                value={`${completionPct}%`}
+                note={`${settledCount} av ${portfolioSummary.total_bets} spill`}
               />
               <StatBlock
-                label="Nåverdi"
+                label="Realisert resultat"
                 value={formatCurrency(portfolioSummary.current_value)}
-                note={`Åpne spill: ${portfolioSummary.open_bets}`}
+                note={`Åpen eksponering: ${formatCurrency(portfolioSummary.open_stake)}`}
+                tone={portfolioSummary.current_value >= 0 ? 'positive' : 'negative'}
               />
               <StatBlock
-                label="Resultat"
-                value={formatCurrency(portfolioSummary.profit)}
-                note={`ROI ${formatRoi(portfolioSummary.roi)}`}
+                label="ROI"
+                value={formatRoi(portfolioSummary.roi)}
+                note={`Realisert resultat: ${formatCurrency(portfolioSummary.profit)}`}
                 tone={portfolioSummary.profit >= 0 ? 'positive' : 'negative'}
               />
               <StatBlock
-                label="Utbetalt (avregnet)"
-                value={formatCurrency(portfolioSummary.settled_return)}
-                note="Ferdigspilte spill"
+                label="Treffrate"
+                value={formatPercent(portfolioSummary.win_rate)}
+                note={`${settledCount} avregnet`}
               />
             </div>
           </div>

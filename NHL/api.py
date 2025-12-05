@@ -1,10 +1,12 @@
 # api.py
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Optional
 
 from bet_tracker import (
     build_portfolio_payload,
@@ -28,13 +30,23 @@ MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 
 app = FastAPI(title="NHL Prediction API", version="1.0.0")
 
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+EXTRA_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("FRONTEND_ORIGINS", "").split(",")
+    if origin.strip()
+]
+# Tillat alle localhost-porter (f.eks. 3001/3002 når Next velger ny port)
+LOCAL_ORIGIN_REGEX = os.environ.get("ALLOWED_ORIGIN_REGEX") or r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+
 # CORS middleware for å tillate requests fra Next.js frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],  # Next.js dev default hosts
+    allow_origins=DEFAULT_ALLOWED_ORIGINS + EXTRA_ALLOWED_ORIGINS,
+    allow_origin_regex=LOCAL_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -179,6 +191,7 @@ class PortfolioPoint(BaseModel):
     settled_return: float
     open_stake: float
     open_bets: int
+    bets_placed: int
 
 
 class PortfolioSummary(BaseModel):
@@ -187,8 +200,10 @@ class PortfolioSummary(BaseModel):
     total_staked: float
     settled_return: float
     current_value: float
+    open_stake: float
     profit: float
     roi: float
+    win_rate: float
 
 
 class PortfolioResponse(BaseModel):
@@ -415,7 +430,7 @@ def get_portfolio():
 @app.post("/portfolio/update", response_model=PortfolioResponse)
 def trigger_portfolio_update(req: PortfolioUpdateRequest):
     """
-    Kjører daglig oppdatering: avregner ferdige kamper og legger til dagens beste value-bet.
+    Kjører daglig oppdatering: avregner ferdige kamper og legger til alle value-bets over min_value.
     """
     days = max(0, min(req.days_ahead, 10))
 
@@ -425,7 +440,8 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
         min_value=req.min_value,
         # All rapportbygging skjer på serveren for å unngå manipulert input
         prefetched_report=None,
-        take_all_prefetched=False,
+        # Ta alle dagens kamper over min_value, ikke bare én per dag
+        take_all_prefetched=True,
     )
     return result["portfolio"]
 

@@ -16,7 +16,7 @@ const IS_LOCAL_API =
   API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1') || API_BASE.startsWith('/');
 
 const apiUrl = (path: string) => `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-const DAYS_AHEAD = 7; // i dag + 7 = 8 dagers horisont
+const DAYS_AHEAD = 3; // i dag + 3 = 4 dagers horisont
 
 export default function Home() {
   const [teams, setTeams] = useState<Team[]>([]);

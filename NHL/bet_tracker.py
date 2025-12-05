@@ -173,7 +173,25 @@ def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[D
         if home_goals is None or away_goals is None:
             return {"finished": False}
 
-        if home_goals > away_goals:
+        outcome_info = game.get("gameOutcome") or {}
+        last_period_type = str(outcome_info.get("lastPeriodType") or "").upper()
+        period_info = game.get("periodDescriptor") or {}
+        period_type = str(period_info.get("periodType") or "").upper()
+        period_number = game.get("period")
+        ot_in_use = bool(game.get("otInUse"))
+        so_in_use = bool(game.get("shootoutInUse"))
+
+        ended_in_extra = (
+            last_period_type in {"OT", "SO"}
+            or period_type in {"OT", "SO"}
+            or ot_in_use
+            or so_in_use
+            or (isinstance(period_number, int) and period_number > 3)
+        )
+
+        if ended_in_extra:
+            outcome = "draw"  # 3-veis marked: uavgjort ved full tid selv om OT/SO avgjør vinner
+        elif home_goals > away_goals:
             outcome = "home"
         elif away_goals > home_goals:
             outcome = "away"
@@ -443,11 +461,16 @@ def record_new_bets(
     take_all_prefetched: bool = True,
 ) -> int:
     """
-    Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle fra prefetched_report.
+    Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle kamper
+    (prefetchet eller bygget), filtrert på min_value.
     """
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
-    if take_all_prefetched and prefetched_report is not None:
-        candidates = report
+    if take_all_prefetched:
+        candidates = [
+            g
+            for g in report
+            if g.get("best_value_delta") is not None and g.get("best_value_delta") >= min_value
+        ]
     else:
         candidates = _choose_best_per_day(report, min_value=min_value)
 
@@ -511,7 +534,9 @@ def _group_by_date(history: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str
 
 def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Lager time series med investert og verdi til bruk i graf.
+    Lager time series med realisert resultat og åpen innsats til bruk i graf.
+    Verdier som øker kun når gevinster realiseres (stake telles ikke som påfyll).
+    "Invested" per dag = innsats lagt inn den dagen (ikke kumulert).
     """
     grouped = _group_by_date(history)
 
@@ -528,43 +553,55 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
         {d for d in grouped.keys() if d} | {d for d in settlement_map.keys() if d}
     )
 
-    total_staked = 0.0
-    settled_return = 0.0
+    running_profit = 0.0  # realisert resultat (payout - stake)
+    cumulative_payout = 0.0
     series: List[Dict[str, Any]] = []
 
     for d in all_dates:
         day_bets = grouped.get(d, [])
         day_stake = sum(b.get("stake", 0.0) for b in day_bets)
-        day_settled = sum(
-            b.get("payout", 0.0) for b in settlement_map.get(d, [])
-        )
+        day_settled_rows = settlement_map.get(d, [])
+        day_payout = sum(b.get("payout", 0.0) for b in day_settled_rows)
+        day_profit = sum(b.get("profit", 0.0) for b in day_settled_rows)
 
-        total_staked += day_stake
-        settled_return += day_settled
+        running_profit += day_profit
+        cumulative_payout += day_payout
 
         open_stake = sum(
             b.get("stake", 0.0)
             for b in history
             if b.get("status") == "pending" and (b.get("date") or "") <= d
         )
-        current_value = settled_return + open_stake
+        open_bets_count = sum(
+            1
+            for b in history
+            if b.get("status") == "pending" and (b.get("date") or "") <= d
+        )
 
         series.append({
             "date": d,
-            "invested": round(total_staked, 2),
-            "value": round(current_value, 2),
-            "settled_return": round(settled_return, 2),
+            # "invested" = innsats den dagen (ikke kumulert)
+            "invested": round(day_stake, 2),
+            # value = realisert resultat (stake legges ikke til), flatt til avregning
+            "value": round(running_profit, 2),
+            "settled_return": round(cumulative_payout, 2),
             "open_stake": round(open_stake, 2),
-            "open_bets": sum(
-                1
-                for b in history
-                if b.get("status") == "pending" and (b.get("date") or "") <= d
-            ),
+            # Antall spill den dagen (for visning i grafen)
+            "bets_placed": len(day_bets),
+            "open_bets": open_bets_count,
         })
 
     pending_count = sum(1 for b in history if b.get("status") == "pending")
-    profit_now = series[-1]["value"] - series[-1]["invested"] if series else 0.0
-    roi = (profit_now / series[-1]["invested"]) if series and series[-1]["invested"] else 0.0
+    total_staked = sum(b.get("stake", 0.0) for b in history)
+    settled_return_total = sum(
+        b.get("payout", 0.0) for b in history if b.get("status") != "pending"
+    )
+    open_stake_now = series[-1]["open_stake"] if series else 0.0
+    profit_now = series[-1]["value"] if series else 0.0  # realisert resultat
+    roi = (profit_now / total_staked) if total_staked else 0.0
+    won_count = sum(1 for b in history if b.get("status") == "won")
+    settled_count = len(history) - pending_count
+    win_rate = (won_count / settled_count) if settled_count else 0.0
 
     return {
         "timeseries": series,
@@ -572,10 +609,12 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
             "total_bets": len(history),
             "open_bets": pending_count,
             "total_staked": round(total_staked, 2),
-            "settled_return": round(settled_return, 2),
-            "current_value": round(series[-1]["value"], 2) if series else 0.0,
+            "settled_return": round(settled_return_total, 2),
+            "current_value": round(profit_now, 2) if series else 0.0,
+            "open_stake": round(open_stake_now, 2),
             "profit": round(profit_now, 2),
             "roi": round(roi, 3),
+            "win_rate": round(win_rate, 3),
         },
         "bets": history,
     }
