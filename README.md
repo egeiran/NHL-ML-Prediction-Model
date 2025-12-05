@@ -2,6 +2,13 @@
 
 ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, portefølje og egendefinerte prediksjoner).
 
+## 📊 Latest Value Bets
+![Predictions](./predictions.png)  
+➡️ [View full markdown table](./TODAY.md)
+
+## 📈 Portefølje over tid
+![Portfolio](./portfolio.png)
+
 ## 🚀 Komme i gang
 
 ### 1. Backend (FastAPI)

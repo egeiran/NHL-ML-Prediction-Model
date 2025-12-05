@@ -14,6 +14,10 @@ jobs:
     concurrency:
       group: daily-bet-update
       cancel-in-progress: false
+    env:
+      REQUIREMENTS_FILE: NHL/requirements-api.txt
+      PREDICTIONS_SCRIPT: NHL/generate_predictions.py
+      EXTRA_PYPI_PACKAGES: "matplotlib tabulate"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +32,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r NHL/requirements-api.txt
+          pip install -r "$REQUIREMENTS_FILE"
+          pip install $EXTRA_PYPI_PACKAGES
 
       - name: Download latest model artifact (best effort)
         env:
@@ -90,6 +95,12 @@ jobs:
         run: |
           python bet_tracker.py
 
+      - name: Generate daily predictions assets
+        env:
+          MPLCONFIGDIR: /tmp/mplcache
+        run: |
+          python "$PREDICTIONS_SCRIPT"
+
       - name: Commit and push changes
         run: |
           if git diff --quiet; then
@@ -99,6 +110,12 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv
-          git commit -m "chore: update bet history"
+          git add NHL/data/bet_history.csv predictions.png TODAY.md portfolio.png
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: daily bet + predictions update"
           git push
