@@ -371,14 +371,14 @@ def save_portfolio_chart(daily: pd.DataFrame, output_path: Path) -> None:
         color="#38bdf8",
         linewidth=2.3,
         linestyle="--",
-        label="Antall bets x100 (daglig)",
+        label="Antall bets x100kr (daglig)",
     )
 
     xtick_step = max(1, len(x) // 8)
     ax.set_xticks(x[::xtick_step])
     ax.set_xticklabels([d.strftime("%b %d") for d in dates[::xtick_step]], rotation=25, ha="right")
     ax.set_ylabel("Beløp (kr) / Bets x100")
-    ax.set_title("Portefølje over tid (uten siste dag)")
+    ax.set_title("Portefølje over tid")
     ax.grid(True, linestyle="--", alpha=0.35)
     ax.legend()
     fig.tight_layout()
