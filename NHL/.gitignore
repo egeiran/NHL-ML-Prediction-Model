@@ -1,1 +1,26 @@
 models/nhl_model.pkl
+
+# Team cache files (auto-generated, expires every 5 min)
+data/.team_cache/
+*.json
+!data/game.csv
+!data/team_info.csv
+!data/bet_history.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

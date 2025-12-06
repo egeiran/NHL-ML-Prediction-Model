@@ -20,6 +20,11 @@ from live.form_engine import (
     format_recent_games,
 )
 from live.live_feature_builder import build_live_features
+from live.team_cache import (
+    get_cached_team_games as get_from_cache,
+    cache_team_games,
+    clear_team_cache,
+)
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
@@ -317,16 +322,48 @@ def get_value_report(days: int = 3):
     """
     # Begrens antall dager for å unngå unødvendig store kall
     days = max(0, min(days, 10))
+    
+    import time
+    start_total = time.time()
+    print(f"\n=== VALUE REPORT START (days={days}) ===")
+    
     data = get_data()
     model = data["model"]
 
+    start_fetch = time.time()
     try:
         games = get_nhl_matches_range(days)
     except Exception as exc:  # pragma: no cover - beskytter API-et
         raise HTTPException(status_code=502, detail=f"Feil ved henting av odds: {exc}")
+    print(f"Fetched {len(games)} games in {time.time() - start_fetch:.2f}s")
+    
+    # Cache team games for å unngå å hente samme lag flere ganger
+    team_games_cache: Dict[str, List] = {}
+    max_games_needed = max(DEFAULT_WINDOWS)
+    
+    def get_cached_team_games(team_abbr: str) -> Optional[List]:
+        """Henter team games fra cache (disk + memory) eller API"""
+        if team_abbr not in team_games_cache:
+            # Try disk cache first
+            cached = get_from_cache(team_abbr)
+            if cached is not None:
+                team_games_cache[team_abbr] = cached
+                return cached
+            
+            # Fetch from API and cache
+            try:
+                games = get_team_recent_games(team_abbr, limit=max_games_needed)
+                cache_team_games(team_abbr, games)
+                team_games_cache[team_abbr] = games
+            except Exception as exc:
+                print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
+                team_games_cache[team_abbr] = None
+        return team_games_cache[team_abbr]
+    
     results: List[ValueGameResponse] = []
-
-    for game in games:
+    
+    start_processing = time.time()
+    for i, game in enumerate(games):
         home_abbr = game.get("home_abbr")
         away_abbr = game.get("away_abbr")
 
@@ -334,13 +371,29 @@ def get_value_report(days: int = 3):
             # Mangler mapping - hopp over
             continue
 
+        # Hent cached team games
+        start_cache = time.time()
+        home_games = get_cached_team_games(home_abbr)
+        away_games = get_cached_team_games(away_abbr)
+        cache_time = time.time() - start_cache
+        
+        if home_games is None or away_games is None:
+            # Kunne ikke hente data for et av lagene - hopp over
+            print(f"  [{i+1}/{len(games)}] SKIP {home_abbr} vs {away_abbr} (no data)")
+            continue
+
+        start_features = time.time()
         try:
             feature_row = build_live_features(
                 away_abbr,
                 home_abbr,
                 windows=DEFAULT_WINDOWS,
+                home_games=home_games,
+                away_games=away_games,
             )
             probs = model.predict_proba(feature_row)[0]
+            features_time = time.time() - start_features
+            print(f"  [{i+1}/{len(games)}] {home_abbr} vs {away_abbr}: cache={cache_time:.2f}s, features={features_time:.2f}s")
         except Exception as exc:  # pragma: no cover - beskytter API-et
             print(f"Skipper kamp {home_abbr} vs {away_abbr}: {exc}")
             continue
@@ -415,6 +468,10 @@ def get_value_report(days: int = 3):
             best_value_delta=round(best_value_delta, 3) if best_value_delta is not None else None,
         ))
 
+    print(f"Processing took {time.time() - start_processing:.2f}s")
+    print(f"Total time: {time.time() - start_total:.2f}s")
+    print(f"=== VALUE REPORT END ({len(results)} results) ===\n")
+    
     return results
 
 
@@ -450,6 +507,13 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
 @app.get("/value_report", response_model=List[ValueGameResponse], include_in_schema=False)
 def get_value_report_alias(days: int = 3):
     return get_value_report(days)
+
+
+@app.post("/cache/clear")
+def clear_cache():
+    """Tømmer team games cache (brukes ved behov for fresh data)."""
+    clear_team_cache()
+    return {"status": "ok", "message": "Team cache cleared"}
 
 
 if __name__ == "__main__":

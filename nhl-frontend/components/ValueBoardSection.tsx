@@ -1,4 +1,4 @@
-import { CalendarDays } from 'lucide-react';
+import { RefreshCw, CalendarDays } from 'lucide-react';
 
 import ValueGameCard from '@/components/ValueGameCard';
 import { formatDateLabel } from '@/lib/format';
@@ -32,7 +32,8 @@ export default function ValueBoardSection({
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-200">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-200 flex gap-2 items-center">
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Laster inn kamper og odds...
         </div>
       )}

@@ -24,6 +24,11 @@ BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
+TEAM_ALIAS = {
+    # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
+    "UTA": "ARI",
+    "UTAH": "ARI",
+}
 
 BET_FIELDS = [
     "date",
@@ -157,11 +162,20 @@ def _flatten_scoreboard_games(scoreboard: Dict[str, Any]) -> List[Dict[str, Any]
 
 
 def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[Dict[str, Any]]:
+    def _canon(abbr: Optional[str]) -> Optional[str]:
+        if not abbr:
+            return None
+        abbr_up = str(abbr).upper()
+        return TEAM_ALIAS.get(abbr_up, abbr_up)
+
+    target_home = _canon(home_abbr)
+    target_away = _canon(away_abbr)
+
     sb = get_scoreboard(game_date)
     for game in _flatten_scoreboard_games(sb):
-        home = game.get("homeTeam", {}).get("abbrev")
-        away = game.get("awayTeam", {}).get("abbrev")
-        if home != home_abbr or away != away_abbr:
+        home = _canon(game.get("homeTeam", {}).get("abbrev"))
+        away = _canon(game.get("awayTeam", {}).get("abbrev"))
+        if home != target_home or away != target_away:
             continue
 
         state = (game.get("gameState") or "").upper()
