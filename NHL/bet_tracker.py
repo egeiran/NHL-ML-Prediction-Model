@@ -513,10 +513,11 @@ def update_daily_bets(
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = 0.01,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
-    take_all_prefetched: bool = False,
+    take_all_prefetched: bool = True,
 ) -> Dict[str, Any]:
     """
     Hovedinngangen som kan kjøres i cron/GitHub Actions.
+    take_all_prefetched=True legger til alle kamper over min_value (samme som API/frontend).
     """
     history = load_history(history_path)
     settled = settle_pending_bets(history)
