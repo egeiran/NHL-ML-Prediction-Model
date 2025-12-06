@@ -1,6 +1,6 @@
 # Value Bets for 2025-12-06
 
-Generated at 2025-12-06 08:34 UTC
+Generated at 2025-12-06 13:07 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
