@@ -552,21 +552,11 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
     Lager time series med realisert resultat og åpen innsats til bruk i graf.
     Verdier som øker kun når gevinster realiseres (stake telles ikke som påfyll).
     "Invested" per dag = innsats lagt inn den dagen (ikke kumulert).
+    Profit vises basert på kampens dato (date), ikke avregningstidspunkt (updated_at).
     """
     grouped = _group_by_date(history)
 
-    # Sett opp tidslinje både for innsats og for avregningstidspunkt
-    settlement_map: Dict[str, List[Dict[str, Any]]] = {}
-    for row in history:
-        if row.get("status") == "pending":
-            continue
-        settled_day = (row.get("updated_at") or "")[:10]
-        if settled_day:
-            settlement_map.setdefault(settled_day, []).append(row)
-
-    all_dates = sorted(
-        {d for d in grouped.keys() if d} | {d for d in settlement_map.keys() if d}
-    )
+    all_dates = sorted({d for d in grouped.keys() if d})
 
     running_profit = 0.0  # realisert resultat (payout - stake)
     cumulative_payout = 0.0
@@ -575,9 +565,13 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
     for d in all_dates:
         day_bets = grouped.get(d, [])
         day_stake = sum(b.get("stake", 0.0) for b in day_bets)
-        day_settled_rows = settlement_map.get(d, [])
-        day_payout = sum(b.get("payout", 0.0) for b in day_settled_rows)
-        day_profit = sum(b.get("profit", 0.0) for b in day_settled_rows)
+        
+        # Beregn profit basert på kampens dato (date), ikke updated_at
+        day_settled_bets = [b for b in day_bets if b.get("status") != "pending"]
+        day_payout = sum(b.get("payout", 0.0) for b in day_settled_bets)
+        day_profit = sum(b.get("profit", 0.0) for b in day_settled_bets)
+        day_won_count = sum(1 for b in day_settled_bets if b.get("status") == "won")
+        day_settled_count = len(day_settled_bets)
 
         running_profit += day_profit
         cumulative_payout += day_payout
@@ -603,6 +597,8 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
             "open_stake": round(open_stake, 2),
             # Antall spill den dagen (for visning i grafen)
             "bets_placed": len(day_bets),
+            "bets_won": day_won_count,
+            "bets_settled": day_settled_count,
             "open_bets": open_bets_count,
         })
 

@@ -197,6 +197,8 @@ class PortfolioPoint(BaseModel):
     open_stake: float
     open_bets: int
     bets_placed: int
+    bets_won: int
+    bets_settled: int
 
 
 class PortfolioSummary(BaseModel):

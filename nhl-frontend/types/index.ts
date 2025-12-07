@@ -88,6 +88,8 @@ export interface PortfolioPoint {
     open_stake: number;
     open_bets: number;
     bets_placed: number;
+    bets_won: number;
+    bets_settled: number;
 }
 
 export interface PortfolioSummary {

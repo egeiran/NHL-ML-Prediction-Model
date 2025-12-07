@@ -22,6 +22,8 @@ def load_team_map():
         "UTAHMAMMOTH": "ARI",  # nytt navn, bruker ARI-data inntil videre
         "UTAH": "ARI",
         "UTA": "ARI",
+        "NEWYORKISLANDERS": "NYI",  # NT bruker ofte fulle bynavn
+        "NEWYORKRANGERS": "NYR",
     }
 
     for _, row in df.iterrows():
@@ -46,6 +48,36 @@ def load_team_map():
 
 
 TEAM_MAP = load_team_map()
+
+
+def _map_team(ev: dict, participant_key: str, short_key: str):
+    """Returner visningsnavn og abbreviation for et lag fra NT-event."""
+
+    def _lookup(value: str):
+        norm = _normalize(value)
+        return TEAM_MAP.get(norm)
+
+    name = ev.get(participant_key)
+    short_name = ev.get(short_key)
+
+    abbr = None
+    for candidate in (name, short_name):
+        if candidate:
+            abbr = _lookup(candidate)
+            if abbr:
+                break
+
+    # Noen ganger bruker NT bare «New York» i shortName. Se eventName for å disambiguere.
+    if not abbr:
+        event_name = ev.get("eventName", "").upper()
+        if "NEW YORK" in event_name:
+            if "ISLANDERS" in event_name:
+                abbr = "NYI"
+            elif "RANGERS" in event_name:
+                abbr = "NYR"
+
+    display_name = name or short_name
+    return display_name, abbr
 
 
 def _fetch_events_range(days: int):
@@ -127,10 +159,8 @@ def get_nhl_matches_range(days=3):
             except Exception:
                 continue
 
-        home = ev.get("homeParticipant")
-        away = ev.get("awayParticipant")
-        home_abbr = TEAM_MAP.get(_normalize(home)) if home else None
-        away_abbr = TEAM_MAP.get(_normalize(away)) if away else None
+        home, home_abbr = _map_team(ev, "homeParticipant", "homeParticipantShortName")
+        away, away_abbr = _map_team(ev, "awayParticipant", "awayParticipantShortName")
 
         game_info = {
             "eventId": ev.get("eventId"),

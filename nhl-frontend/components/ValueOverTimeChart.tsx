@@ -9,7 +9,24 @@ type ValueOverTimeChartProps = {
 };
 
 export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) {
-  const hasPoints = points.length > 0;
+  // Fjern siste datapunkt hvis det er dagens dato og ingen kamper er avregnet ennå
+  // (value er lik forrige dag, invested er dagens innsats)
+  const filteredPoints = useMemo(() => {
+    if (points.length < 2) return points;
+    
+    const last = points[points.length - 1];
+    const secondLast = points[points.length - 2];
+    
+    // Hvis siste punkt har samme value som nest siste (ingen avregninger), 
+    // og har invested > 0 (nye bets), fjern det
+    if (last.value === secondLast.value && last.invested > 0) {
+      return points.slice(0, -1);
+    }
+    
+    return points;
+  }, [points]);
+  
+  const hasPoints = filteredPoints.length > 0;
   const width = 480;
   const height = 200;
   const pad = 24;
@@ -25,12 +42,12 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
       };
     }
 
-    const values = points.map((p) => p.value);
-    const invested = points.map((p) => p.invested);
+    const values = filteredPoints.map((p) => p.value);
+    const invested = filteredPoints.map((p) => p.invested);
     const minVal = Math.min(0, ...values, ...invested); // start alltid fra 0 eller lavere
     const maxVal = Math.max(...values, ...invested);
     const range = maxVal - minVal || 1;
-    const xGap = (width - pad * 2) / Math.max(points.length - 1, 1);
+    const xGap = (width - pad * 2) / Math.max(filteredPoints.length - 1, 1);
 
     const toCoords = (series: number[]) =>
       series.map((v, i) => {
@@ -46,24 +63,29 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
       min: minVal,
       max: maxVal,
     };
-  }, [hasPoints, points]);
+  }, [hasPoints, filteredPoints]);
 
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const range = max - min || 1;
   const yTicks = useMemo(() => buildNiceTicks(min, max), [min, max]);
-  const xTickIndexes = useMemo(() => buildXTicks(points.length), [points.length]);
+  const xTickIndexes = useMemo(() => buildXTicks(filteredPoints.length), [filteredPoints.length]);
   const valueToY = (val: number) => height - pad - ((val - min) / range) * (height - pad * 2);
 
   if (!hasPoints) {
     return <div className="h-32 text-white/60">Ingen datapunkter ennå.</div>;
   }
 
-  const startPoint = points[0];
-  const lastIndex = points.length - 1;
-  const endPoint = points[lastIndex];
+  const startPoint = filteredPoints[0];
+  const lastIndex = filteredPoints.length - 1;
+  const endPoint = filteredPoints[lastIndex];
   const activeIndex = hoverIndex ?? lastIndex;
-  const activePoint = points[activeIndex];
+  const activePoint = filteredPoints[activeIndex];
+  
+  // Beregn dagens resultat (endring i value fra forrige dag)
+  const dayResult = activeIndex > 0 
+    ? activePoint.value - filteredPoints[activeIndex - 1].value 
+    : activePoint.value;
 
   const valueX = valueCoords[activeIndex].x;
   const valueY = valueCoords[activeIndex].y;
@@ -73,7 +95,9 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
   const handleMove = (evt: ReactMouseEvent<SVGSVGElement>) => {
     const bounds = (evt.currentTarget as SVGSVGElement).getBoundingClientRect();
     const relX = evt.clientX - bounds.left;
-    const rawIndex = Math.round((relX - pad) / xStep);
+    // Konverter fra pixel-space til viewBox-space
+    const svgX = (relX / bounds.width) * width;
+    const rawIndex = Math.round((svgX - pad) / xStep);
     const clamped = Math.min(lastIndex, Math.max(0, rawIndex));
     setHoverIndex(clamped);
   };
@@ -83,7 +107,7 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-xs text-white/70">
-        <LegendSwatch color="#34d399" label="Netto resultat" value={formatCurrency(activePoint.value)} />
+        <LegendSwatch color="#34d399" label="Verdi (totalt)" value={formatCurrency(activePoint.value)} />
         <LegendSwatch color="#38bdf8" label="Dagens innsats" value={formatCurrency(activePoint.invested)} />
         <span className="text-white/50">
           {formatDateLabel(startPoint.date)} – {formatDateLabel(endPoint.date)}
@@ -146,7 +170,7 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
                     textAnchor="middle"
                     style={{ opacity: 0.7 }}
                   >
-                    {formatShortDate(points[idx].date)}
+                    {formatShortDate(filteredPoints[idx].date)}
                   </text>
                 </g>
               );
@@ -205,9 +229,14 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
           >
             <div className="text-[10px] uppercase tracking-wide text-white/60">Dag {hoverIndex + 1}</div>
             <div className="font-semibold text-white">{formatDateLabel(activePoint.date)}</div>
-            <div className="mt-1 text-white/80">Resultat: <span className="font-semibold text-white">{formatCurrency(activePoint.value)}</span></div>
+            <div className="mt-1 text-white/80">Resultat den dagen: <span className={`font-semibold ${dayResult >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(dayResult)}</span></div>
+            <div className="text-white/80">Verdi: <span className="font-semibold text-white">{formatCurrency(activePoint.value)}</span></div>
             <div className="text-white/80">Innsats den dagen: <span className="font-semibold text-white">{formatCurrency(activePoint.invested)}</span></div>
-            <div className="text-white/80">Spill den dagen: <span className="font-semibold text-white">{activePoint.bets_placed}</span></div>
+            {(activePoint.bets_won !== undefined && activePoint.bets_settled !== undefined) ? (
+              <div className="text-white/80">Vunnet den dagen: <span className="font-semibold text-white">{activePoint.bets_won} / {activePoint.bets_settled}</span></div>
+            ) : (
+              <div className="text-white/80">Spill den dagen: <span className="font-semibold text-white">{activePoint.bets_placed}</span></div>
+            )}
           </div>
         )}
       </div>
