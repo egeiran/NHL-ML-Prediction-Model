@@ -9,6 +9,8 @@ data/.team_cache/
 
 # Python cache
 __pycache__/
+*/__pycache__/*
+live/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -16,6 +18,7 @@ __pycache__/
 
 # Virtual environments
 venv/
+.venv/
 env/
 ENV/
 

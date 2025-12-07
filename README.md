@@ -17,6 +17,7 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
   cd NHL
   python -m venv .venv && source .venv/bin/activate  # valgfritt
   pip install -r requirements-api.txt
+  python api.py
   ```
 - Sørg for modellfil i `models/nhl_model.pkl`. Kjør `python train_model.py` hvis den mangler.
 - Start API-serveren: `python api.py` (kjører på `http://localhost:8000`, docs på `/docs`).
