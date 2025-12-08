@@ -1,6 +1,6 @@
-# Value Bets for 2025-12-07
+# Value Bets for 2025-12-08
 
-Generated at 2025-12-07 08:33 UTC
+Generated at 2025-12-08 08:41 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,9 +14,7 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Edge |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|--------|------------------|
-| 2025-12-07 | BOS vs NJD | BOS         |               0.444 |         3.440 |          0.291 |  0.153 |            0.527 |
-| 2025-12-07 | OTT vs STL | OTT         |               0.408 |         3.690 |          0.271 |  0.137 |            0.507 |
-| 2025-12-07 | TOR vs MTL | TOR         |               0.372 |         3.550 |          0.282 |  0.090 |            0.321 |
-| 2025-12-07 | LAK vs CHI | LAK         |               0.435 |         3.000 |          0.333 |  0.101 |            0.304 |
-| 2025-12-07 | CGY vs ARI | CGY         |               0.420 |         2.810 |          0.356 |  0.064 |            0.181 |
-| 2025-12-07 | CAR vs NSH | NSH         |               0.375 |         2.950 |          0.339 |  0.036 |            0.107 |
+| 2025-12-08 | ANA vs CHI | ANA         |               0.444 |         3.440 |          0.291 |  0.153 |            0.527 |
+| 2025-12-08 | WSH vs CBJ | WSH         |               0.372 |         3.550 |          0.282 |  0.090 |            0.321 |
+| 2025-12-08 | MTL vs STL | MTL         |               0.420 |         2.810 |          0.356 |  0.064 |            0.181 |
+| 2025-12-08 | DAL vs PIT | PIT         |               0.375 |         2.950 |          0.339 |  0.036 |            0.107 |
