@@ -22,7 +22,8 @@ from typing import Iterable, List, Optional, Sequence
 import numbers
 
 # Ensure matplotlib can cache fonts in environments without a writable home.
-os.environ.setdefault("MPLCONFIGDIR", str(Path("/tmp/mplcache")))
+MPL_CACHE_DIR = Path(os.environ.setdefault("MPLCONFIGDIR", str(Path("/tmp/mplcache"))))
+MPL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 import matplotlib
 
@@ -43,9 +44,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_IMAGE = REPO_ROOT / "predictions.png"
 OUTPUT_MARKDOWN = REPO_ROOT / "TODAY.md"
 PORTFOLIO_IMAGE = REPO_ROOT / "portfolio.png"
+DAILY_PROFIT_IMAGE = REPO_ROOT / "daily_profit.png"
 BET_HISTORY_PATH = REPO_ROOT / "NHL" / "data" / "bet_history.csv"
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "models" / "nhl_model.pkl"
 ROWS_TO_SAMPLE = 6
+
+
+def _use_plot_style() -> None:
+    """Apply preferred style with graceful fallback for older Matplotlib versions."""
+    try:
+        plt.style.use("seaborn-v0_8-darkgrid")
+    except OSError:
+        plt.style.use("seaborn-darkgrid")
 
 
 def load_matchups_from_history(
@@ -286,7 +296,7 @@ def save_markdown(table: pd.DataFrame, output_path: Path) -> None:
 
 
 def save_chart(table: pd.DataFrame, output_path: Path) -> None:
-    plt.style.use("seaborn-v0_8-darkgrid")
+    _use_plot_style()
     fig, ax = plt.subplots(figsize=(10, 5))
 
     bars = ax.bar(
@@ -356,7 +366,7 @@ def build_portfolio_timeseries(path: Path) -> Optional[pd.DataFrame]:
 
 
 def save_portfolio_chart(daily: pd.DataFrame, output_path: Path) -> None:
-    plt.style.use("seaborn-v0_8-darkgrid")
+    _use_plot_style()
     fig, ax = plt.subplots(figsize=(10, 5))
 
     dates = pd.to_datetime(daily["Date"])
@@ -390,6 +400,53 @@ def save_portfolio_chart(daily: pd.DataFrame, output_path: Path) -> None:
     plt.close(fig)
 
 
+def save_recent_profit_chart(
+    daily: pd.DataFrame,
+    output_path: Path,
+    days: int = 5,
+) -> None:
+    """
+    Lag et søylediagram for siste `days` dager med realisert dagsresultat.
+    Søylene er like høye (positive/negative) som profitten den dagen.
+    """
+    if daily.empty:
+        print("[recent-profit] Ingen data å plotte")
+        return
+
+    trimmed = daily.tail(days).copy()
+    trimmed["Date"] = pd.to_datetime(trimmed["Date"])
+
+    _use_plot_style()
+    fig, ax = plt.subplots(figsize=(8.5, 4.5))
+
+    profits = trimmed["DailyProfit"]
+    labels = [d.strftime("%b %d") for d in trimmed["Date"]]
+    colors = ["#16a34a" if p > 0 else ("#dc2626" if p < 0 else "#6b7280") for p in profits]
+
+    bars = ax.bar(labels, profits, color=colors, width=0.6)
+    ax.axhline(0, color="#555", linewidth=1)
+    ax.set_ylabel("Daglig resultat (kr)")
+    ax.set_title(f"Daglig resultat — siste {min(days, len(trimmed))} dager")
+    plt.xticks(rotation=0)
+
+    for bar, value in zip(bars, profits):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            value + (5 if value >= 0 else -5),
+            f"{value:.0f}",
+            ha="center",
+            va="bottom" if value >= 0 else "top",
+            fontsize=9,
+        )
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = output_path.with_name(output_path.stem + "_tmp" + output_path.suffix)
+    fig.savefig(tmp_path, dpi=150, bbox_inches="tight", format="png")
+    tmp_path.replace(output_path)
+    plt.close(fig)
+
+
 def main() -> None:
     model = load_trained_model()
     history_payload = load_matchups_from_history(BET_HISTORY_PATH, max_rows=ROWS_TO_SAMPLE)
@@ -408,7 +465,9 @@ def main() -> None:
     portfolio_daily = build_portfolio_timeseries(BET_HISTORY_PATH)
     if portfolio_daily is not None and not portfolio_daily.empty:
         save_portfolio_chart(portfolio_daily, PORTFOLIO_IMAGE)
+        save_recent_profit_chart(portfolio_daily, DAILY_PROFIT_IMAGE, days=5)
         print(f"Wrote {PORTFOLIO_IMAGE.relative_to(REPO_ROOT)}")
+        print(f"Wrote {DAILY_PROFIT_IMAGE.relative_to(REPO_ROOT)}")
     else:
         print("[portfolio] Skipped portfolio graph (no data).")
 

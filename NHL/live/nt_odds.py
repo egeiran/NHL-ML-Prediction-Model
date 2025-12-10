@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from utils.team_alias import to_display
+
 NT_BASE_ALL = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
 NT_BASE_RANGE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"  # bruke HKY + params, daterange feiler uten /HKY
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,9 +21,9 @@ def load_team_map():
     df = pd.read_csv(TEAM_CSV_PATH)
     mapping = {}
     manual_alias = {
-        "UTAHMAMMOTH": "ARI",  # nytt navn, bruker ARI-data inntil videre
-        "UTAH": "ARI",
-        "UTA": "ARI",
+        "UTAHMAMMOTH": "UTA",  # bruker UTA som visningsnavn, kanoniseres senere ved behov
+        "UTAH": "UTA",
+        "UTA": "UTA",
         "NEWYORKISLANDERS": "NYI",  # NT bruker ofte fulle bynavn
         "NEWYORKRANGERS": "NYR",
     }
@@ -77,7 +79,7 @@ def _map_team(ev: dict, participant_key: str, short_key: str):
                 abbr = "NYR"
 
     display_name = name or short_name
-    return display_name, abbr
+    return display_name, to_display(abbr) if abbr else abbr
 
 
 def _fetch_events_range(days: int):

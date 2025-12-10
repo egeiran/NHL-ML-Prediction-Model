@@ -28,6 +28,7 @@ from live.team_cache import (
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
+from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data" / "team_info.csv"
@@ -236,9 +237,14 @@ def get_teams():
     """Returnerer liste over alle tilgjengelige lag"""
     data = get_data()
     teams = []
+    seen = set()
     for abbr in sorted(data["abbr_to_id"].keys()):
+        display_abbr = to_display(abbr)
+        if display_abbr in seen:
+            continue  # unngå duplikater (f.eks. ARI -> UTA)
+        seen.add(display_abbr)
         teams.append({
-            "abbreviation": abbr,
+            "abbreviation": display_abbr,
             "id": str(data["abbr_to_id"][abbr])
         })
     return teams
@@ -247,22 +253,33 @@ def get_teams():
 @app.post("/predict", response_model=PredictionResponse)
 def predict_game(request: PredictionRequest):
     """Gjør en prediksjon for en kamp"""
-    home_abbr = request.home_team.upper()
-    away_abbr = request.away_team.upper()
+    home_abbr_raw = request.home_team.upper()
+    away_abbr_raw = request.away_team.upper()
+    home_abbr = to_canonical(home_abbr_raw)
+    away_abbr = to_canonical(away_abbr_raw)
     
     data = get_data()
     
-    # Valider at lagene eksisterer
+    # Valider at lagene eksisterer i modelloppsettet (kanonisert)
     if home_abbr not in data["abbr_to_id"]:
-        raise HTTPException(status_code=404, detail=f"Team {home_abbr} not found")
+        raise HTTPException(status_code=404, detail=f"Team {home_abbr_raw} not found")
     if away_abbr not in data["abbr_to_id"]:
-        raise HTTPException(status_code=404, detail=f"Team {away_abbr} not found")
+        raise HTTPException(status_code=404, detail=f"Team {away_abbr_raw} not found")
 
     max_games_needed = max(max(DEFAULT_WINDOWS), 5)
 
+    def _recent_with_alias(abbr: str):
+        primary = get_team_recent_games(abbr, limit=max_games_needed)
+        if primary:
+            return primary
+        canonical = to_canonical(abbr)
+        if canonical != abbr:
+            return get_team_recent_games(canonical, limit=max_games_needed)
+        return primary
+
     try:
-        home_recent = get_team_recent_games(home_abbr, limit=max_games_needed)
-        away_recent = get_team_recent_games(away_abbr, limit=max_games_needed)
+        home_recent = _recent_with_alias(home_abbr_raw)
+        away_recent = _recent_with_alias(away_abbr_raw)
     except Exception as exc:  # pragma: no cover - beskytter API-et
         raise HTTPException(
             status_code=502, detail=f"Feil ved henting av kamper: {exc}"
@@ -303,8 +320,8 @@ def predict_game(request: PredictionRequest):
     prediction_label = LABELS[label_idx] if 0 <= label_idx < len(LABELS) else str(pred_class)
 
     return PredictionResponse(
-        home_team=home_abbr,
-        away_team=away_abbr,
+        home_team=to_display(home_abbr),
+        away_team=to_display(away_abbr),
         home_last_5=home_last_5,
         away_last_5=away_last_5,
         home_stats=TeamStats(**home_stats),
@@ -345,22 +362,27 @@ def get_value_report(days: int = 3):
     
     def get_cached_team_games(team_abbr: str) -> Optional[List]:
         """Henter team games fra cache (disk + memory) eller API"""
-        if team_abbr not in team_games_cache:
-            # Try disk cache first
+        cache_key = to_canonical(team_abbr)
+        if cache_key in team_games_cache:
+            return team_games_cache[cache_key]
+
+        cached = get_from_cache(cache_key)
+        if cached is None and cache_key != team_abbr:
             cached = get_from_cache(team_abbr)
-            if cached is not None:
-                team_games_cache[team_abbr] = cached
-                return cached
-            
-            # Fetch from API and cache
-            try:
-                games = get_team_recent_games(team_abbr, limit=max_games_needed)
-                cache_team_games(team_abbr, games)
-                team_games_cache[team_abbr] = games
-            except Exception as exc:
-                print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
-                team_games_cache[team_abbr] = None
-        return team_games_cache[team_abbr]
+        if cached is not None:
+            team_games_cache[cache_key] = cached
+            return cached
+
+        try:
+            games = get_team_recent_games(team_abbr, limit=max_games_needed)
+            if not games and cache_key != team_abbr:
+                games = get_team_recent_games(cache_key, limit=max_games_needed)
+            cache_team_games(cache_key, games)
+            team_games_cache[cache_key] = games
+        except Exception as exc:
+            print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
+            team_games_cache[cache_key] = None
+        return team_games_cache[cache_key]
     
     results: List[ValueGameResponse] = []
     
@@ -372,6 +394,9 @@ def get_value_report(days: int = 3):
         if not home_abbr or not away_abbr:
             # Mangler mapping - hopp over
             continue
+
+        home_canon = to_canonical(home_abbr)
+        away_canon = to_canonical(away_abbr)
 
         # Hent cached team games
         start_cache = time.time()
@@ -387,8 +412,8 @@ def get_value_report(days: int = 3):
         start_features = time.time()
         try:
             feature_row = build_live_features(
-                away_abbr,
-                home_abbr,
+                away_canon,
+                home_canon,
                 windows=DEFAULT_WINDOWS,
                 home_games=home_games,
                 away_games=away_games,
@@ -449,8 +474,8 @@ def get_value_report(days: int = 3):
             start_time=start_time,
             home=str(game.get("home") or home_abbr or ""),
             away=str(game.get("away") or away_abbr or ""),
-            home_abbr=home_abbr or None,
-            away_abbr=away_abbr or None,
+            home_abbr=to_display(home_abbr) or None,
+            away_abbr=to_display(away_abbr) or None,
             odds_home=game.get("odds_home"),
             odds_draw=game.get("odds_draw"),
             odds_away=game.get("odds_away"),

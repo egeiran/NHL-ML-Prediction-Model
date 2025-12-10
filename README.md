@@ -9,6 +9,9 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 ## 📈 Portefølje over tid
 ![Portfolio](./portfolio.png)
 
+## 📊 Daglig resultat (siste 5 dager)
+![Daglig resultat](./daily_profit.png)
+
 ## 🚀 Komme i gang
 
 ### 1. Backend (FastAPI)

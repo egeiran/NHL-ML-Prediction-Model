@@ -8,6 +8,7 @@ from live.form_engine import (
 )
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
+from utils.team_alias import to_canonical
 
 
 def load_team_ids(team_info_path="data/team_info.csv"):
@@ -40,14 +41,16 @@ def build_live_features(
     # 2. team_id-features
     abbr_to_id = load_team_ids()
 
-    if home_abbr not in abbr_to_id:
-        raise ValueError(f"Mangler team_id for HOME-lag '{home_abbr}'")
+    def _resolve_team_id(abbr: str) -> int:
+        canonical = to_canonical(abbr)
+        if canonical in abbr_to_id:
+            return abbr_to_id[canonical]
+        if abbr in abbr_to_id:
+            return abbr_to_id[abbr]
+        raise ValueError(f"Mangler team_id for lag '{abbr}' (kanonisert: '{canonical}')")
 
-    if away_abbr not in abbr_to_id:
-        raise ValueError(f"Mangler team_id for AWAY-lag '{away_abbr}'")
-
-    home_id = abbr_to_id[home_abbr]
-    away_id = abbr_to_id[away_abbr]
+    home_id = _resolve_team_id(home_abbr)
+    away_id = _resolve_team_id(away_abbr)
 
     row = {}
     for w in windows:
