@@ -1,1 +1,6 @@
 bet_history*
+*.DS_Store
+NHL/data/.team_cache/
+NHL/data/data.csv
+NHL/models/
+models/

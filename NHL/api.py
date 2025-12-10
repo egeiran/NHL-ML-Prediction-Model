@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
@@ -13,25 +14,21 @@ from bet_tracker import (
     load_history,
     update_daily_bets,
 )
-from live.nhl_api import get_team_recent_games
 from live.nt_odds import get_nhl_matches_range
-from live.form_engine import (
-    compute_stats_from_games,
-    format_recent_games,
+from live.form_engine import compute_stats_from_games, format_recent_games
+from live.team_cache import clear_team_cache
+from utils.inference_utils import (
+    ELO_HOME_ADV,
+    build_feature_row,
+    get_recent_games_from_df,
+    load_context,
 )
-from live.live_feature_builder import build_live_features
-from live.team_cache import (
-    get_cached_team_games as get_from_cache,
-    cache_team_games,
-    clear_team_cache,
-)
-from utils.data_loader import load_team_mappings
-from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data" / "team_info.csv"
-MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
+MODEL_PATH = BASE_DIR / "models" / "nhl_model_elo.pkl"
+ELO_COLS = ["elo_prob_home", "elo_prob_away", "elo_rating_diff"]
 
 app = FastAPI(title="NHL Prediction API", version="1.0.0")
 
@@ -66,14 +63,16 @@ _cache = {}
 def get_data():
     """Henter og cacher data"""
     if "data" not in _cache:
-        id_to_abbr, abbr_to_id = load_team_mappings(str(DATA_PATH))
+        ctx = load_context(
+            start_year=2010,
+            include_playoffs=True,
+            data_path=str(BASE_DIR / "data" / "data.csv"),
+            team_path=str(DATA_PATH),
+            cache_dir=str(BASE_DIR / "data" / ".team_cache"),
+        )
         model = load_model(str(MODEL_PATH))
 
-        _cache["data"] = {
-            "id_to_abbr": id_to_abbr,
-            "abbr_to_id": abbr_to_id,
-            "model": model,
-        }
+        _cache["data"] = {**ctx, "model": model}
     return _cache["data"]
 
 
@@ -258,36 +257,30 @@ def predict_game(request: PredictionRequest):
     if away_abbr not in data["abbr_to_id"]:
         raise HTTPException(status_code=404, detail=f"Team {away_abbr} not found")
 
-    max_games_needed = max(max(DEFAULT_WINDOWS), 5)
-
-    try:
-        home_recent = get_team_recent_games(home_abbr, limit=max_games_needed)
-        away_recent = get_team_recent_games(away_abbr, limit=max_games_needed)
-    except Exception as exc:  # pragma: no cover - beskytter API-et
-        raise HTTPException(
-            status_code=502, detail=f"Feil ved henting av kamper: {exc}"
-        )
+    # Hent siste kamper fra lokalt data + cache (unngår nettverkskall)
+    home_recent = get_recent_games_from_df(data["games"], home_abbr, limit=5)
+    away_recent = get_recent_games_from_df(data["games"], away_abbr, limit=5)
 
     if not home_recent:
-        raise HTTPException(
-            status_code=404, detail=f"Fant ingen kamper for {home_abbr}"
-        )
+        raise HTTPException(status_code=404, detail=f"Fant ingen kamper for {home_abbr}")
     if not away_recent:
-        raise HTTPException(
-            status_code=404, detail=f"Fant ingen kamper for {away_abbr}"
-        )
+        raise HTTPException(status_code=404, detail=f"Fant ingen kamper for {away_abbr}")
 
     home_last_5 = format_recent_games(home_abbr, home_recent, limit=5)
     away_last_5 = format_recent_games(away_abbr, away_recent, limit=5)
-    home_stats = compute_stats_from_games(home_abbr, home_recent[:5])
-    away_stats = compute_stats_from_games(away_abbr, away_recent[:5])
+    home_stats = compute_stats_from_games(home_abbr, home_recent)
+    away_stats = compute_stats_from_games(away_abbr, away_recent)
 
-    feature_row = build_live_features(
-        away_abbr,
-        home_abbr,
-        windows=DEFAULT_WINDOWS,
-        home_games=home_recent,
-        away_games=away_recent,
+    feat = build_feature_row(
+        home=home_abbr,
+        away=away_abbr,
+        long_df=data["long_df"],
+        ratings=data["ratings"],
+        abbr_to_id=data["abbr_to_id"],
+    )
+    feature_row = pd.DataFrame(
+        [feat],
+        columns=data["feature_cols"] + ELO_COLS,
     )
 
     probs = data["model"].predict_proba(feature_row)[0]
@@ -339,29 +332,6 @@ def get_value_report(days: int = 3):
         raise HTTPException(status_code=502, detail=f"Feil ved henting av odds: {exc}")
     print(f"Fetched {len(games)} games in {time.time() - start_fetch:.2f}s")
     
-    # Cache team games for å unngå å hente samme lag flere ganger
-    team_games_cache: Dict[str, List] = {}
-    max_games_needed = max(DEFAULT_WINDOWS)
-    
-    def get_cached_team_games(team_abbr: str) -> Optional[List]:
-        """Henter team games fra cache (disk + memory) eller API"""
-        if team_abbr not in team_games_cache:
-            # Try disk cache first
-            cached = get_from_cache(team_abbr)
-            if cached is not None:
-                team_games_cache[team_abbr] = cached
-                return cached
-            
-            # Fetch from API and cache
-            try:
-                games = get_team_recent_games(team_abbr, limit=max_games_needed)
-                cache_team_games(team_abbr, games)
-                team_games_cache[team_abbr] = games
-            except Exception as exc:
-                print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
-                team_games_cache[team_abbr] = None
-        return team_games_cache[team_abbr]
-    
     results: List[ValueGameResponse] = []
     
     start_processing = time.time()
@@ -373,29 +343,21 @@ def get_value_report(days: int = 3):
             # Mangler mapping - hopp over
             continue
 
-        # Hent cached team games
-        start_cache = time.time()
-        home_games = get_cached_team_games(home_abbr)
-        away_games = get_cached_team_games(away_abbr)
-        cache_time = time.time() - start_cache
-        
-        if home_games is None or away_games is None:
-            # Kunne ikke hente data for et av lagene - hopp over
-            print(f"  [{i+1}/{len(games)}] SKIP {home_abbr} vs {away_abbr} (no data)")
-            continue
-
         start_features = time.time()
         try:
-            feature_row = build_live_features(
-                away_abbr,
-                home_abbr,
-                windows=DEFAULT_WINDOWS,
-                home_games=home_games,
-                away_games=away_games,
+            feat = build_feature_row(
+                home=home_abbr,
+                away=away_abbr,
+                long_df=data["long_df"],
+                ratings=data["ratings"],
+                abbr_to_id=data["abbr_to_id"],
+            )
+            feature_row = pd.DataFrame(
+                [feat], columns=data["feature_cols"] + ELO_COLS
             )
             probs = model.predict_proba(feature_row)[0]
             features_time = time.time() - start_features
-            print(f"  [{i+1}/{len(games)}] {home_abbr} vs {away_abbr}: cache={cache_time:.2f}s, features={features_time:.2f}s")
+            print(f"  [{i+1}/{len(games)}] {home_abbr} vs {away_abbr}: features={features_time:.2f}s")
         except Exception as exc:  # pragma: no cover - beskytter API-et
             print(f"Skipper kamp {home_abbr} vs {away_abbr}: {exc}")
             continue
@@ -515,6 +477,7 @@ def get_value_report_alias(days: int = 3):
 def clear_cache():
     """Tømmer team games cache (brukes ved behov for fresh data)."""
     clear_team_cache()
+    _cache.clear()
     return {"status": "ok", "message": "Team cache cleared"}
 
 
