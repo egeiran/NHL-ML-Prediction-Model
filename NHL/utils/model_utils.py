@@ -34,7 +34,7 @@ def train_random_forest(X_train, y_train) -> RandomForestClassifier:
         min_samples_leaf=2,
         max_features="sqrt",
         random_state=42,
-        class_weight="balanced",
+        class_weight={0: 1.0, 1: 0.95, 2: 1.0},  # juster for ubalanserte klasser
         n_jobs=-1,  # bruk alle CPU-kjerner
     )
     model.fit(X_train, y_train)
