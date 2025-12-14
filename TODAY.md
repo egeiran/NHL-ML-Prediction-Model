@@ -1,6 +1,6 @@
-# Value Bets for 2025-12-13
+# Value Bets for 2025-12-14
 
-Generated at 2025-12-13 08:34 UTC
+Generated at 2025-12-14 08:35 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,9 +14,9 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Edge |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|--------|------------------|
-| 2025-12-13 | MIN vs OTT | MIN         |               0.444 |         3.440 |          0.291 |  0.153 |            0.527 |
-| 2025-12-13 | PIT vs SJS | PIT         |               0.408 |         3.690 |          0.271 |  0.137 |            0.507 |
-| 2025-12-13 | NJD vs ANA | NJD         |               0.372 |         3.550 |          0.282 |  0.090 |            0.321 |
-| 2025-12-13 | NYI vs TBL | NYI         |               0.435 |         3.000 |          0.333 |  0.101 |            0.304 |
-| 2025-12-13 | UTA vs SEA | UTA         |               0.420 |         2.810 |          0.356 |  0.064 |            0.181 |
-| 2025-12-13 | STL vs CHI | CHI         |               0.375 |         2.950 |          0.339 |  0.036 |            0.107 |
+| 2025-12-14 | TOR vs EDM | TOR         |               0.426 |         3.690 |          0.271 |  0.155 |            0.573 |
+| 2025-12-14 | NYR vs MTL | NYR         |               0.428 |         3.550 |          0.282 |  0.146 |            0.520 |
+| 2025-12-14 | CBJ vs VGK | CBJ         |               0.423 |         3.440 |          0.291 |  0.132 |            0.453 |
+| 2025-12-14 | CHI vs DET | CHI         |               0.422 |         3.000 |          0.333 |  0.089 |            0.267 |
+| 2025-12-14 | PHI vs CAR | PHI         |               0.417 |         2.810 |          0.356 |  0.061 |            0.171 |
+| 2025-12-14 | WPG vs WSH | WPG         |               0.383 |         2.460 |          0.407 | -0.024 |           -0.058 |
