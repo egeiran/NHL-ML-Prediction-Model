@@ -1,6 +1,6 @@
-# Value Bets for 2025-12-15
+# Value Bets for 2025-12-16
 
-Generated at 2025-12-15 08:42 UTC
+Generated at 2025-12-16 08:41 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,5 +14,8 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Edge |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|--------|------------------|
-| 2025-12-15 | SEA vs BUF | SEA         |               0.417 |         2.810 |          0.356 |  0.061 |            0.171 |
-| 2025-12-15 | MTL vs EDM | MTL         |               0.383 |         2.460 |          0.407 | -0.024 |           -0.058 |
+| 2025-12-16 | DAL vs LAK | DAL         |               0.426 |         3.690 |          0.271 |  0.155 |            0.573 |
+| 2025-12-16 | WPG vs OTT | WPG         |               0.428 |         3.550 |          0.282 |  0.146 |            0.520 |
+| 2025-12-16 | STL vs NSH | STL         |               0.423 |         3.440 |          0.291 |  0.132 |            0.453 |
+| 2025-12-16 | NYR vs ANA | NYR         |               0.417 |         2.810 |          0.356 |  0.061 |            0.171 |
+| 2025-12-16 | TBL vs FLA | TBL         |               0.383 |         2.460 |          0.407 | -0.024 |           -0.058 |
