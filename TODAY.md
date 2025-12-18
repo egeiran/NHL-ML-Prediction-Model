@@ -1,6 +1,6 @@
-# Value Bets for 2025-12-17
+# Value Bets for 2025-12-18
 
-Generated at 2025-12-17 08:40 UTC
+Generated at 2025-12-18 08:39 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,9 +14,7 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Edge |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|--------|------------------|
-| 2025-12-17 | TOR vs CHI | TOR         |               0.426 |         3.690 |          0.271 |  0.155 |            0.573 |
-| 2025-12-17 | CBJ vs ANA | CBJ         |               0.428 |         3.550 |          0.282 |  0.146 |            0.520 |
-| 2025-12-17 | NYR vs VAN | NYR         |               0.423 |         3.440 |          0.291 |  0.132 |            0.453 |
-| 2025-12-17 | BOS vs UTA | BOS         |               0.422 |         3.000 |          0.333 |  0.089 |            0.267 |
-| 2025-12-17 | DET vs NYI | DET         |               0.417 |         2.810 |          0.356 |  0.061 |            0.171 |
-| 2025-12-17 | MTL vs PHI | MTL         |               0.383 |         2.460 |          0.407 | -0.024 |           -0.058 |
+| 2025-12-18 | NSH vs CAR | NSH         |               0.428 |         3.550 |          0.282 |  0.146 |            0.520 |
+| 2025-12-18 | STL vs WPG | STL         |               0.423 |         3.440 |          0.291 |  0.132 |            0.453 |
+| 2025-12-18 | DET vs UTA | DET         |               0.417 |         2.810 |          0.356 |  0.061 |            0.171 |
+| 2025-12-18 | FLA vs LAK | FLA         |               0.383 |         2.460 |          0.407 | -0.024 |           -0.058 |
