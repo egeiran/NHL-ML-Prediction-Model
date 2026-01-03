@@ -46,11 +46,11 @@ def predict_match(model, home_abbr, away_abbr):
     }
 
 
-def evaluate_value(model_prob, implied_prob):
-    """VALUE = hvor mye vi mener oddsen er feilprisett."""
-    if implied_prob is None:
+def evaluate_value(model_prob, odds):
+    """EV per enhet: modellens sannsynlighet ganger odds minus innsats."""
+    if odds is None or odds <= 1e-9:
         return None
-    return model_prob - implied_prob
+    return (model_prob * odds) - 1.0
 
 
 def make_report(days=3):
@@ -76,29 +76,26 @@ def make_report(days=3):
 
         pred = predict_match(model, home_abbr, away_abbr)
 
-        raw_imp_H = implied_probability(g["odds_home"])
-        raw_imp_D = implied_probability(g["odds_draw"])
-        raw_imp_A = implied_probability(g["odds_away"])
+        odds_home = g["odds_home"]
+        odds_draw = g["odds_draw"]
+        odds_away = g["odds_away"]
 
-        # Normalize markedet
-        imp_H, imp_D, imp_A = normalize_probs(
-            raw_imp_H if raw_imp_H is not None else 0.0,
-            raw_imp_D if raw_imp_D is not None else 0.0,
-            raw_imp_A if raw_imp_A is not None else 0.0,
-        )
+        imp_H = implied_probability(odds_home)
+        imp_D = implied_probability(odds_draw)
+        imp_A = implied_probability(odds_away)
 
-        value_H = evaluate_value(pred["model_home_win_prob"], imp_H if raw_imp_H is not None else None)
-        value_D = evaluate_value(pred["model_draw_prob"], imp_D if raw_imp_D is not None else None)
-        value_A = evaluate_value(pred["model_away_win_prob"], imp_A if raw_imp_A is not None else None)
+        value_H = evaluate_value(pred["model_home_win_prob"], odds_home)
+        value_D = evaluate_value(pred["model_draw_prob"], odds_draw)
+        value_A = evaluate_value(pred["model_away_win_prob"], odds_away)
 
         game_entry = {
             "match": f"{home_abbr} vs {away_abbr}",
             "start": g["startTime"],
 
             # odds
-            "odds_home": g["odds_home"],
-            "odds_draw": g["odds_draw"],
-            "odds_away": g["odds_away"],
+            "odds_home": odds_home,
+            "odds_draw": odds_draw,
+            "odds_away": odds_away,
 
             # modeled probabilities
             "model_home_win": round(pred["model_home_win_prob"], 3),
@@ -106,11 +103,11 @@ def make_report(days=3):
             "model_away_win": round(pred["model_away_win_prob"], 3),
 
             # implied probabilities
-            "implied_home_prob": round(imp_H, 3) if raw_imp_H is not None else None,
-            "implied_draw_prob": round(imp_D, 3) if raw_imp_D is not None else None,
-            "implied_away_prob": round(imp_A, 3) if raw_imp_A is not None else None,
+            "implied_home_prob": round(imp_H, 3) if imp_H is not None else None,
+            "implied_draw_prob": round(imp_D, 3) if imp_D is not None else None,
+            "implied_away_prob": round(imp_A, 3) if imp_A is not None else None,
 
-            # VALUE
+            # EV
             "value_home": round(value_H, 3) if value_H is not None else None,
             "value_draw": round(value_D, 3) if value_D is not None else None,
             "value_away": round(value_A, 3) if value_A is not None else None,
@@ -133,5 +130,5 @@ if __name__ == "__main__":
         print(f" Odds: H={r['odds_home']}   D={r['odds_draw']}   A={r['odds_away']}")
         print(f" Model: H={r['model_home_win']}   D={r['model_draw']}   A={r['model_away_win']}")
         print(f" Market: H={r['implied_home_prob']}   D={r['implied_draw_prob']}   A={r['implied_away_prob']}")
-        print(f" VALUE:  H={r['value_home']}   D={r['value_draw']}   A={r['value_away']}")
+        print(f" EV:     H={r['value_home']}   D={r['value_draw']}   A={r['value_away']}")
     print("--------------------------------------------------")

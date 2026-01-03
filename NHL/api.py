@@ -85,6 +85,10 @@ def implied_probability(odds: Optional[float]) -> Optional[float]:
     return 1 / odds
 
 
+def odds_complete(*odds: Optional[float]) -> bool:
+    return all(o is not None and o > 1e-9 for o in odds)
+
+
 def normalize_probs(*probs: Optional[float]):
     """Sørger for at sannsynlighetene summerer til 1."""
     clean = [p if p is not None else 0.0 for p in probs]
@@ -94,11 +98,11 @@ def normalize_probs(*probs: Optional[float]):
     return tuple(p / total for p in clean)
 
 
-def evaluate_value(model_prob: float, implied_prob: Optional[float]) -> Optional[float]:
-    """VALUE = hvor mye vi mener oddsen er feilprisett."""
-    if implied_prob is None:
+def evaluate_value(model_prob: float, odds: Optional[float]) -> Optional[float]:
+    """EV per enhet: modellens sannsynlighet ganger odds minus innsats."""
+    if odds is None or odds <= 1e-9:
         return None
-    return model_prob - implied_prob
+    return (model_prob * odds) - 1.0
 
 
 def prob_to_decimal_odds(prob: float) -> Optional[float]:
@@ -337,7 +341,7 @@ def predict_game(request: PredictionRequest):
 def get_value_report(days: int = 3):
     """
     Returnerer kamper for de neste `days` dagene med modell-sannsynlighet,
-    markedets odds og value-gap.
+    markedets odds og forventet EV.
     """
     # Begrens antall dager for å unngå unødvendig store kall
     days = max(0, min(days, 10))
@@ -432,19 +436,18 @@ def get_value_report(days: int = 3):
             float(class_prob_map.get(2, 0.0)),
         )
 
-        raw_imp_home = implied_probability(game.get("odds_home"))
-        raw_imp_draw = implied_probability(game.get("odds_draw"))
-        raw_imp_away = implied_probability(game.get("odds_away"))
+        odds_home = game.get("odds_home")
+        odds_draw = game.get("odds_draw")
+        odds_away = game.get("odds_away")
 
-        imp_home, imp_draw, imp_away = normalize_probs(
-            raw_imp_home if raw_imp_home is not None else 0.0,
-            raw_imp_draw if raw_imp_draw is not None else 0.0,
-            raw_imp_away if raw_imp_away is not None else 0.0,
-        )
+        imp_home = implied_probability(odds_home)
+        imp_draw = implied_probability(odds_draw)
+        imp_away = implied_probability(odds_away)
 
-        value_home = evaluate_value(home_prob, imp_home if raw_imp_home is not None else None)
-        value_draw = evaluate_value(draw_prob, imp_draw if raw_imp_draw is not None else None)
-        value_away = evaluate_value(away_prob, imp_away if raw_imp_away is not None else None)
+        odds_ok = odds_complete(odds_home, odds_draw, odds_away)
+        value_home = evaluate_value(home_prob, odds_home) if odds_ok else None
+        value_draw = evaluate_value(draw_prob, odds_draw) if odds_ok else None
+        value_away = evaluate_value(away_prob, odds_away) if odds_ok else None
 
         value_map = {
             "home": value_home,
@@ -454,7 +457,7 @@ def get_value_report(days: int = 3):
         available_values = {k: v for k, v in value_map.items() if v is not None}
         best_value = None
         best_value_delta = None
-        if available_values:
+        if available_values and odds_ok:
             best_value, best_value_delta = max(
                 available_values.items(), key=lambda kv: kv[1]
             )
@@ -476,18 +479,18 @@ def get_value_report(days: int = 3):
             away=str(game.get("away") or away_abbr or ""),
             home_abbr=to_display(home_abbr) or None,
             away_abbr=to_display(away_abbr) or None,
-            odds_home=game.get("odds_home"),
-            odds_draw=game.get("odds_draw"),
-            odds_away=game.get("odds_away"),
+            odds_home=odds_home,
+            odds_draw=odds_draw,
+            odds_away=odds_away,
             model_home_win=round(home_prob, 3),
             model_draw=round(draw_prob, 3),
             model_away_win=round(away_prob, 3),
             model_home_odds=prob_to_decimal_odds(home_prob),
             model_draw_odds=prob_to_decimal_odds(draw_prob),
             model_away_odds=prob_to_decimal_odds(away_prob),
-            implied_home_prob=round(imp_home, 3) if raw_imp_home is not None else None,
-            implied_draw_prob=round(imp_draw, 3) if raw_imp_draw is not None else None,
-            implied_away_prob=round(imp_away, 3) if raw_imp_away is not None else None,
+            implied_home_prob=round(imp_home, 3) if imp_home is not None else None,
+            implied_draw_prob=round(imp_draw, 3) if imp_draw is not None else None,
+            implied_away_prob=round(imp_away, 3) if imp_away is not None else None,
             value_home=round(value_home, 3) if value_home is not None else None,
             value_draw=round(value_draw, 3) if value_draw is not None else None,
             value_away=round(value_away, 3) if value_away is not None else None,

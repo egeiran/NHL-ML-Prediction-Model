@@ -57,6 +57,10 @@ def implied_probability(odds: Optional[float]) -> Optional[float]:
     return 1 / odds
 
 
+def odds_complete(*odds: Optional[float]) -> bool:
+    return all(o is not None and o > 1e-9 for o in odds)
+
+
 def normalize_probs(*probs: Optional[float]) -> Tuple[float, ...]:
     clean = [p if p is not None else 0.0 for p in probs]
     total = sum(clean)
@@ -65,10 +69,10 @@ def normalize_probs(*probs: Optional[float]) -> Tuple[float, ...]:
     return tuple(p / total for p in clean)
 
 
-def evaluate_value(model_prob: float, implied_prob: Optional[float]) -> Optional[float]:
-    if implied_prob is None:
+def evaluate_value(model_prob: float, odds: Optional[float]) -> Optional[float]:
+    if odds is None or odds <= 1e-9:
         return None
-    return model_prob - implied_prob
+    return (model_prob * odds) - 1.0
 
 
 def _parse_iso(dt: Optional[str]) -> Optional[datetime]:
@@ -227,6 +231,12 @@ def _choose_best_per_day(
 ) -> List[Dict[str, Any]]:
     best: Dict[str, Dict[str, Any]] = {}
     for g in games:
+        if not odds_complete(
+            g.get("odds_home"),
+            g.get("odds_draw"),
+            g.get("odds_away"),
+        ):
+            continue
         delta = g.get("best_value_delta")
         if delta is None or delta < min_value:
             continue
@@ -273,15 +283,16 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
         raw_imp_draw = implied_probability(game.get("odds_draw"))
         raw_imp_away = implied_probability(game.get("odds_away"))
 
-        imp_home, imp_draw, imp_away = normalize_probs(
-            raw_imp_home if raw_imp_home is not None else 0.0,
-            raw_imp_draw if raw_imp_draw is not None else 0.0,
-            raw_imp_away if raw_imp_away is not None else 0.0,
-        )
+        odds_home = game.get("odds_home")
+        odds_draw = game.get("odds_draw")
+        odds_away = game.get("odds_away")
 
-        value_home = evaluate_value(home_prob, imp_home if raw_imp_home is not None else None)
-        value_draw = evaluate_value(draw_prob, imp_draw if raw_imp_draw is not None else None)
-        value_away = evaluate_value(away_prob, imp_away if raw_imp_away is not None else None)
+        best_value = None
+        best_value_delta = None
+        odds_ok = odds_complete(odds_home, odds_draw, odds_away)
+        value_home = evaluate_value(home_prob, odds_home) if odds_ok else None
+        value_draw = evaluate_value(draw_prob, odds_draw) if odds_ok else None
+        value_away = evaluate_value(away_prob, odds_away) if odds_ok else None
 
         available = {
             "home": value_home,
@@ -290,9 +301,7 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
         }
         available = {k: v for k, v in available.items() if v is not None}
 
-        best_value = None
-        best_value_delta = None
-        if available:
+        if available and odds_ok:
             best_value, best_value_delta = max(available.items(), key=lambda kv: kv[1])
 
         raw_start = game.get("startTime") or ""
@@ -315,20 +324,21 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
             "away": game.get("away"),
             "home_abbr": home_abbr,
             "away_abbr": away_abbr,
-            "odds_home": game.get("odds_home"),
-            "odds_draw": game.get("odds_draw"),
-            "odds_away": game.get("odds_away"),
+            "odds_home": odds_home,
+            "odds_draw": odds_draw,
+            "odds_away": odds_away,
             "model_home_win": round(home_prob, 3),
             "model_draw": round(draw_prob, 3),
             "model_away_win": round(away_prob, 3),
-            "implied_home_prob": round(imp_home, 3) if raw_imp_home is not None else None,
-            "implied_draw_prob": round(imp_draw, 3) if raw_imp_draw is not None else None,
-            "implied_away_prob": round(imp_away, 3) if raw_imp_away is not None else None,
-            "value_home": round(value_home, 3) if value_home is not None else None,
-            "value_draw": round(value_draw, 3) if value_draw is not None else None,
-            "value_away": round(value_away, 3) if value_away is not None else None,
+            "implied_home_prob": raw_imp_home,
+            "implied_draw_prob": raw_imp_draw,
+            "implied_away_prob": raw_imp_away,
+            "value_home": value_home,
+            "value_draw": value_draw,
+            "value_away": value_away,
             "best_value": best_value,
-            "best_value_delta": round(best_value_delta, 3) if best_value_delta is not None else None,
+            "best_value_delta": best_value_delta,
+            "odds_complete": odds_ok,
         })
 
     return report
@@ -483,7 +493,13 @@ def record_new_bets(
         candidates = [
             g
             for g in report
-            if g.get("best_value_delta") is not None and g.get("best_value_delta") >= min_value
+            if g.get("best_value_delta") is not None
+            and g.get("best_value_delta") >= min_value
+            and odds_complete(
+                g.get("odds_home"),
+                g.get("odds_draw"),
+                g.get("odds_away"),
+            )
         ]
     else:
         candidates = _choose_best_per_day(report, min_value=min_value)

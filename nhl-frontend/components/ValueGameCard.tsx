@@ -72,7 +72,7 @@ function OutcomeCard({ outcome, isBest }: { outcome: OutcomeDisplay; isBest: boo
         <div>
           <div className="text-[11px] uppercase tracking-wide text-white/50">Verdi</div>
           <div className={`text-lg font-semibold ${valueColor(outcome.value)}`}>{formatValue(outcome.value)}</div>
-          <div className="text-xs text-white/60">Modell - marked</div>
+          <div className="text-xs text-white/60">Forventet EV</div>
         </div>
       </div>
     </div>

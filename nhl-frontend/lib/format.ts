@@ -26,7 +26,7 @@ export function formatPercent(prob?: number | null) {
 export function formatValue(value?: number | null) {
   if (value === null || value === undefined) return '–';
   const valuePct = (value * 100).toFixed(1);
-  return `${value > 0 ? '+' : ''}${valuePct} pp`;
+  return `${value > 0 ? '+' : ''}${valuePct}%`;
 }
 
 export function valueColor(value?: number | null) {
