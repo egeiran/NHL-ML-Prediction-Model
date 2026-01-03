@@ -5,8 +5,8 @@ Daily artifact generator for the NHL model.
 What it does:
 - Loads a trained model from disk (placeholder path can be changed).
 - Builds sample feature rows (replace with your real data loader if desired).
-- Computes predictions + a simple value/edge metric.
-- Writes `predictions.png` and `TODAY.md` into the repo root (overwrites safely).
+- Computes predictions + expected value (EV) per unit stake.
+- Writes `docs/predictions.png` and `docs/TODAY.md` (overwrites safely).
 
 This template is intentionally self contained so it can run in CI without
 extra parameters. Adapt `fetch_feature_data` and `build_matchups` to hook up
@@ -37,14 +37,30 @@ import pandas as pd
 try:
     # Prefer the project's loader if available.
     from utils.model_utils import load_model as _load_model
+    from utils.value_utils import expected_value, implied_probability
 except Exception:
     _load_model = None
+    expected_value = None
+    implied_probability = None
+
+if implied_probability is None:
+    def implied_probability(odds: float):
+        if odds is None or odds <= 1e-9:
+            return None
+        return 1.0 / odds
+
+if expected_value is None:
+    def expected_value(model_prob: float, odds: float):
+        if odds is None or odds <= 1e-9:
+            return None
+        return (model_prob * odds) - 1.0
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_IMAGE = REPO_ROOT / "predictions.png"
-OUTPUT_MARKDOWN = REPO_ROOT / "TODAY.md"
-PORTFOLIO_IMAGE = REPO_ROOT / "portfolio.png"
-DAILY_PROFIT_IMAGE = REPO_ROOT / "daily_profit.png"
+DOCS_DIR = REPO_ROOT / "docs"
+OUTPUT_IMAGE = DOCS_DIR / "predictions.png"
+OUTPUT_MARKDOWN = DOCS_DIR / "TODAY.md"
+PORTFOLIO_IMAGE = DOCS_DIR / "portfolio.png"
+DAILY_PROFIT_IMAGE = DOCS_DIR / "daily_profit.png"
 BET_HISTORY_PATH = REPO_ROOT / "NHL" / "data" / "bet_history.csv"
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "models" / "nhl_model.pkl"
 ROWS_TO_SAMPLE = 6
@@ -173,7 +189,7 @@ def compute_value_table(
     match_date: Optional[datetime.date],
 ) -> pd.DataFrame:
     """
-    Predict class probabilities and derive a simple value/edge metric.
+    Predict class probabilities and derive expected value (EV) per unit stake.
     """
     if not hasattr(model, "predict_proba"):
         raise AttributeError("Model must expose predict_proba for probability outputs.")
@@ -233,9 +249,8 @@ def compute_value_table(
         best_class_idx = int(np.argmax(probs))
         model_prob = float(np.clip(probs[best_class_idx], 0.0, 1.0))
         offered_odds = float(max(odds[best_class_idx], 1.01))
-        implied_prob = 1.0 / offered_odds
-        edge = model_prob - implied_prob
-        expected_value = model_prob * offered_odds - 1.0
+        implied_prob = implied_probability(offered_odds)
+        ev_value = expected_value(model_prob, offered_odds)
 
         selection = _selection_label(classes[best_class_idx], matchup)
 
@@ -246,13 +261,13 @@ def compute_value_table(
                 "Selection": selection,
                 "Model Probability": round(model_prob, 3),
                 "Market Odds": round(offered_odds, 2),
-                "Implied Prob": round(implied_prob, 3),
-                "Edge": round(edge, 3),
-                "Expected Value": round(expected_value, 3),
+                "Implied Prob": round(implied_prob, 3) if implied_prob is not None else None,
+                "Expected Value": round(ev_value, 3) if ev_value is not None else None,
             }
         )
 
     table = pd.DataFrame(rows)
+    table = table[table["Expected Value"] > 0].copy()
     table.sort_values(by="Expected Value", ascending=False, inplace=True)
     table.reset_index(drop=True, inplace=True)
     return table
@@ -280,11 +295,16 @@ def save_markdown(table: pd.DataFrame, output_path: Path) -> None:
         "- Selection: modelens pick (home/away/draw) mapped to laget vi tror vinner.",
         "- Model Probability: sannsynligheten modellen gir for selection.",
         "- Market Odds: simulerte desimalodds for selection.",
-        "- Implied Prob: 1/odds (normalisert) – markedets sannsynlighet.",
-        "- Edge: model_prob - implied_prob.",
+        "- Implied Prob: 1/odds – markedets sannsynlighet.",
         "- Expected Value: model_prob * odds - 1 per enhetsinnsats.",
+        "- Kun bets med Expected Value > 0 vises.",
         "",
     ]
+
+    if table.empty:
+        content = "\n".join(header + ["_Ingen positive EV-bets funnet i dag._", ""])
+        atomic_write_text(output_path, content)
+        return
 
     try:
         md_table = table.to_markdown(index=False, tablefmt="github", floatfmt=".3f")
@@ -299,28 +319,44 @@ def save_chart(table: pd.DataFrame, output_path: Path) -> None:
     _use_plot_style()
     fig, ax = plt.subplots(figsize=(10, 5))
 
+    if table.empty:
+        ax.axis("off")
+        ax.text(
+            0.5,
+            0.5,
+            "Ingen positive EV-bets i dag",
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="#e5e7eb",
+        )
+        fig.tight_layout()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = output_path.with_name(output_path.stem + "_tmp" + output_path.suffix)
+        fig.savefig(tmp_path, dpi=150, bbox_inches="tight", format="png")
+        tmp_path.replace(output_path)
+        plt.close(fig)
+        return
+
     bars = ax.bar(
         table["Matchup"],
         table["Expected Value"],
-        color=["#0f9d58" if ev >= 0 else "#d93025" for ev in table["Expected Value"]],
+        color="#16a34a",
     )
     ax.axhline(0, color="#555", linewidth=1)
     ax.set_ylabel("Expected Value (unit stake)")
     ax.set_xlabel("Matchup")
-    ax.set_title("Model value vs. market")
-    ax.set_ylim(
-        min(-0.25, table["Expected Value"].min() - 0.05),
-        max(0.4, table["Expected Value"].max() + 0.05),
-    )
+    ax.set_title("Latest positive EV bets")
+    ax.set_ylim(0, max(0.4, table["Expected Value"].max() + 0.05))
     plt.xticks(rotation=25, ha="right")
 
     for bar, ev in zip(bars, table["Expected Value"]):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            ev + (0.01 if ev >= 0 else -0.03),
+            ev + 0.01,
             f"{ev:.2f}",
             ha="center",
-            va="bottom" if ev >= 0 else "top",
+            va="bottom",
             fontsize=9,
         )
 

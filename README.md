@@ -3,22 +3,22 @@
 ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, portefølje og egendefinerte prediksjoner).
 
 ## 📊 Latest Value Bets
-![Predictions](./predictions.png)  
-➡️ [View full markdown table](./TODAY.md)
+![Predictions](./docs/predictions.png)  
+➡️ [View full markdown table](./docs/TODAY.md) (kun positive EV-bets)
 
 ## 📈 Portefølje over tid
-![Portfolio](./portfolio.png)
+![Portfolio](./docs/portfolio.png)
 
 ## 📊 Daglig resultat (siste 5 dager)
-![Daglig resultat](./daily_profit.png)
+![Daglig resultat](./docs/daily_profit.png)
 
 ## 🚀 Komme i gang
 
 ### 1. Backend (FastAPI)
-- Krav: Python 3.11+ anbefales.
+- Krav: Python 3.11 eller 3.12 anbefales (scikit-learn har ikke stabile wheels for 3.14).
 - ```bash
   cd NHL
-  python -m venv .venv && source .venv/bin/activate  # valgfritt
+  python3.11 -m venv .venv && source .venv/bin/activate
   pip install -r requirements-api.txt
   python api.py
   ```

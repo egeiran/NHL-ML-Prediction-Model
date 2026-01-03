@@ -28,6 +28,7 @@ from live.team_cache import (
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
+from utils.value_utils import expected_value, implied_probability, odds_complete
 from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -78,17 +79,6 @@ def get_data():
     return _cache["data"]
 
 
-def implied_probability(odds: Optional[float]) -> Optional[float]:
-    """Konverterer odds til implisitt sannsynlighet."""
-    if odds is None or odds <= 1e-9:
-        return None
-    return 1 / odds
-
-
-def odds_complete(*odds: Optional[float]) -> bool:
-    return all(o is not None and o > 1e-9 for o in odds)
-
-
 def normalize_probs(*probs: Optional[float]):
     """Sørger for at sannsynlighetene summerer til 1."""
     clean = [p if p is not None else 0.0 for p in probs]
@@ -96,13 +86,6 @@ def normalize_probs(*probs: Optional[float]):
     if total <= 0:
         return tuple(0.0 for _ in clean)
     return tuple(p / total for p in clean)
-
-
-def evaluate_value(model_prob: float, odds: Optional[float]) -> Optional[float]:
-    """EV per enhet: modellens sannsynlighet ganger odds minus innsats."""
-    if odds is None or odds <= 1e-9:
-        return None
-    return (model_prob * odds) - 1.0
 
 
 def prob_to_decimal_odds(prob: float) -> Optional[float]:
@@ -445,9 +428,9 @@ def get_value_report(days: int = 3):
         imp_away = implied_probability(odds_away)
 
         odds_ok = odds_complete(odds_home, odds_draw, odds_away)
-        value_home = evaluate_value(home_prob, odds_home) if odds_ok else None
-        value_draw = evaluate_value(draw_prob, odds_draw) if odds_ok else None
-        value_away = evaluate_value(away_prob, odds_away) if odds_ok else None
+        value_home = expected_value(home_prob, odds_home) if odds_ok else None
+        value_draw = expected_value(draw_prob, odds_draw) if odds_ok else None
+        value_away = expected_value(away_prob, odds_away) if odds_ok else None
 
         value_map = {
             "home": value_home,

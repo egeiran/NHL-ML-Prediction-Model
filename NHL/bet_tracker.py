@@ -19,6 +19,7 @@ from live.nt_odds import get_nhl_matches_range
 from live.nhl_api import get_scoreboard
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
+from utils.value_utils import expected_value, implied_probability, odds_complete
 
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
@@ -51,28 +52,12 @@ BET_FIELDS = [
 ]
 
 
-def implied_probability(odds: Optional[float]) -> Optional[float]:
-    if odds is None or odds <= 1e-9:
-        return None
-    return 1 / odds
-
-
-def odds_complete(*odds: Optional[float]) -> bool:
-    return all(o is not None and o > 1e-9 for o in odds)
-
-
 def normalize_probs(*probs: Optional[float]) -> Tuple[float, ...]:
     clean = [p if p is not None else 0.0 for p in probs]
     total = sum(clean)
     if total <= 0:
         return tuple(0.0 for _ in clean)
     return tuple(p / total for p in clean)
-
-
-def evaluate_value(model_prob: float, odds: Optional[float]) -> Optional[float]:
-    if odds is None or odds <= 1e-9:
-        return None
-    return (model_prob * odds) - 1.0
 
 
 def _parse_iso(dt: Optional[str]) -> Optional[datetime]:
@@ -290,9 +275,9 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
         best_value = None
         best_value_delta = None
         odds_ok = odds_complete(odds_home, odds_draw, odds_away)
-        value_home = evaluate_value(home_prob, odds_home) if odds_ok else None
-        value_draw = evaluate_value(draw_prob, odds_draw) if odds_ok else None
-        value_away = evaluate_value(away_prob, odds_away) if odds_ok else None
+        value_home = expected_value(home_prob, odds_home) if odds_ok else None
+        value_draw = expected_value(draw_prob, odds_draw) if odds_ok else None
+        value_away = expected_value(away_prob, odds_away) if odds_ok else None
 
         available = {
             "home": value_home,

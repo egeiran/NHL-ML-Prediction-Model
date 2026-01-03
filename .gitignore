@@ -1,1 +1,8 @@
-bet_history*
+.DS_Store
+NHL/.DS_Store
+
+# Keep primary bet history in git; ignore local backups/experiments
+NHL/data/bet_history_ev.csv
+NHL/data/bet_history_old.csv
+
+data.txt

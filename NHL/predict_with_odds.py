@@ -3,17 +3,9 @@ from live.nt_odds import get_nhl_matches_range
 from live.live_feature_builder import build_live_features
 from utils.model_utils import load_model
 from utils.feature_engineering import DEFAULT_WINDOWS
+from utils.value_utils import expected_value, implied_probability
 
 MODEL_PATH = "models/nhl_model.pkl"
-
-
-def implied_probability(odds: float) -> float:
-    """Konverterer odds til implisitt sannsynlighet."""
-    if odds is None or odds <= 1e-9:
-        return None
-    return 1 / odds
-
-
 def normalize_probs(*probs):
     """Sørger for at summen blir 1."""
     clean = [p if p is not None else 0.0 for p in probs]
@@ -44,13 +36,6 @@ def predict_match(model, home_abbr, away_abbr):
         "model_draw_prob": draw_prob,
         "model_away_win_prob": away_prob,
     }
-
-
-def evaluate_value(model_prob, odds):
-    """EV per enhet: modellens sannsynlighet ganger odds minus innsats."""
-    if odds is None or odds <= 1e-9:
-        return None
-    return (model_prob * odds) - 1.0
 
 
 def make_report(days=3):
@@ -84,9 +69,9 @@ def make_report(days=3):
         imp_D = implied_probability(odds_draw)
         imp_A = implied_probability(odds_away)
 
-        value_H = evaluate_value(pred["model_home_win_prob"], odds_home)
-        value_D = evaluate_value(pred["model_draw_prob"], odds_draw)
-        value_A = evaluate_value(pred["model_away_win_prob"], odds_away)
+        value_H = expected_value(pred["model_home_win_prob"], odds_home)
+        value_D = expected_value(pred["model_draw_prob"], odds_draw)
+        value_A = expected_value(pred["model_away_win_prob"], odds_away)
 
         game_entry = {
             "match": f"{home_abbr} vs {away_abbr}",
