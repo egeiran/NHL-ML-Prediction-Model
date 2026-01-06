@@ -1,6 +1,6 @@
-# Value Bets for 2026-01-05
+# Value Bets for 2026-01-06
 
-Generated at 2026-01-05 08:44 UTC
+Generated at 2026-01-06 08:41 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,4 +14,4 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|------------------|
-| 2026-01-05 | CHI vs VGK | CHI         |               0.417 |         2.810 |          0.356 |            0.171 |
+| 2026-01-06 | WSH vs ANA | WSH         |               0.417 |         2.810 |          0.356 |            0.171 |
