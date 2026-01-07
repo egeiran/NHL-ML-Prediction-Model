@@ -1,6 +1,6 @@
-# Value Bets for 2026-01-06
+# Value Bets for 2026-01-07
 
-Generated at 2026-01-06 08:41 UTC
+Generated at 2026-01-07 08:41 UTC
 
 Matchups come from the latest completed day in `NHL/data/bet_history.csv` when available; otherwise they are placeholders. Replace the placeholder data loader with your real odds feed when ready.
 
@@ -14,4 +14,7 @@ Columns:
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|------------------|
-| 2026-01-06 | WSH vs ANA | WSH         |               0.417 |         2.810 |          0.356 |            0.171 |
+| 2026-01-07 | EDM vs NSH | EDM         |               0.426 |         3.690 |          0.271 |            0.573 |
+| 2026-01-07 | NYI vs NJD | NYI         |               0.428 |         3.550 |          0.282 |            0.520 |
+| 2026-01-07 | WPG vs VGK | WPG         |               0.423 |         3.440 |          0.291 |            0.453 |
+| 2026-01-07 | TOR vs FLA | TOR         |               0.417 |         2.810 |          0.356 |            0.171 |
