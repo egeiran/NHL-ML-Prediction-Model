@@ -2,24 +2,20 @@
 """
 Daily artifact generator for the NHL model.
 
-What it does:
-- Loads a trained model from disk (placeholder path can be changed).
-- Builds sample feature rows (replace with your real data loader if desired).
-- Computes predictions + expected value (EV) per unit stake.
-- Writes `docs/predictions.png` and `docs/TODAY.md` (overwrites safely).
+Generates:
+- docs/predictions.png
+- docs/TODAY.md
+- docs/portfolio.png
+- docs/daily_profit.png
 
-This template is intentionally self contained so it can run in CI without
-extra parameters. Adapt `fetch_feature_data` and `build_matchups` to hook up
-real inputs/odds.
+Uses live Norsk Tipping odds via the same value-report logic as the API/bet tracker.
 """
 from __future__ import annotations
 
 import os
-import pickle
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
-import numbers
+from typing import Any, Dict, List, Optional, Sequence
 
 # Ensure matplotlib can cache fonts in environments without a writable home.
 MPL_CACHE_DIR = Path(os.environ.setdefault("MPLCONFIGDIR", str(Path("/tmp/mplcache"))))
@@ -31,29 +27,15 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 try:
-    # Prefer the project's loader if available.
-    from utils.model_utils import load_model as _load_model
-    from utils.value_utils import expected_value, implied_probability
-except Exception:
-    _load_model = None
-    expected_value = None
-    implied_probability = None
-
-if implied_probability is None:
-    def implied_probability(odds: float):
-        if odds is None or odds <= 1e-9:
-            return None
-        return 1.0 / odds
-
-if expected_value is None:
-    def expected_value(model_prob: float, odds: float):
-        if odds is None or odds <= 1e-9:
-            return None
-        return (model_prob * odds) - 1.0
+    from bet_tracker import _build_value_report
+except Exception as exc:  # pragma: no cover - guardrail for CI
+    _build_value_report = None
+    _IMPORT_ERROR = exc
+else:
+    _IMPORT_ERROR = None
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
@@ -62,8 +44,21 @@ OUTPUT_MARKDOWN = DOCS_DIR / "TODAY.md"
 PORTFOLIO_IMAGE = DOCS_DIR / "portfolio.png"
 DAILY_PROFIT_IMAGE = DOCS_DIR / "daily_profit.png"
 BET_HISTORY_PATH = REPO_ROOT / "NHL" / "data" / "bet_history.csv"
-DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "models" / "nhl_model.pkl"
-ROWS_TO_SAMPLE = 6
+
+VALUE_MIN = float(os.environ.get("NHL_VALUE_MIN", "0.01"))
+VALUE_DAYS_AHEAD = int(os.environ.get("NHL_VALUE_DAYS_AHEAD", "0"))
+VALUE_FALLBACK_DAYS = int(os.environ.get("NHL_VALUE_FALLBACK_DAYS", "3"))
+VALUE_CHART_MAX = int(os.environ.get("NHL_VALUE_CHART_MAX", "12"))
+
+TABLE_COLUMNS = [
+    "Date",
+    "Matchup",
+    "Selection",
+    "Model Probability",
+    "Market Odds",
+    "Implied Prob",
+    "Expected Value",
+]
 
 
 def _use_plot_style() -> None:
@@ -74,200 +69,143 @@ def _use_plot_style() -> None:
         plt.style.use("seaborn-darkgrid")
 
 
-def load_matchups_from_history(
-    path: Path, max_rows: int = ROWS_TO_SAMPLE
-) -> Optional[tuple[datetime.date, List[str]]]:
-    """
-    Pull matchups from the most recent *completed* day in bet_history.csv.
-    Returns (target_date, matchups) or None if missing/unusable.
-    """
-    if not path.exists():
+def _parse_iso(dt: Optional[str]) -> Optional[datetime]:
+    if not dt:
         return None
     try:
-        df = pd.read_csv(path)
+        return datetime.fromisoformat(str(dt).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _to_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def _team_label(game: Dict[str, Any], side: str) -> str:
+    abbr = str(game.get(f"{side}_abbr") or "").strip()
+    name = str(game.get(side) or "").strip()
+    return abbr or name
+
+
+def _matchup_label(game: Dict[str, Any]) -> str:
+    home = _team_label(game, "home")
+    away = _team_label(game, "away")
+    if home and away:
+        return f"{home} vs {away}"
+    event_id = game.get("event_id") or game.get("eventId")
+    return str(event_id or "Unknown matchup")
+
+
+def _selection_label(selection: str, game: Dict[str, Any]) -> str:
+    choice = str(selection).lower()
+    if choice == "home":
+        return _team_label(game, "home") or "Home"
+    if choice == "away":
+        return _team_label(game, "away") or "Away"
+    if choice == "draw":
+        return "Draw"
+    return str(selection)
+
+
+def _game_date(game: Dict[str, Any]) -> str:
+    date_str = str(game.get("date") or "").strip()
+    if date_str:
+        return date_str
+    start_dt = _parse_iso(game.get("start_time") or game.get("startTime"))
+    if start_dt:
+        return start_dt.strftime("%Y-%m-%d")
+    return ""
+
+
+def _report_date_range(report: Sequence[Dict[str, Any]]) -> str:
+    dates = sorted({d for d in (_game_date(g) for g in report) if d})
+    if not dates:
+        return "Unknown date"
+    if len(dates) == 1:
+        return dates[0]
+    return f"{dates[0]} to {dates[-1]}"
+
+
+def load_value_report(days_ahead: int) -> List[Dict[str, Any]]:
+    if _build_value_report is None:
+        print(f"[value-report] Missing bet_tracker import: {_IMPORT_ERROR}")
+        return []
+    try:
+        return _build_value_report(days_ahead)
     except Exception as exc:
-        print(f"[matchups] Could not read bet history: {exc}")
-        return None
-
-    required = {"date", "home_abbr", "away_abbr"}
-    if not required.issubset(df.columns):
-        print("[matchups] bet_history.csv missing columns: date, home_abbr, away_abbr")
-        return None
-
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df = df.dropna(subset=["date", "home_abbr", "away_abbr"])
-    if df.empty:
-        return None
-
-    df.sort_values(["date", "start_time"], inplace=True, na_position="last")
-    unique_dates = df["date"].dt.date.drop_duplicates().tolist()
-    if not unique_dates:
-        return None
-
-    # Skip the most recent date to avoid in-progress bets if possible.
-    target_date = unique_dates[-2] if len(unique_dates) > 1 else unique_dates[-1]
-    day_rows = df[df["date"].dt.date == target_date]
-    if day_rows.empty:
-        return None
-
-    matchups = [f"{h} vs {a}" for h, a in zip(day_rows["home_abbr"], day_rows["away_abbr"])]
-    # Keep order, trim to max_rows
-    return target_date, matchups[:max_rows]
+        print(f"[value-report] Failed to build report: {exc}")
+        return []
 
 
-def load_trained_model(model_path: Path = DEFAULT_MODEL_PATH):
-    """Load the serialized model; raise a clear error if it's missing."""
-    if not model_path.exists():
-        raise FileNotFoundError(
-            f"Model file not found at {model_path}. "
-            "Update DEFAULT_MODEL_PATH or drop your model there."
-        )
-
-    if _load_model:
-        return _load_model(str(model_path))
-
-    with open(model_path, "rb") as f:
-        return pickle.load(f)
-
-
-def _resolve_feature_names(model) -> List[str]:
-    if hasattr(model, "feature_names_in_"):
-        return list(model.feature_names_in_)
-    if hasattr(model, "n_features_in_"):
-        return [f"feature_{i}" for i in range(int(model.n_features_in_))]
-    return [f"feature_{i}" for i in range(8)]
-
-
-def fetch_feature_data(model, rows: int = ROWS_TO_SAMPLE) -> pd.DataFrame:
-    """
-    Build a placeholder feature matrix sized to the model.
-    Replace this with your real feature loader if you have one.
-    """
-    rng = np.random.default_rng(seed=42)
-    feature_names = _resolve_feature_names(model)
-    data = rng.normal(loc=0, scale=1, size=(rows, len(feature_names)))
-    return pd.DataFrame(data, columns=feature_names)
-
-
-def build_matchups(rows: int) -> List[str]:
-    """
-    Create human-readable matchup labels for the markdown and chart.
-    """
-    rng = np.random.default_rng(seed=7)
-    teams = [
-        "BOS",
-        "NYR",
-        "TOR",
-        "MTL",
-        "LAK",
-        "EDM",
-        "VAN",
-        "CHI",
-        "COL",
-        "PIT",
-        "BUF",
-        "STL",
-    ]
-    matchups = []
-    for _ in range(rows):
-        home, away = rng.choice(teams, size=2, replace=False)
-        matchups.append(f"{home} vs {away}")
-    return matchups
-
-
-def simulate_market_odds(rows: int, n_classes: int) -> np.ndarray:
-    """Generate plausible decimal odds for each class."""
-    rng = np.random.default_rng(seed=24)
-    odds = rng.uniform(1.8, 3.8, size=(rows, n_classes))
-    return np.round(odds, 2)
-
-
-def compute_value_table(
-    model,
-    features: pd.DataFrame,
-    matchups: Sequence[str],
-    match_date: Optional[datetime.date],
+def build_value_table(
+    report: Sequence[Dict[str, Any]],
+    min_value: float,
 ) -> pd.DataFrame:
-    """
-    Predict class probabilities and derive expected value (EV) per unit stake.
-    """
-    if not hasattr(model, "predict_proba"):
-        raise AttributeError("Model must expose predict_proba for probability outputs.")
+    rows: List[Dict[str, Any]] = []
 
-    proba = model.predict_proba(features)
-    classes = getattr(model, "classes_", np.arange(proba.shape[1]))
-    odds_matrix = simulate_market_odds(len(features), proba.shape[1])
+    for game in report:
+        delta = _to_float(game.get("best_value_delta"))
+        if delta is None or delta < min_value:
+            continue
 
-    def _class_role(label) -> str:
-        """Return 'home', 'draw', 'away', or 'unknown' for the class label."""
-        if isinstance(label, numbers.Integral):
-            if int(label) == 0:
-                return "home"
-            if int(label) == 1:
-                return "draw"
-            if int(label) == 2:
-                return "away"
-        if isinstance(label, numbers.Real):
-            # allow float-like labels too
-            as_int = int(round(float(label)))
-            if as_int == 0:
-                return "home"
-            if as_int == 1:
-                return "draw"
-            if as_int == 2:
-                return "away"
-        if isinstance(label, str):
-            lower = label.lower()
-            if lower in {"home", "h"}:
-                return "home"
-            if lower in {"draw", "tie", "d", "x"}:
-                return "draw"
-            if lower in {"away", "a"}:
-                return "away"
-        return "unknown"
+        selection = game.get("best_value") or game.get("selection")
+        if not selection:
+            continue
+        selection_key = str(selection).lower()
 
-    def _selection_label(best_class, matchup: str) -> str:
-        role = _class_role(best_class)
-        try:
-            home_abbr, away_abbr = [p.strip() for p in matchup.split("vs")]
-        except Exception:
-            home_abbr, away_abbr = matchup, matchup
+        odds_lookup = {
+            "home": game.get("odds_home"),
+            "draw": game.get("odds_draw"),
+            "away": game.get("odds_away"),
+        }
+        model_lookup = {
+            "home": game.get("model_home_win"),
+            "draw": game.get("model_draw"),
+            "away": game.get("model_away_win"),
+        }
+        implied_lookup = {
+            "home": game.get("implied_home_prob"),
+            "draw": game.get("implied_draw_prob"),
+            "away": game.get("implied_away_prob"),
+        }
+        value_lookup = {
+            "home": game.get("value_home"),
+            "draw": game.get("value_draw"),
+            "away": game.get("value_away"),
+        }
 
-        if role == "home":
-            return home_abbr
-        if role == "away":
-            return away_abbr
-        if role == "draw":
-            return "Draw"
-        return str(best_class)
+        odds = _to_float(odds_lookup.get(selection_key))
+        if odds is None:
+            continue
 
-    rows = []
-    for idx, matchup in enumerate(matchups):
-        probs = np.asarray(proba[idx], dtype=float)
-        odds = odds_matrix[idx]
-
-        best_class_idx = int(np.argmax(probs))
-        model_prob = float(np.clip(probs[best_class_idx], 0.0, 1.0))
-        offered_odds = float(max(odds[best_class_idx], 1.01))
-        implied_prob = implied_probability(offered_odds)
-        ev_value = expected_value(model_prob, offered_odds)
-
-        selection = _selection_label(classes[best_class_idx], matchup)
+        model_prob = _to_float(model_lookup.get(selection_key))
+        implied_prob = _to_float(implied_lookup.get(selection_key))
+        value = _to_float(value_lookup.get(selection_key))
+        ev_value = value if value is not None else delta
 
         rows.append(
             {
-                "Date": (match_date or datetime.now(timezone.utc).date()).isoformat(),
-                "Matchup": matchup,
-                "Selection": selection,
-                "Model Probability": round(model_prob, 3),
-                "Market Odds": round(offered_odds, 2),
+                "Date": _game_date(game),
+                "Matchup": _matchup_label(game),
+                "Selection": _selection_label(selection_key, game),
+                "Model Probability": round(model_prob, 3) if model_prob is not None else None,
+                "Market Odds": round(odds, 2),
                 "Implied Prob": round(implied_prob, 3) if implied_prob is not None else None,
                 "Expected Value": round(ev_value, 3) if ev_value is not None else None,
             }
         )
 
+    if not rows:
+        return pd.DataFrame(columns=TABLE_COLUMNS)
+
     table = pd.DataFrame(rows)
-    table = table[table["Expected Value"] > 0].copy()
+    table = table.dropna(subset=["Expected Value"])
     table.sort_values(by="Expected Value", ascending=False, inplace=True)
     table.reset_index(drop=True, inplace=True)
     return table
@@ -280,29 +218,38 @@ def atomic_write_text(path: Path, content: str) -> None:
     tmp_path.replace(path)
 
 
-def save_markdown(table: pd.DataFrame, output_path: Path) -> None:
+def save_markdown(
+    table: pd.DataFrame,
+    output_path: Path,
+    report_meta: Dict[str, Any],
+) -> None:
     timestamp = datetime.now(timezone.utc)
+    date_range = report_meta.get("date_range") or timestamp.strftime("%Y-%m-%d")
+    days_ahead = report_meta.get("days_ahead", 0)
+    min_value = report_meta.get("min_value", VALUE_MIN)
+    total_games = report_meta.get("total_games", 0)
+    fallback_used = report_meta.get("fallback_used", False)
+    fallback_days = report_meta.get("fallback_days")
+
     header = [
-        f"# Value Bets for {timestamp:%Y-%m-%d}",
+        f"# Value Bets for {date_range}",
         "",
         f"Generated at {timestamp:%Y-%m-%d %H:%M} UTC",
-        "",
-        "Matchups come from the latest completed day in `NHL/data/bet_history.csv` "
-        "when available; otherwise they are placeholders. "
-        "Replace the placeholder data loader with your real odds feed when ready.",
-        "",
-        "Columns:",
-        "- Selection: modelens pick (home/away/draw) mapped to laget vi tror vinner.",
-        "- Model Probability: sannsynligheten modellen gir for selection.",
-        "- Market Odds: simulerte desimalodds for selection.",
-        "- Implied Prob: 1/odds – markedets sannsynlighet.",
-        "- Expected Value: model_prob * odds - 1 per enhetsinnsats.",
-        "- Kun bets med Expected Value > 0 vises.",
+        f"Data window: {date_range} (days_ahead={days_ahead})",
+        f"Min EV threshold: {min_value:.2f}",
+        f"Games scanned: {total_games} | Value bets: {len(table)}",
+        "Source: Norsk Tipping odds + NHL model (same logic as /value-report).",
         "",
     ]
 
+    if fallback_used and fallback_days is not None:
+        header.append(
+            f"Note: primary window empty; used fallback horizon ({fallback_days} days ahead)."
+        )
+        header.append("")
+
     if table.empty:
-        content = "\n".join(header + ["_Ingen positive EV-bets funnet i dag._", ""])
+        content = "\n".join(header + ["_Ingen value-bets over terskel i denne perioden._", ""])
         atomic_write_text(output_path, content)
         return
 
@@ -315,7 +262,7 @@ def save_markdown(table: pd.DataFrame, output_path: Path) -> None:
     atomic_write_text(output_path, content)
 
 
-def save_chart(table: pd.DataFrame, output_path: Path) -> None:
+def save_chart(table: pd.DataFrame, output_path: Path, max_rows: int = VALUE_CHART_MAX) -> None:
     _use_plot_style()
     fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -324,7 +271,7 @@ def save_chart(table: pd.DataFrame, output_path: Path) -> None:
         ax.text(
             0.5,
             0.5,
-            "Ingen positive EV-bets i dag",
+            "Ingen value-bets over terskel",
             ha="center",
             va="center",
             fontsize=14,
@@ -338,19 +285,20 @@ def save_chart(table: pd.DataFrame, output_path: Path) -> None:
         plt.close(fig)
         return
 
+    chart_table = table.head(max_rows).copy()
     bars = ax.bar(
-        table["Matchup"],
-        table["Expected Value"],
+        chart_table["Matchup"],
+        chart_table["Expected Value"],
         color="#16a34a",
     )
     ax.axhline(0, color="#555", linewidth=1)
     ax.set_ylabel("Expected Value (unit stake)")
     ax.set_xlabel("Matchup")
     ax.set_title("Latest positive EV bets")
-    ax.set_ylim(0, max(0.4, table["Expected Value"].max() + 0.05))
+    ax.set_ylim(0, max(0.4, chart_table["Expected Value"].max() + 0.05))
     plt.xticks(rotation=25, ha="right")
 
-    for bar, ev in zip(bars, table["Expected Value"]):
+    for bar, ev in zip(bars, chart_table["Expected Value"]):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             ev + 0.01,
@@ -406,7 +354,7 @@ def save_portfolio_chart(daily: pd.DataFrame, output_path: Path) -> None:
     fig, ax = plt.subplots(figsize=(10, 5))
 
     dates = pd.to_datetime(daily["Date"])
-    x = np.arange(len(dates))
+    x = list(range(len(dates)))
     value = daily["Cumulative Profit"]
     bet_volume = daily["BetCount"] * 100  # bets * 100 to mirror stake line style
 
@@ -423,8 +371,8 @@ def save_portfolio_chart(daily: pd.DataFrame, output_path: Path) -> None:
     xtick_step = max(1, len(x) // 8)
     ax.set_xticks(x[::xtick_step])
     ax.set_xticklabels([d.strftime("%b %d") for d in dates[::xtick_step]], rotation=25, ha="right")
-    ax.set_ylabel("Beløp (kr) / Bets x100")
-    ax.set_title("Portefølje over tid")
+    ax.set_ylabel("Belop (kr) / Bets x100")
+    ax.set_title("Portefolje over tid")
     ax.grid(True, linestyle="--", alpha=0.35)
     ax.legend()
     fig.tight_layout()
@@ -442,11 +390,11 @@ def save_recent_profit_chart(
     days: int = 5,
 ) -> None:
     """
-    Lag et søylediagram for siste `days` dager med realisert dagsresultat.
-    Søylene er like høye (positive/negative) som profitten den dagen.
+    Lag et soylediagram for siste `days` dager med realisert dagsresultat.
+    Soylene er like hoye (positive/negative) som profitten den dagen.
     """
     if daily.empty:
-        print("[recent-profit] Ingen data å plotte")
+        print("[recent-profit] Ingen data a plotte")
         return
 
     trimmed = daily.tail(days).copy()
@@ -462,7 +410,7 @@ def save_recent_profit_chart(
     bars = ax.bar(labels, profits, color=colors, width=0.6)
     ax.axhline(0, color="#555", linewidth=1)
     ax.set_ylabel("Daglig resultat (kr)")
-    ax.set_title(f"Daglig resultat — siste {min(days, len(trimmed))} dager")
+    ax.set_title(f"Daglig resultat - siste {min(days, len(trimmed))} dager")
     plt.xticks(rotation=0)
 
     for bar, value in zip(bars, profits):
@@ -484,19 +432,27 @@ def save_recent_profit_chart(
 
 
 def main() -> None:
-    model = load_trained_model()
-    history_payload = load_matchups_from_history(BET_HISTORY_PATH, max_rows=ROWS_TO_SAMPLE)
-    if history_payload:
-        match_date, matchups = history_payload
-    else:
-        match_date, matchups = None, build_matchups(rows=ROWS_TO_SAMPLE)
-    if not matchups:
-        matchups = build_matchups(rows=ROWS_TO_SAMPLE)
-    features = fetch_feature_data(model, rows=len(matchups))
+    report = load_value_report(VALUE_DAYS_AHEAD)
+    used_days = VALUE_DAYS_AHEAD
+    fallback_used = False
 
-    table = compute_value_table(model, features, matchups, match_date)
-    save_markdown(table, OUTPUT_MARKDOWN)
-    save_chart(table, OUTPUT_IMAGE)
+    if not report and VALUE_FALLBACK_DAYS > VALUE_DAYS_AHEAD:
+        report = load_value_report(VALUE_FALLBACK_DAYS)
+        used_days = VALUE_FALLBACK_DAYS
+        fallback_used = True
+
+    table = build_value_table(report, VALUE_MIN)
+    report_meta = {
+        "date_range": _report_date_range(report),
+        "days_ahead": used_days,
+        "min_value": VALUE_MIN,
+        "total_games": len(report),
+        "fallback_used": fallback_used,
+        "fallback_days": VALUE_FALLBACK_DAYS if fallback_used else None,
+    }
+
+    save_markdown(table, OUTPUT_MARKDOWN, report_meta)
+    save_chart(table, OUTPUT_IMAGE, max_rows=VALUE_CHART_MAX)
 
     portfolio_daily = build_portfolio_timeseries(BET_HISTORY_PATH)
     if portfolio_daily is not None and not portfolio_daily.empty:
