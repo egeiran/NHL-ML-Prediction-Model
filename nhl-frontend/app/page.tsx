@@ -62,7 +62,8 @@ export default function Home() {
         body: JSON.stringify({
           days_ahead: 1,
           stake_per_bet: 100,
-          min_value: 0.01,
+          min_value: 0.2,
+          max_odds: 4.0,
           value_games: valueGames, // sender allerede hentet odds/matchdata for raskere oppdatering
         }),
       });

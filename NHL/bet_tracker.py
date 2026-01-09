@@ -10,6 +10,7 @@ Hovedfunksjoner:
 from __future__ import annotations
 
 import csv
+import os
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -19,12 +20,15 @@ from live.nt_odds import get_nhl_matches_range
 from live.nhl_api import get_scoreboard
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
-from utils.value_utils import expected_value, implied_probability, odds_complete
+from utils.value_utils import expected_value, implied_probability, odds_complete, round_optional
 
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
+DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.2"))
+_MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
+DEFAULT_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
@@ -130,7 +134,10 @@ def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
         writer = csv.DictWriter(f, fieldnames=BET_FIELDS)
         writer.writeheader()
         for row in rows:
-            writer.writerow({field: row.get(field, "") for field in BET_FIELDS})
+            formatted = {field: row.get(field, "") for field in BET_FIELDS}
+            formatted["implied_prob"] = round_optional(formatted.get("implied_prob"), 5)
+            formatted["value"] = round_optional(formatted.get("value"), 5)
+            writer.writerow(formatted)
 
 
 def load_history(path: Path = BET_HISTORY_PATH) -> List[Dict[str, Any]]:
@@ -213,6 +220,7 @@ def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[D
 def _choose_best_per_day(
     games: Sequence[Dict[str, Any]],
     min_value: float = 0.0,
+    max_odds: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     best: Dict[str, Dict[str, Any]] = {}
     for g in games:
@@ -223,8 +231,22 @@ def _choose_best_per_day(
         ):
             continue
         delta = g.get("best_value_delta")
-        if delta is None or delta < min_value:
+        if delta is None or delta <= min_value:
             continue
+        if max_odds is not None:
+            selection = g.get("best_value") or g.get("selection")
+            selection_key = str(selection).lower() if selection else ""
+            odds_lookup = {
+                "home": g.get("odds_home"),
+                "draw": g.get("odds_draw"),
+                "away": g.get("odds_away"),
+            }
+            try:
+                odds = float(odds_lookup.get(selection_key))
+            except (TypeError, ValueError):
+                odds = None
+            if odds is None or odds >= max_odds:
+                continue
         date_key = g.get("date") or g.get("start_time", "")[:10]
         if not date_key:
             continue
@@ -315,12 +337,12 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
             "model_home_win": round(home_prob, 3),
             "model_draw": round(draw_prob, 3),
             "model_away_win": round(away_prob, 3),
-            "implied_home_prob": raw_imp_home,
-            "implied_draw_prob": raw_imp_draw,
-            "implied_away_prob": raw_imp_away,
-            "value_home": value_home,
-            "value_draw": value_draw,
-            "value_away": value_away,
+            "implied_home_prob": round_optional(raw_imp_home, 5),
+            "implied_draw_prob": round_optional(raw_imp_draw, 5),
+            "implied_away_prob": round_optional(raw_imp_away, 5),
+            "value_home": round_optional(value_home, 5),
+            "value_draw": round_optional(value_draw, 5),
+            "value_away": round_optional(value_away, 5),
             "best_value": best_value,
             "best_value_delta": best_value_delta,
             "odds_complete": odds_ok,
@@ -388,8 +410,8 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
         "selection": selection,
         "odds": float(odds),
         "model_prob": float(model_lookup.get(selection) or 0.0),
-        "implied_prob": float(implied_lookup.get(selection) or 0.0),
-        "value": float(value_lookup.get(selection) or 0.0),
+        "implied_prob": float(round_optional(implied_lookup.get(selection), 5) or 0.0),
+        "value": float(round_optional(value_lookup.get(selection), 5) or 0.0),
         "stake": float(stake),
         "status": "pending",
         "payout": 0.0,
@@ -465,7 +487,8 @@ def record_new_bets(
     history: List[Dict[str, Any]],
     days_ahead: int = 1,
     stake_per_bet: float = DEFAULT_STAKE,
-    min_value: float = 0.0,
+    min_value: float = DEFAULT_MIN_VALUE,
+    max_odds: Optional[float] = DEFAULT_MAX_ODDS,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
 ) -> int:
@@ -479,7 +502,8 @@ def record_new_bets(
             g
             for g in report
             if g.get("best_value_delta") is not None
-            and g.get("best_value_delta") >= min_value
+            and g.get("best_value_delta") is not None
+            and g.get("best_value_delta") > min_value
             and odds_complete(
                 g.get("odds_home"),
                 g.get("odds_draw"),
@@ -487,7 +511,7 @@ def record_new_bets(
             )
         ]
     else:
-        candidates = _choose_best_per_day(report, min_value=min_value)
+        candidates = _choose_best_per_day(report, min_value=min_value, max_odds=max_odds)
 
     existing_keys = _existing_keys(history)
     created = 0
@@ -496,6 +520,9 @@ def record_new_bets(
         entry = _build_bet_entry(game, stake_per_bet)
         if not entry:
             continue
+        if max_odds is not None and entry.get("odds") is not None:
+            if float(entry["odds"]) >= max_odds:
+                continue
 
         key = f"{entry['event_id']}|{entry['selection']}"
         if key in existing_keys:
@@ -512,7 +539,8 @@ def update_daily_bets(
     history_path: Path = BET_HISTORY_PATH,
     days_ahead: int = 3,
     stake_per_bet: float = DEFAULT_STAKE,
-    min_value: float = 0.01,
+    min_value: float = DEFAULT_MIN_VALUE,
+    max_odds: Optional[float] = DEFAULT_MAX_ODDS,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
 ) -> Dict[str, Any]:
@@ -527,6 +555,7 @@ def update_daily_bets(
         days_ahead=days_ahead,
         stake_per_bet=stake_per_bet,
         min_value=min_value,
+        max_odds=max_odds,
         prefetched_report=prefetched_report,
         take_all_prefetched=take_all_prefetched,
     )

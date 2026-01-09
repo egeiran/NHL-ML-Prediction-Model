@@ -46,7 +46,7 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
   ```
 - `GET /value-report?days=3` – Modellodds vs. Norsk Tipping-odds (0–10 dager frem). Alias: `/value_report`.
 - `GET /portfolio` – Tidsserie + sammendrag + bet-liste fra `data/bet_history.csv`.
-- `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `value_games` (prefetch fra frontend).
+- `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `max_odds`, `value_games` (prefetch fra frontend).
 
 ## 🎨 Frontend
 - Value board for i dag + neste 7 dager med modellodds, markedodds og best value pr. utfall.
@@ -113,11 +113,11 @@ Prediction Model/
    python bet_tracker.py
    ```
    - Avregner ferdige kamper og oppdaterer profit.
-   - Legger til beste value-bets per dag (standard stake 100 kr, min value 0.01).
+   - Legger til value-bets med `value > 0.20` og `odds < 4.00` (standard stake 100 kr).
 3. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
-4. **Tilpasninger**: juster stake/value i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
+4. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
    ```json
-   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.01 }
+   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.2, "max_odds": 4.0 }
    ```
 5. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov) og committer ny `bet_history.csv`. Aktiver Actions og sjekk at default branch er korrekt.
 

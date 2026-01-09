@@ -12,6 +12,8 @@ from bet_tracker import (
     build_portfolio_payload,
     load_history,
     update_daily_bets,
+    DEFAULT_MIN_VALUE,
+    DEFAULT_MAX_ODDS,
 )
 from live.nhl_api import get_team_recent_games
 from live.nt_odds import get_nhl_matches_range
@@ -28,7 +30,7 @@ from live.team_cache import (
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
-from utils.value_utils import expected_value, implied_probability, odds_complete
+from utils.value_utils import expected_value, implied_probability, odds_complete, round_optional
 from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -210,7 +212,8 @@ class PortfolioResponse(BaseModel):
 class PortfolioUpdateRequest(BaseModel):
     days_ahead: int = 1
     stake_per_bet: float = 100.0
-    min_value: float = 0.01
+    min_value: float = DEFAULT_MIN_VALUE
+    max_odds: Optional[float] = DEFAULT_MAX_ODDS
     value_games: Optional[List[ValueGameResponse]] = None
 
 
@@ -471,14 +474,14 @@ def get_value_report(days: int = 3):
             model_home_odds=prob_to_decimal_odds(home_prob),
             model_draw_odds=prob_to_decimal_odds(draw_prob),
             model_away_odds=prob_to_decimal_odds(away_prob),
-            implied_home_prob=round(imp_home, 3) if imp_home is not None else None,
-            implied_draw_prob=round(imp_draw, 3) if imp_draw is not None else None,
-            implied_away_prob=round(imp_away, 3) if imp_away is not None else None,
-            value_home=round(value_home, 3) if value_home is not None else None,
-            value_draw=round(value_draw, 3) if value_draw is not None else None,
-            value_away=round(value_away, 3) if value_away is not None else None,
+            implied_home_prob=round_optional(imp_home, 5),
+            implied_draw_prob=round_optional(imp_draw, 5),
+            implied_away_prob=round_optional(imp_away, 5),
+            value_home=round_optional(value_home, 5),
+            value_draw=round_optional(value_draw, 5),
+            value_away=round_optional(value_away, 5),
             best_value=best_value,
-            best_value_delta=round(best_value_delta, 3) if best_value_delta is not None else None,
+            best_value_delta=round_optional(best_value_delta, 5),
         ))
 
     print(f"Processing took {time.time() - start_processing:.2f}s")
@@ -508,6 +511,7 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
         days_ahead=days,
         stake_per_bet=req.stake_per_bet,
         min_value=req.min_value,
+        max_odds=req.max_odds,
         # All rapportbygging skjer på serveren for å unngå manipulert input
         prefetched_report=None,
         # Ta alle dagens kamper over min_value, ikke bare én per dag

@@ -45,7 +45,9 @@ PORTFOLIO_IMAGE = DOCS_DIR / "portfolio.png"
 DAILY_PROFIT_IMAGE = DOCS_DIR / "daily_profit.png"
 BET_HISTORY_PATH = REPO_ROOT / "NHL" / "data" / "bet_history.csv"
 
-VALUE_MIN = float(os.environ.get("NHL_VALUE_MIN", "0.01"))
+VALUE_MIN = float(os.environ.get("NHL_VALUE_MIN", "0.2"))
+_MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
+VALUE_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
 VALUE_DAYS_AHEAD = int(os.environ.get("NHL_VALUE_DAYS_AHEAD", "0"))
 VALUE_FALLBACK_DAYS = int(os.environ.get("NHL_VALUE_FALLBACK_DAYS", "3"))
 VALUE_CHART_MAX = int(os.environ.get("NHL_VALUE_CHART_MAX", "12"))
@@ -146,12 +148,13 @@ def load_value_report(days_ahead: int) -> List[Dict[str, Any]]:
 def build_value_table(
     report: Sequence[Dict[str, Any]],
     min_value: float,
+    max_odds: Optional[float],
 ) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
 
     for game in report:
         delta = _to_float(game.get("best_value_delta"))
-        if delta is None or delta < min_value:
+        if delta is None or delta <= min_value:
             continue
 
         selection = game.get("best_value") or game.get("selection")
@@ -182,6 +185,8 @@ def build_value_table(
 
         odds = _to_float(odds_lookup.get(selection_key))
         if odds is None:
+            continue
+        if max_odds is not None and odds >= max_odds:
             continue
 
         model_prob = _to_float(model_lookup.get(selection_key))
@@ -227,6 +232,7 @@ def save_markdown(
     date_range = report_meta.get("date_range") or timestamp.strftime("%Y-%m-%d")
     days_ahead = report_meta.get("days_ahead", 0)
     min_value = report_meta.get("min_value", VALUE_MIN)
+    max_odds = report_meta.get("max_odds", VALUE_MAX_ODDS)
     total_games = report_meta.get("total_games", 0)
     fallback_used = report_meta.get("fallback_used", False)
     fallback_days = report_meta.get("fallback_days")
@@ -237,6 +243,7 @@ def save_markdown(
         f"Generated at {timestamp:%Y-%m-%d %H:%M} UTC",
         f"Data window: {date_range} (days_ahead={days_ahead})",
         f"Min EV threshold: {min_value:.2f}",
+        f"Max odds: {max_odds:.2f}" if max_odds is not None else "Max odds: -",
         f"Games scanned: {total_games} | Value bets: {len(table)}",
         "Source: Norsk Tipping odds + NHL model (same logic as /value-report).",
         "",
@@ -441,11 +448,12 @@ def main() -> None:
         used_days = VALUE_FALLBACK_DAYS
         fallback_used = True
 
-    table = build_value_table(report, VALUE_MIN)
+    table = build_value_table(report, VALUE_MIN, VALUE_MAX_ODDS)
     report_meta = {
         "date_range": _report_date_range(report),
         "days_ahead": used_days,
         "min_value": VALUE_MIN,
+        "max_odds": VALUE_MAX_ODDS,
         "total_games": len(report),
         "fallback_used": fallback_used,
         "fallback_days": VALUE_FALLBACK_DAYS if fallback_used else None,
