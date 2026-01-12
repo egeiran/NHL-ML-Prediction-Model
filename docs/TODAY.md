@@ -1,13 +1,12 @@
-# Value Bets for 2026-01-11
+# Value Bets for 2026-01-13
 
-Generated at 2026-01-11 08:36 UTC
-Data window: 2026-01-11 (days_ahead=0)
+Generated at 2026-01-12 08:43 UTC
+Data window: 2026-01-13 (days_ahead=3)
 Min EV threshold: 0.20
 Max odds: 4.00
-Games scanned: 2 | Value bets: 2
+Games scanned: 7 | Value bets: 0
 Source: Norsk Tipping odds + NHL model (same logic as /value-report).
 
-| Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Expected Value |
-|------------|------------|-------------|---------------------|---------------|----------------|------------------|
-| 2026-01-11 | WPG vs NJD | Draw        |               0.336 |         3.850 |          0.260 |            0.293 |
-| 2026-01-11 | BOS vs PIT | Draw        |               0.319 |         3.900 |          0.256 |            0.243 |
+Note: primary window empty; used fallback horizon (3 days ahead).
+
+_Ingen value-bets over terskel i denne perioden._
