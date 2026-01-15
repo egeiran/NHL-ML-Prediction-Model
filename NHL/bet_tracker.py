@@ -24,6 +24,7 @@ from utils.value_utils import expected_value, implied_probability, odds_complete
 
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
+BET_BELOW_THRESHOLD_PATH = BASE_DIR / "data" / "bet_below_threshold.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
 DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.2"))
@@ -145,6 +146,17 @@ def load_history(path: Path = BET_HISTORY_PATH) -> List[Dict[str, Any]]:
 
 
 def save_history(rows: Sequence[Dict[str, Any]], path: Path = BET_HISTORY_PATH) -> None:
+    _write_csv(path, rows)
+
+
+def load_below_threshold(path: Path = BET_BELOW_THRESHOLD_PATH) -> List[Dict[str, Any]]:
+    return _read_csv(path)
+
+
+def save_below_threshold(
+    rows: Sequence[Dict[str, Any]],
+    path: Path = BET_BELOW_THRESHOLD_PATH,
+) -> None:
     _write_csv(path, rows)
 
 
@@ -422,6 +434,17 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
     }
 
 
+def _build_candidate_entry(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    entry = _build_bet_entry(game, 0.0)
+    if not entry:
+        return None
+    entry["stake"] = 0.0
+    entry["status"] = "below_threshold"
+    entry["payout"] = 0.0
+    entry["profit"] = 0.0
+    return entry
+
+
 def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
     """
     Oppdaterer resultater for alle bets som har gått ferdig.
@@ -535,8 +558,50 @@ def record_new_bets(
     return created
 
 
+def record_bets_below_threshold(
+    history: Sequence[Dict[str, Any]],
+    below_threshold: List[Dict[str, Any]],
+    report: Sequence[Dict[str, Any]],
+    min_value: float = DEFAULT_MIN_VALUE,
+    max_odds: Optional[float] = DEFAULT_MAX_ODDS,
+) -> int:
+    existing_keys = _existing_keys(history)
+    existing_keys.update(_existing_keys(below_threshold))
+    created = 0
+
+    for game in report:
+        delta = game.get("best_value_delta")
+        if delta is None or delta > min_value:
+            continue
+        if not odds_complete(
+            game.get("odds_home"),
+            game.get("odds_draw"),
+            game.get("odds_away"),
+        ):
+            continue
+
+        candidate = _build_candidate_entry(game)
+        if not candidate:
+            continue
+
+        if max_odds is not None and candidate.get("odds") is not None:
+            if float(candidate["odds"]) >= max_odds:
+                continue
+
+        key = f"{candidate['event_id']}|{candidate['selection']}"
+        if key in existing_keys:
+            continue
+
+        below_threshold.append(candidate)
+        existing_keys.add(key)
+        created += 1
+
+    return created
+
+
 def update_daily_bets(
     history_path: Path = BET_HISTORY_PATH,
+    below_threshold_path: Path = BET_BELOW_THRESHOLD_PATH,
     days_ahead: int = 3,
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = DEFAULT_MIN_VALUE,
@@ -549,23 +614,35 @@ def update_daily_bets(
     take_all_prefetched=True legger til alle kamper over min_value (samme som API/frontend).
     """
     history = load_history(history_path)
+    below_threshold = load_below_threshold(below_threshold_path)
     settled = settle_pending_bets(history)
+    report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
     created = record_new_bets(
         history,
         days_ahead=days_ahead,
         stake_per_bet=stake_per_bet,
         min_value=min_value,
         max_odds=max_odds,
-        prefetched_report=prefetched_report,
+        prefetched_report=report,
         take_all_prefetched=take_all_prefetched,
     )
+    below_created = record_bets_below_threshold(
+        history,
+        below_threshold,
+        report,
+        min_value=min_value,
+        max_odds=max_odds,
+    )
     save_history(history, history_path)
+    save_below_threshold(below_threshold, below_threshold_path)
     portfolio = build_portfolio_payload(history)
 
     return {
         "created": created,
+        "below_threshold_created": below_created,
         "settled": settled,
         "history": history,
+        "below_threshold": below_threshold,
         "portfolio": portfolio,
     }
 
