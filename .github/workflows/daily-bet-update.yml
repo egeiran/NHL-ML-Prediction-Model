@@ -18,7 +18,7 @@ jobs:
       REQUIREMENTS_FILE: NHL/requirements-api.txt
       PREDICTIONS_SCRIPT: NHL/generate_predictions.py
       EXTRA_PYPI_PACKAGES: "matplotlib tabulate"
-      NHL_VALUE_MIN: "0.2"
+      NHL_VALUE_MIN: "0.15"
       NHL_MAX_ODDS: "4.0"
     steps:
       - name: Checkout
@@ -112,7 +112,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png
+          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
