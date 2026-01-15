@@ -27,7 +27,7 @@ BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
 BET_BELOW_THRESHOLD_PATH = BASE_DIR / "data" / "bet_below_threshold.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
-DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.2"))
+DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.15"))
 _MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
 DEFAULT_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
 TEAM_ALIAS = {
@@ -571,7 +571,7 @@ def record_bets_below_threshold(
 
     for game in report:
         delta = game.get("best_value_delta")
-        if delta is None or delta > min_value:
+        if delta is None or delta >= min_value:
             continue
         if not odds_complete(
             game.get("odds_home"),
