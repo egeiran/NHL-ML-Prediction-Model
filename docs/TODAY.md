@@ -1,6 +1,6 @@
 # Value Bets for 2026-01-16
 
-Generated at 2026-01-15 17:29 UTC
+Generated at 2026-01-15 17:40 UTC
 Data window: 2026-01-16 (days_ahead=3)
 Min EV threshold: 0.20
 Max odds: 4.00
