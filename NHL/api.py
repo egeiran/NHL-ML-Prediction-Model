@@ -30,7 +30,13 @@ from live.team_cache import (
 from utils.data_loader import load_team_mappings
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
-from utils.value_utils import expected_value, implied_probability, odds_complete, round_optional
+from utils.value_utils import (
+    adjust_three_way_probs,
+    expected_value,
+    implied_probability,
+    odds_complete,
+    round_optional,
+)
 from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -420,6 +426,11 @@ def get_value_report(days: int = 3):
             float(class_prob_map.get(0, 0.0)),
             float(class_prob_map.get(1, 0.0)),
             float(class_prob_map.get(2, 0.0)),
+        )
+        home_prob, draw_prob, away_prob = adjust_three_way_probs(
+            home_prob,
+            draw_prob,
+            away_prob,
         )
 
         odds_home = game.get("odds_home")

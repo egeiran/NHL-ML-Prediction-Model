@@ -1,4 +1,26 @@
-from typing import Optional
+import os
+from typing import Optional, Tuple
+
+
+_DRAW_PROB_MULTIPLIER = float(os.environ.get("NHL_DRAW_PROB_MULT", "0.9"))
+
+
+def adjust_three_way_probs(
+    home_prob: float,
+    draw_prob: float,
+    away_prob: float,
+    draw_multiplier: Optional[float] = None,
+) -> Tuple[float, float, float]:
+    """
+    Skalerer draw-prob og renormaliserer sannsynligheter.
+    Brukes for å redusere draw-bias uten å retrene modellen.
+    """
+    multiplier = _DRAW_PROB_MULTIPLIER if draw_multiplier is None else draw_multiplier
+    draw_prob = draw_prob * multiplier
+    total = home_prob + draw_prob + away_prob
+    if total <= 0:
+        return 0.0, 0.0, 0.0
+    return home_prob / total, draw_prob / total, away_prob / total
 
 
 def implied_probability(odds: Optional[float]) -> Optional[float]:

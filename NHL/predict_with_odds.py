@@ -3,7 +3,7 @@ from live.nt_odds import get_nhl_matches_range
 from live.live_feature_builder import build_live_features
 from utils.model_utils import load_model
 from utils.feature_engineering import DEFAULT_WINDOWS
-from utils.value_utils import expected_value, implied_probability
+from utils.value_utils import adjust_three_way_probs, expected_value, implied_probability
 
 MODEL_PATH = "models/nhl_model.pkl"
 def normalize_probs(*probs):
@@ -30,6 +30,11 @@ def predict_match(model, home_abbr, away_abbr):
     away_prob = class_probs.get(2, 0.0)
 
     home_prob, draw_prob, away_prob = normalize_probs(home_prob, draw_prob, away_prob)
+    home_prob, draw_prob, away_prob = adjust_three_way_probs(
+        home_prob,
+        draw_prob,
+        away_prob,
+    )
 
     return {
         "model_home_win_prob": home_prob,

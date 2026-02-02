@@ -20,7 +20,13 @@ from live.nt_odds import get_nhl_matches_range
 from live.nhl_api import get_scoreboard
 from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.model_utils import load_model
-from utils.value_utils import expected_value, implied_probability, odds_complete, round_optional
+from utils.value_utils import (
+    adjust_three_way_probs,
+    expected_value,
+    implied_probability,
+    odds_complete,
+    round_optional,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
@@ -296,6 +302,11 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
             float(class_prob_map.get(0, 0.0)),
             float(class_prob_map.get(1, 0.0)),
             float(class_prob_map.get(2, 0.0)),
+        )
+        home_prob, draw_prob, away_prob = adjust_three_way_probs(
+            home_prob,
+            draw_prob,
+            away_prob,
         )
 
         raw_imp_home = implied_probability(game.get("odds_home"))
