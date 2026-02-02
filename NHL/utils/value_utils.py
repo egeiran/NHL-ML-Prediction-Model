@@ -2,7 +2,7 @@ import os
 from typing import Optional, Tuple
 
 
-_DRAW_PROB_MULTIPLIER = float(os.environ.get("NHL_DRAW_PROB_MULT", "0.9"))
+_DRAW_PROB_MULTIPLIER = float(os.environ.get("NHL_DRAW_PROB_MULT", "0.95"))
 
 
 def adjust_three_way_probs(
