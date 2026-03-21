@@ -1,14 +1,10 @@
 # Value Bets for 2026-03-21
 
-Generated at 2026-03-20 08:54 UTC
-Data window: 2026-03-21 (days_ahead=3)
+Generated at 2026-03-21 08:44 UTC
+Data window: 2026-03-21 (days_ahead=0)
 Min EV threshold: 0.15
 Max odds: 4.00
-Games scanned: 5 | Value bets: 1
+Games scanned: 6 | Value bets: 0
 Source: Norsk Tipping odds + NHL model (same logic as /value-report).
 
-Note: primary window empty; used fallback horizon (3 days ahead).
-
-| Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Expected Value |
-|------------|------------|-------------|---------------------|---------------|----------------|------------------|
-| 2026-03-21 | TOR vs CAR | TOR         |               0.345 |         3.350 |          0.299 |            0.155 |
+_Ingen value-bets over terskel i denne perioden._
