@@ -1,10 +1,10 @@
-# Value Bets for 2026-05-11 to 2026-05-12
+# Value Bets for Unknown date
 
-Generated at 2026-05-10 09:45 UTC
-Data window: 2026-05-11 to 2026-05-12 (days_ahead=3)
+Generated at 2026-05-11 11:32 UTC
+Data window: Unknown date (days_ahead=3)
 Min EV threshold: 0.15
 Max odds: 4.00
-Games scanned: 3 | Value bets: 0
+Games scanned: 0 | Value bets: 0
 Source: Norsk Tipping odds + NHL model (same logic as /value-report).
 
 Note: primary window empty; used fallback horizon (3 days ahead).
