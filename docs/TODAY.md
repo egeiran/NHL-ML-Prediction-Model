@@ -1,6 +1,6 @@
 # Value Bets for 2026-06-03
 
-Generated at 2026-06-01 13:45 UTC
+Generated at 2026-06-02 12:12 UTC
 Data window: 2026-06-03 (days_ahead=3)
 Min EV threshold: 0.15
 Max odds: 4.00
@@ -11,4 +11,4 @@ Note: primary window empty; used fallback horizon (3 days ahead).
 
 | Date       | Matchup    | Selection   |   Model Probability |   Market Odds |   Implied Prob |   Expected Value |
 |------------|------------|-------------|---------------------|---------------|----------------|------------------|
-| 2026-06-03 | CAR vs VGK | CAR         |               0.612 |         2.050 |          0.488 |            0.254 |
+| 2026-06-03 | CAR vs VGK | CAR         |               0.612 |         1.950 |          0.513 |            0.193 |
