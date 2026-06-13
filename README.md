@@ -12,6 +12,10 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 ## 📊 Daglig resultat (siste 5 dager)
 ![Daglig resultat](./docs/daily_profit.png)
 
+## ♟️ Elo-ratings (nåværende)
+![Elo-ratings](./docs/elo.png)
+➡️ Lagres i `NHL/models/elo_ratings.json` og oppdateres daglig fra faktiske resultater via NHL-APIet (`update_elo_ratings.py`).
+
 ## 🚀 Komme i gang
 
 ### 1. Backend (FastAPI)

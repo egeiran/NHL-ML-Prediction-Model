@@ -47,6 +47,13 @@ jobs:
           set -o pipefail
           python update_elo_ratings.py | tee /tmp/elo.txt
 
+      - name: Generate Elo ratings chart
+        working-directory: NHL
+        env:
+          MPLCONFIGDIR: /tmp/mplcache
+        run: |
+          python generate_elo_chart.py
+
       - name: Publish to job summary
         if: always()
         run: |
@@ -59,12 +66,12 @@ jobs:
 
       - name: Commit refreshed ratings
         run: |
-          if git diff --quiet -- NHL/models/elo_ratings.json; then
+          if git diff --quiet -- NHL/models/elo_ratings.json docs/elo.png; then
             echo "No rating changes to commit"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/models/elo_ratings.json
-          git commit -m "chore: refresh Elo ratings from NHL API"
+          git add NHL/models/elo_ratings.json docs/elo.png
+          git commit -m "chore: refresh Elo ratings + chart from NHL API"
           git push origin "HEAD:${GITHUB_REF_NAME}"
