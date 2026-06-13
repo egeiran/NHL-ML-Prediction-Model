@@ -1,5 +1,7 @@
 import pandas as pd
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Optional, Sequence
+
+from utils.elo import ELO_FEATURE_COLUMNS
 
 DEFAULT_WINDOWS: Sequence[int] = (5, 20)
 
@@ -130,7 +132,10 @@ def _rename_form_cols(df: pd.DataFrame, prefix: str, windows: Sequence[int]):
     return df.rename(columns=cols)
 
 
-def get_feature_columns(windows: Sequence[int] = DEFAULT_WINDOWS) -> List[str]:
+def get_feature_columns(
+    windows: Sequence[int] = DEFAULT_WINDOWS,
+    include_elo: bool = True,
+) -> List[str]:
     """Feature-kolonneorden delt mellom trening og prediksjon."""
     feature_cols: List[str] = []
     for prefix in ("home", "away"):
@@ -138,15 +143,22 @@ def get_feature_columns(windows: Sequence[int] = DEFAULT_WINDOWS) -> List[str]:
             for w in windows:
                 feature_cols.append(f"{prefix}_{metric}_w{w}")
     feature_cols.extend(["home_team_id", "away_team_id"])
+    if include_elo:
+        feature_cols.extend(ELO_FEATURE_COLUMNS)
     return feature_cols
 
 
 def make_game_feature_frame(
-    games: pd.DataFrame, long_df_with_form: pd.DataFrame, windows: Sequence[int] = DEFAULT_WINDOWS
+    games: pd.DataFrame,
+    long_df_with_form: pd.DataFrame,
+    windows: Sequence[int] = DEFAULT_WINDOWS,
+    elo_df: Optional[pd.DataFrame] = None,
 ):
     """
     Lager game-level featurer ved å ta form-statistikk for home/away
-    og merge tilbake til games.
+    og merge tilbake til games. Hvis `elo_df` (fra elo.compute_elo_history)
+    er gitt, merges pre-kamp Elo-features inn per game_id.
+
     Returnerer:
       - X: feature-matrise
       - y: labels (outcome_code)
@@ -175,7 +187,11 @@ def make_game_feature_frame(
         away_features, on="game_id"
     )
 
-    feature_cols = get_feature_columns(windows)
+    include_elo = elo_df is not None
+    if include_elo:
+        merged = merged.merge(elo_df, on="game_id", how="left")
+
+    feature_cols = get_feature_columns(windows, include_elo=include_elo)
 
     X = merged[feature_cols]
     y = merged["outcome_code"]

@@ -6,6 +6,8 @@ data/.team_cache/
 !data/game.csv
 !data/team_info.csv
 !data/bet_history.csv
+# Elo-ratings holdes i git så live-prediksjon alltid har ferske tall.
+!models/elo_ratings.json
 
 # Python cache
 __pycache__/

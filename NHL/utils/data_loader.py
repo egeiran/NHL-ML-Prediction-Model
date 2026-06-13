@@ -50,6 +50,11 @@ def load_and_prepare_games(
     games = games[games["type"] == "R"].copy()
     games = games[~games["outcome"].str.contains("tbc", na=False)].copy()
 
+    # Kildedataen inneholder eksakte duplikat-rader (samme game_id). Disse
+    # forårsaker både dobbelttelling i rolling-form og lekkasje ved tilfeldig
+    # splitt (samme kamp havner i både trening og test). Behold én rad per kamp.
+    games = games.drop_duplicates(subset="game_id", keep="first").copy()
+
     # Dato i datetime-format
     games["date"] = pd.to_datetime(games["date_time_GMT"])
 
