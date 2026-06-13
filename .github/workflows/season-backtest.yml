@@ -5,6 +5,12 @@ name: Season Backtest (2026)
 # game.csv endres ikke.
 
 on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "NHL/backtest_season.py"
+      - ".github/workflows/season-backtest.yml"
   workflow_dispatch:
     inputs:
       season:
@@ -25,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REQUIREMENTS_FILE: NHL/requirements-api.txt
-      NHL_BACKTEST_SEASON: ${{ github.event.inputs.season }}
-      NHL_BACKTEST_EVAL_START: ${{ github.event.inputs.eval_start }}
-      NHL_BACKTEST_INCLUDE_PLAYOFFS: ${{ github.event.inputs.include_playoffs }}
+      NHL_BACKTEST_SEASON: ${{ github.event.inputs.season || '20252026' }}
+      NHL_BACKTEST_EVAL_START: ${{ github.event.inputs.eval_start || '2026-01-01' }}
+      NHL_BACKTEST_INCLUDE_PLAYOFFS: ${{ github.event.inputs.include_playoffs || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
