@@ -74,8 +74,19 @@ løpende styrkerating. Elo er nå de mest informative featurene i modellen.
 - **Fire features** mates inn i Random Forest: `home_elo_pre`, `away_elo_pre`,
   `elo_diff` og `elo_expected_home`.
 
-Siste ratings lagres til `models/elo_ratings.json` under trening og brukes av
-live-prediksjonen. Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning
+Siste ratings lagres til `models/elo_ratings.json` (sporet i git) og brukes av
+live-prediksjonen.
+
+**Ferske ratings mellom treninger:** `models/elo_ratings.json` seedes fra
+`game.csv` (2000–2020), men holdes oppdatert ved at `python update_elo_ratings.py`
+ruller ratingene framover med faktiske resultater fra NHL-APIet (samme API vi
+bruker ellers). Det finnes ikke noe stabilt tredjeparts-API for vår Elo, så vi
+vedlikeholder den selv. Den daglige workflowen kjører dette og committer den
+ferske fila; `update-elo.yml` kan også kjøres på forespørsel. Live-API-et laster
+fila på nytt automatisk når den endres. Nye franchiser (SEA) får cold-start på
+base-rating; Utah arver Arizonas historikk via alias.
+
+Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning
 av baseline vs. +Elo på både tilfeldig og kronologisk splitt (accuracy, balanced
 accuracy, macro F1, log loss og Brier). Evalueringen kjøres også automatisk i
 GitHub Actions (`.github/workflows/model-eval.yml`), med resultatene i
