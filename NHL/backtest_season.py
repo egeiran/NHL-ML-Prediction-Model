@@ -24,14 +24,13 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from collections import defaultdict
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
-from live.nhl_api import BASE, get_json
+from live.nhl_results import fetch_completed_games
 from utils.data_loader import load_team_mappings
 from utils.elo import (
     EloConfig,
@@ -52,67 +51,6 @@ INCLUDE_PLAYOFFS = os.environ.get("NHL_BACKTEST_INCLUDE_PLAYOFFS", "0") == "1"
 
 CLASSES = [0, 1, 2]  # home win, OT/SO, away win
 LABELS = {0: "Home win", 1: "OT/SO", 2: "Away win"}
-
-CURRENT_TEAMS = [
-    "ANA", "BOS", "BUF", "CGY", "CAR", "CHI", "COL", "CBJ", "DAL", "DET",
-    "EDM", "FLA", "LAK", "MIN", "MTL", "NSH", "NJD", "NYI", "NYR", "OTT",
-    "PHI", "PIT", "SJS", "SEA", "STL", "TBL", "TOR", "UTA", "VAN", "VGK",
-    "WSH", "WPG",
-]
-
-
-def fetch_season_games(season: str) -> List[Dict]:
-    """Henter alle kamper for sesongen via club-schedule-season, deduplisert."""
-    by_id: Dict[int, Dict] = {}
-    for i, team in enumerate(CURRENT_TEAMS):
-        url = f"{BASE}/club-schedule-season/{team}/{season}"
-        try:
-            data = get_json(url)
-        except Exception as exc:
-            print(f"  [WARN] {team}: {exc}")
-            continue
-        for g in data.get("games", []):
-            gid = g.get("id")
-            if gid is not None and gid not in by_id:
-                by_id[gid] = g
-        time.sleep(0.15)
-        print(f"  [{i + 1}/{len(CURRENT_TEAMS)}] {team}: {len(data.get('games', []))} games")
-    return list(by_id.values())
-
-
-def normalize_game(g: Dict) -> Optional[Dict]:
-    """Plukker ut feltene vi trenger fra et rått API-kampobjekt."""
-    state = str(g.get("gameState", "")).upper()
-    if state not in {"OFF", "FINAL"}:
-        return None  # ikke ferdigspilt
-
-    home = g.get("homeTeam", {})
-    away = g.get("awayTeam", {})
-    home_abbr = home.get("abbrev")
-    away_abbr = away.get("abbrev")
-    home_goals = home.get("score")
-    away_goals = away.get("score")
-    if not home_abbr or not away_abbr or home_goals is None or away_goals is None:
-        return None
-
-    last_period = str(g.get("gameOutcome", {}).get("lastPeriodType", "REG")).upper()
-    is_ot = last_period in {"OT", "SO"}
-    if is_ot:
-        outcome_code = 1
-    else:
-        outcome_code = 0 if home_goals > away_goals else 2
-
-    return {
-        "id": g.get("id"),
-        "date": g.get("gameDate"),
-        "game_type": g.get("gameType"),
-        "home": home_abbr,
-        "away": away_abbr,
-        "home_goals": int(home_goals),
-        "away_goals": int(away_goals),
-        "is_ot": is_ot,
-        "outcome_code": outcome_code,
-    }
 
 
 def build_feature_row(
@@ -164,11 +102,7 @@ def main() -> None:
     ratings = regress_to_mean(ratings, elo_config)
 
     print("Fetching season schedule from NHL API...")
-    raw = fetch_season_games(SEASON)
-    games = [ng for ng in (normalize_game(g) for g in raw) if ng]
-    allowed_types = {2, 3} if INCLUDE_PLAYOFFS else {2}
-    games = [g for g in games if g.get("game_type") in allowed_types]
-    games.sort(key=lambda g: (g["date"], g["id"]))
+    games = fetch_completed_games([SEASON], include_playoffs=INCLUDE_PLAYOFFS)
     print(f"Completed games fetched: {len(games)}")
 
     team_history: Dict[str, List[Dict]] = defaultdict(list)

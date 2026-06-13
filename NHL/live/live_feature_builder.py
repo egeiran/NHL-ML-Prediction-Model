@@ -1,4 +1,5 @@
 # live/live_feature_builder.py
+import os
 import pandas as pd
 from typing import Dict, List, Optional, Sequence
 
@@ -11,21 +12,29 @@ from utils.elo import build_elo_feature_values, load_ratings
 from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
 from utils.team_alias import to_canonical
 
+ELO_RATINGS_PATH = "models/elo_ratings.json"
+
 
 def load_team_ids(team_info_path="data/team_info.csv"):
     _, abbr_to_id = load_team_mappings(team_info_path)
     return abbr_to_id
 
 
-# Elo-ratings lastes én gang og caches (regenereres ved trening).
+# Elo-ratings caches, men lastes på nytt hvis fila er oppdatert (mtime endres)
+# slik at et langtkjørende API plukker opp ferske tall uten omstart.
 _ELO_CACHE = {}
 
 
 def _get_elo():
-    if "ratings" not in _ELO_CACHE:
-        ratings, config = load_ratings("models/elo_ratings.json")
+    try:
+        mtime = os.path.getmtime(ELO_RATINGS_PATH)
+    except OSError:
+        mtime = None
+    if _ELO_CACHE.get("mtime") != mtime:
+        ratings, config = load_ratings(ELO_RATINGS_PATH)
         _ELO_CACHE["ratings"] = ratings
         _ELO_CACHE["config"] = config
+        _ELO_CACHE["mtime"] = mtime
     return _ELO_CACHE["ratings"], _ELO_CACHE["config"]
 
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -209,14 +209,21 @@ def save_ratings(
     ratings: Dict[str, float],
     config: EloConfig,
     path: str = "models/elo_ratings.json",
+    metadata: Optional[Dict] = None,
 ) -> None:
-    """Lagrer siste ratings + konfig til JSON ved siden av modellen."""
+    """
+    Lagrer siste ratings + konfig til JSON ved siden av modellen.
+    `metadata` (f.eks. {"through": "2026-06-12", "n_games": 1234}) lagres under
+    nøkkelen "meta" og ignoreres trygt av load_ratings.
+    """
     resolved = Path(path)
     resolved.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "config": asdict(config),
         "ratings": {team: float(rating) for team, rating in ratings.items()},
     }
+    if metadata:
+        payload["meta"] = metadata
     with open(resolved, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, sort_keys=True)
 

@@ -1,0 +1,70 @@
+name: Update Elo Ratings
+
+# Ruller Elo-ratingene framover med faktiske resultater fra NHL-APIet og
+# committer den ferske models/elo_ratings.json tilbake til branchen, slik at
+# live-prediksjonen alltid har oppdaterte tall. game.csv endres ikke.
+
+on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "NHL/update_elo_ratings.py"
+      - "NHL/live/nhl_results.py"
+      - ".github/workflows/update-elo.yml"
+  workflow_dispatch:
+    inputs:
+      start_season:
+        description: "First NHL API season to roll forward from"
+        default: "20202021"
+
+permissions:
+  contents: write
+
+jobs:
+  update-elo:
+    runs-on: ubuntu-latest
+    env:
+      REQUIREMENTS_FILE: NHL/requirements-api.txt
+      NHL_ELO_START_SEASON: ${{ github.event.inputs.start_season || '20202021' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r "$REQUIREMENTS_FILE"
+
+      - name: Update Elo ratings from NHL API
+        working-directory: NHL
+        run: |
+          set -o pipefail
+          python update_elo_ratings.py | tee /tmp/elo.txt
+
+      - name: Publish to job summary
+        if: always()
+        run: |
+          {
+            echo "## Updated Elo ratings"
+            echo '```'
+            cat /tmp/elo.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit refreshed ratings
+        run: |
+          if git diff --quiet -- NHL/models/elo_ratings.json; then
+            echo "No rating changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add NHL/models/elo_ratings.json
+          git commit -m "chore: refresh Elo ratings from NHL API"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
