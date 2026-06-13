@@ -1,0 +1,76 @@
+name: Season Backtest (2026)
+
+# Trener modellen ferskt og kjører en walk-forward backtest mot faktiske
+# 2025-2026-resultater fra NHL-APIet. Resultatene legges i job-sammendraget.
+# game.csv endres ikke.
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "NHL season id"
+        default: "20252026"
+      eval_start:
+        description: "Evaluate games from this date (YYYY-MM-DD)"
+        default: "2026-01-01"
+      include_playoffs:
+        description: "Include playoffs (1/0)"
+        default: "0"
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    env:
+      REQUIREMENTS_FILE: NHL/requirements-api.txt
+      NHL_BACKTEST_SEASON: ${{ github.event.inputs.season }}
+      NHL_BACKTEST_EVAL_START: ${{ github.event.inputs.eval_start }}
+      NHL_BACKTEST_INCLUDE_PLAYOFFS: ${{ github.event.inputs.include_playoffs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r "$REQUIREMENTS_FILE"
+
+      - name: Train production model (with Elo)
+        working-directory: NHL
+        run: |
+          python train_model.py | tee /tmp/train.txt
+
+      - name: Run season backtest
+        working-directory: NHL
+        run: |
+          set -o pipefail
+          python backtest_season.py | tee /tmp/backtest.txt
+
+      - name: Publish backtest to job summary
+        if: always()
+        run: |
+          {
+            echo "## NHL 2026 Season Backtest"
+            echo ""
+            echo "Season: \`${NHL_BACKTEST_SEASON}\` | Eval from: \`${NHL_BACKTEST_EVAL_START}\` | Playoffs: \`${NHL_BACKTEST_INCLUDE_PLAYOFFS}\`"
+            echo ""
+            echo '```'
+            cat /tmp/backtest.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload backtest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: season-backtest-report
+          path: NHL/backtest_result.json
+          if-no-files-found: warn
+          retention-days: 30

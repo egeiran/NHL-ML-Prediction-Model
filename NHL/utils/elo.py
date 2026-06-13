@@ -70,6 +70,41 @@ def _actual_home_score(
     return 1.0 if home_won else 0.0
 
 
+def update_ratings(
+    ratings: Dict[str, float],
+    home_team: str,
+    away_team: str,
+    home_goals: float,
+    away_goals: float,
+    is_ot: bool,
+    config: EloConfig = EloConfig(),
+) -> float:
+    """
+    Oppdaterer `ratings` in-place for én kamp (zero-sum) og returnerer
+    pre-kamp forventet hjemmescore. Ukjente lag starter på base-rating.
+    Samme oppdateringsregel som compute_elo_history.
+    """
+    home_rating = ratings.get(home_team, config.base_rating)
+    away_rating = ratings.get(away_team, config.base_rating)
+    expected_home = expected_home_score(home_rating, away_rating, config)
+    actual_home = _actual_home_score(home_goals, away_goals, is_ot, config)
+    delta = config.k_factor * (actual_home - expected_home)
+    ratings[home_team] = home_rating + delta
+    ratings[away_team] = away_rating - delta
+    return expected_home
+
+
+def regress_to_mean(
+    ratings: Dict[str, float],
+    config: EloConfig = EloConfig(),
+) -> Dict[str, float]:
+    """Trekker alle ratings mot base-rating (brukes ved sesongovergang)."""
+    return {
+        team: config.base_rating + config.season_regression * (rating - config.base_rating)
+        for team, rating in ratings.items()
+    }
+
+
 def compute_elo_history(
     games: pd.DataFrame,
     config: EloConfig = EloConfig(),
@@ -119,26 +154,23 @@ def compute_elo_history(
         home_rating = ratings[home]
         away_rating = ratings[away]
 
-        expected_home = expected_home_score(home_rating, away_rating, config)
-
         records.append(
             {
                 "game_id": row.game_id,
                 "home_elo_pre": home_rating,
                 "away_elo_pre": away_rating,
                 "elo_diff": home_rating - away_rating,
-                "elo_expected_home": expected_home,
+                "elo_expected_home": expected_home_score(
+                    home_rating, away_rating, config
+                ),
             }
         )
 
         # Oppdater ratings etter kampen (zero-sum).
         is_ot = int(row.outcome_code) == 1
-        actual_home = _actual_home_score(
-            row.home_goals, row.away_goals, is_ot, config
+        update_ratings(
+            ratings, home, away, row.home_goals, row.away_goals, is_ot, config
         )
-        delta = config.k_factor * (actual_home - expected_home)
-        ratings[home] = home_rating + delta
-        ratings[away] = away_rating - delta
 
     elo_df = pd.DataFrame.from_records(records, columns=["game_id"] + ELO_FEATURE_COLUMNS)
     return elo_df, ratings
