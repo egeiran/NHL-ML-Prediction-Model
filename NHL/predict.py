@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 
 from utils.data_loader import load_and_prepare_games
+from utils.elo import EloConfig, compute_elo_history, build_elo_feature_values
 from utils.feature_engineering import (
     DEFAULT_WINDOWS,
     build_team_long_df,
@@ -96,11 +97,13 @@ def build_feature_row(
     games_df: pd.DataFrame,
     long_df_with_form: pd.DataFrame,
     abbr_to_id: dict,
+    elo_ratings: dict,
+    elo_config: EloConfig = EloConfig(),
     windows=DEFAULT_WINDOWS,
 ):
     """
     Lager én rad med features for en gitt matchup.
-    Bruker samme featurer som under trening.
+    Bruker samme featurer som under trening (form + Elo).
     """
     home_form = get_latest_team_form(long_df_with_form, home_abbr, windows=windows)
     away_form = get_latest_team_form(long_df_with_form, away_abbr, windows=windows)
@@ -117,6 +120,10 @@ def build_feature_row(
 
     row["home_team_id"] = abbr_to_id[home_abbr]
     row["away_team_id"] = abbr_to_id[away_abbr]
+
+    row.update(
+        build_elo_feature_values(home_abbr, away_abbr, elo_ratings, elo_config)
+    )
 
     return pd.DataFrame([row], columns=get_feature_columns(windows))
 
@@ -136,7 +143,11 @@ def predict_match(
     print("Building long dataframe and forms...")
     long_df = build_team_long_df(games_df)
     long_df = add_multiwindow_form(long_df, windows=DEFAULT_WINDOWS)
-    
+
+    print("Computing Elo ratings...")
+    elo_config = EloConfig()
+    _, elo_ratings = compute_elo_history(games_df, elo_config)
+
     # Vis siste 5 kamper for begge lagene
     display_last_5_games(long_df, home_abbr, away_abbr)
 
@@ -150,6 +161,8 @@ def predict_match(
         games_df,
         long_df,
         abbr_to_id,
+        elo_ratings,
+        elo_config,
         windows=DEFAULT_WINDOWS,
     )
 

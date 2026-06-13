@@ -60,6 +60,32 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 - Bet-tracker som lagrer til `NHL/data/bet_history.csv` og beregner tidsserie + ROI til frontend.
 - Random Forest-modell (`models/nhl_model.pkl`) med treningsscript (`train_model.py`).
 
+## ♟️ Elo-ratingsystem
+Modellen suppleres med et Elo-ratingsystem (`utils/elo.py`) som gir hvert lag en
+løpende styrkerating. Elo er nå de mest informative featurene i modellen.
+
+- **Kronologisk, lekkasjefritt:** hvert lags rating før en kamp bygger kun på
+  tidligere kamper. Ratingene oppdateres kamp for kamp (zero-sum).
+- **Hjemmebanefordel:** legges til i forventet score (`home_advantage`).
+- **OT/SO som "myk" seier:** kamper avgjort i OT/SO svinger ratingen mindre enn
+  ordinære seire (`ot_win_score`), siden de er nær myntkast.
+- **Sesongregresjon:** ratingene trekkes mot snittet mellom sesonger
+  (`season_regression`) for å reflektere roster-/formendringer.
+- **Fire features** mates inn i Random Forest: `home_elo_pre`, `away_elo_pre`,
+  `elo_diff` og `elo_expected_home`.
+
+Siste ratings lagres til `models/elo_ratings.json` under trening og brukes av
+live-prediksjonen. Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning
+av baseline vs. +Elo på både tilfeldig og kronologisk splitt (accuracy, balanced
+accuracy, macro F1, log loss og Brier). Evalueringen kjøres også automatisk i
+GitHub Actions (`.github/workflows/model-eval.yml`), med resultatene i
+job-sammendraget.
+
+> Merk: kildedataen (`data/game.csv`) inneholdt eksakte duplikat-rader (samme
+> `game_id`). Disse fjernes nå ved innlasting, noe som fjerner dobbelttelling i
+> rolling-form og lekkasje ved tilfeldig splitt. Etter fiksen er tilfeldig og
+> kronologisk test-splitt konsistente.
+
 ## 🛠️ Teknologi
 - **Backend:** Python 3.11+, FastAPI, Pandas, scikit-learn, Requests.
 - **Frontend:** Next.js 16 (App Router, TypeScript), React 19, Tailwind CSS v4, lucide-react.
@@ -73,7 +99,8 @@ Prediction Model/
 │   ├── predict.py              # CLI-prediksjon fra lag-id
 │   ├── predict_live.py         # CLI-prediksjon med live data
 │   ├── predict_with_odds.py    # CLI med odds/value
-│   ├── train_model.py          # Trener Random Forest
+│   ├── train_model.py          # Trener Random Forest (form + Elo)
+│   ├── evaluate_elo.py         # Lekkasjefri baseline vs. +Elo evaluering
 │   ├── requirements-api.txt
 │   ├── data/
 │   │   ├── bet_history.csv
@@ -88,6 +115,7 @@ Prediction Model/
 │   │   └── nhl_model.pkl
 │   └── utils/
 │       ├── data_loader.py
+│       ├── elo.py              # Elo-ratingmotor
 │       ├── feature_engineering.py
 │       └── model_utils.py
 └── nhl-frontend/

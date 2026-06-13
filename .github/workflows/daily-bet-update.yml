@@ -40,7 +40,10 @@ jobs:
       - name: Download latest model artifact (best effort)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_NAME: nhl-model
+          # Bumpet navn: det gamle "nhl-model"-artefaktet ble trent uten
+          # Elo-features (14 kolonner) og er inkompatibelt med dagens 18-kolonners
+          # pipeline. Nytt navn tvinger en fersk trening med Elo på første kjøring.
+          ARTIFACT_NAME: nhl-model-elo
         run: |
           set -euo pipefail
           mkdir -p NHL/models
@@ -77,18 +80,22 @@ jobs:
       - name: Ensure model artifact
         working-directory: NHL
         run: |
-          if [ -f models/nhl_model.pkl ]; then
-            echo "Existing model found"
+          # Krev BÅDE modell og Elo-ratings. Mangler én av dem, tren på nytt
+          # slik at de er i sync (modellen forventer Elo-features).
+          if [ -f models/nhl_model.pkl ] && [ -f models/elo_ratings.json ]; then
+            echo "Existing model + Elo ratings found"
           else
-            echo "Model missing, training a fresh one..."
+            echo "Model or Elo ratings missing, training a fresh one..."
             python train_model.py
           fi
 
       - name: Upload model artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nhl-model
-          path: NHL/models/nhl_model.pkl
+          name: nhl-model-elo
+          path: |
+            NHL/models/nhl_model.pkl
+            NHL/models/elo_ratings.json
           if-no-files-found: error
           retention-days: 30
 

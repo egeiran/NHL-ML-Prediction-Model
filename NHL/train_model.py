@@ -9,6 +9,7 @@ from sklearn.metrics import (
 )
 
 from utils.data_loader import load_and_prepare_games
+from utils.elo import EloConfig, compute_elo_history, save_ratings
 from utils.feature_engineering import (
     DEFAULT_WINDOWS,
     build_team_long_df,
@@ -28,9 +29,13 @@ def main():
     long_df = build_team_long_df(games)
     long_df = add_multiwindow_form(long_df, windows=DEFAULT_WINDOWS)
 
-    print("Creating game-level features...")
+    print("Computing Elo ratings (chronological, no leakage)...")
+    elo_config = EloConfig()
+    elo_df, latest_ratings = compute_elo_history(games, elo_config)
+
+    print("Creating game-level features (form + Elo)...")
     X, y, merged, feature_cols = make_game_feature_frame(
-        games, long_df, windows=DEFAULT_WINDOWS
+        games, long_df, windows=DEFAULT_WINDOWS, elo_df=elo_df
     )
 
     print("Splitting into train and test...")
@@ -65,6 +70,9 @@ def main():
 
     print("\nSaving the trained model to 'models/nhl_model.pkl'...")
     save_model(model, "models/nhl_model.pkl")
+
+    print("Saving Elo ratings to 'models/elo_ratings.json'...")
+    save_ratings(latest_ratings, elo_config, "models/elo_ratings.json")
     print("Training complete.")
 
 

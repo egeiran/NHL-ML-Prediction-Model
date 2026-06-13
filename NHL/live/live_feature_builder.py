@@ -7,6 +7,7 @@ from live.form_engine import (
     compute_team_form_from_games,
 )
 from utils.data_loader import load_team_mappings
+from utils.elo import build_elo_feature_values, load_ratings
 from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
 from utils.team_alias import to_canonical
 
@@ -14,6 +15,18 @@ from utils.team_alias import to_canonical
 def load_team_ids(team_info_path="data/team_info.csv"):
     _, abbr_to_id = load_team_mappings(team_info_path)
     return abbr_to_id
+
+
+# Elo-ratings lastes én gang og caches (regenereres ved trening).
+_ELO_CACHE = {}
+
+
+def _get_elo():
+    if "ratings" not in _ELO_CACHE:
+        ratings, config = load_ratings("models/elo_ratings.json")
+        _ELO_CACHE["ratings"] = ratings
+        _ELO_CACHE["config"] = config
+    return _ELO_CACHE["ratings"], _ELO_CACHE["config"]
 
 
 def build_live_features(
@@ -65,6 +78,18 @@ def build_live_features(
     # CRUCIAL: same as training
     row["home_team_id"] = home_id
     row["away_team_id"] = away_id
+
+    # Elo-features (samme rekkefølge som under trening). Bruker kanoniske
+    # lagforkortelser for oppslag i de lagrede ratingene.
+    elo_ratings, elo_config = _get_elo()
+    row.update(
+        build_elo_feature_values(
+            to_canonical(home_abbr),
+            to_canonical(away_abbr),
+            elo_ratings,
+            elo_config,
+        )
+    )
 
     feature_cols = get_feature_columns(windows)
 

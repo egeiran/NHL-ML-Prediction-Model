@@ -1,0 +1,82 @@
+name: Model Evaluation (Elo)
+
+# Kjører den lekkasjefrie evalueringen av Elo-bidraget og trener et ferskt
+# modellartefakt. Resultatene legges i job-sammendraget slik at test-tallene
+# er synlige direkte i Actions-fanen og i PR-en.
+
+on:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "NHL/**"
+      - ".github/workflows/model-eval.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    env:
+      REQUIREMENTS_FILE: NHL/requirements-api.txt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r "$REQUIREMENTS_FILE"
+
+      - name: Evaluate Elo contribution
+        working-directory: NHL
+        run: |
+          set -o pipefail
+          python evaluate_elo.py | tee /tmp/elo_eval.txt
+
+      - name: Train production model (with Elo)
+        working-directory: NHL
+        run: |
+          python train_model.py | tee /tmp/train.txt
+
+      - name: Publish evaluation to job summary
+        if: always()
+        run: |
+          {
+            echo "## NHL Elo Model Evaluation"
+            echo ""
+            echo "### Baseline vs +Elo (random & chronological splits)"
+            echo '```'
+            cat /tmp/elo_eval.txt
+            echo '```'
+            echo ""
+            echo "### Production training (headline metrics + feature importances)"
+            echo '```'
+            tail -n 40 /tmp/train.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhl-model-elo
+          path: |
+            NHL/models/nhl_model.pkl
+            NHL/models/elo_ratings.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload evaluation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: elo-evaluation-report
+          path: /tmp/elo_eval.txt
+          if-no-files-found: warn
+          retention-days: 30
