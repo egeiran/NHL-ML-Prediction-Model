@@ -1,6 +1,6 @@
 # Value Bets for Unknown date
 
-Generated at 2026-06-24 11:12 UTC
+Generated at 2026-06-25 10:50 UTC
 Data window: Unknown date (days_ahead=3)
 Min EV threshold: 0.15
 Max odds: 4.00
