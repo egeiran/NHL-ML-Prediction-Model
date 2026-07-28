@@ -32,6 +32,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          # Kravfila heter ikke requirements.txt, så cachen må peke på den selv.
+          cache-dependency-path: NHL/requirements-api.txt
 
       - name: Install dependencies
         run: |
