@@ -90,8 +90,13 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 - Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
 - Hver seksjon skrives uavhengig: feiler f.eks. NHL-APIet, beholdes forrige versjon av den
   fila og resten oppdateres som normalt.
+- Er NHL-APIet delvis nede, skrives ikke halve laglister eller halve oddsrapporter:
+  eksporten krever data for minst 24 lag og over halvparten av kampene, ellers beholdes
+  forrige fil. Seksjoner som ble hoppet over listes i `meta.json` og vises i UI-et.
 - Logikken deles med API-et via `NHL/report_service.py`, så JSON-filene og endepunktene
   gir identiske payloads.
+- `python test_site_export.py` kjører en offline-test av rapportlogikken og eksporten
+  (stubber nettverk og modell, krever ingen trent `nhl_model.pkl`).
 
 ## 📋 API Endpoints
 - `GET /` – API info.

@@ -36,6 +36,14 @@ def _get_elo():
     # før og etter, og cachen ville aldri blitt fylt.
     if "ratings" not in _ELO_CACHE or _ELO_CACHE.get("mtime") != mtime:
         ratings, config = load_ratings(str(resolved))
+        if not ratings:
+            # Modellen er trent med Elo-features. Uten ratings får alle lag
+            # base-rating, og prediksjonene blir stille feil – da er det bedre
+            # å feile høylytt enn å publisere tall som ser riktige ut.
+            raise RuntimeError(
+                f"Elo-ratings mangler eller er tomme ({resolved}). "
+                "Kjør train_model.py eller update_elo_ratings.py."
+            )
         _ELO_CACHE["ratings"] = ratings
         _ELO_CACHE["config"] = config
         _ELO_CACHE["mtime"] = mtime

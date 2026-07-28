@@ -134,6 +134,11 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
 
     # Et lag uten brukbare kombinasjoner skal ikke kunne velges i frontend.
     usable = {abbr for key in keys for abbr in key.split("-")}
+    if len(usable) < MIN_TEAMS_FOR_EXPORT:
+        raise RuntimeError(
+            f"Bare {len(usable)} lag fikk brukbare kombinasjoner "
+            f"(krever {MIN_TEAMS_FOR_EXPORT})"
+        )
 
     return {
         "teams": {abbr: s for abbr, s in team_summaries.items() if abbr in usable},

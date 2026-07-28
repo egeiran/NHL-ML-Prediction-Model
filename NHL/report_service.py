@@ -336,11 +336,12 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
             "best_value_delta": round_optional(best_value_delta, 5),
         })
 
-    if games and not results:
-        # Odds-APIet svarte, men vi fikk ikke kampdata for noen av kampene.
-        # Da er rapporten verdiløs – la kalleren beholde forrige versjon.
+    if games and len(results) * 2 < len(games):
+        # Odds-APIet svarte, men vi mangler kampdata for de fleste kampene.
+        # Da er rapporten mer villedende enn nyttig – la kalleren beholde
+        # forrige versjon (og merke den som utdatert).
         raise RuntimeError(
-            f"Alle {len(games)} kamper ble hoppet over (mangler kampdata)"
+            f"Bare {len(results)} av {len(games)} kamper kunne beregnes"
         )
 
     if verbose:
