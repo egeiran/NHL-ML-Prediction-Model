@@ -48,6 +48,10 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "nhl-frontend" / "public" / "data"
 # Antall dager frem i tid value-boardet viser (frontend bruker samme horisont).
 DEFAULT_DAYS_AHEAD = 3
 
+# NHL har 32 aktive lag. Får vi data for langt færre, er NHL-APIet ustabilt –
+# da er forrige eksport bedre enn en halv lagliste.
+MIN_TEAMS_FOR_EXPORT = 24
+
 
 def _output_dir() -> Path:
     configured = os.environ.get("NHL_EXPORT_DIR")
@@ -94,6 +98,11 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
         team_summaries[abbr] = build_team_summary(abbr, games)
 
     abbrs = sorted(team_games)
+    if len(abbrs) < MIN_TEAMS_FOR_EXPORT:
+        raise RuntimeError(
+            f"Fikk kampdata for bare {len(abbrs)} lag (krever {MIN_TEAMS_FOR_EXPORT})"
+        )
+
     print(f"  Bygger matchups for {len(abbrs)} lag ({len(abbrs) * (len(abbrs) - 1)} kombinasjoner)")
 
     keys: List[str] = []

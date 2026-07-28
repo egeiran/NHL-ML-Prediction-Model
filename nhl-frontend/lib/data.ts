@@ -39,7 +39,10 @@ async function readError(res: Response): Promise<string> {
 
     try {
         const body = JSON.parse(text);
-        return body?.detail || body?.message || '';
+        // FastAPI kan svare med detail som liste (422) – bare strenger vises.
+        if (typeof body?.detail === 'string') return body.detail;
+        if (typeof body?.message === 'string') return body.message;
+        return '';
     } catch {
         // Hopp over HTML-feilsider (f.eks. 404 fra en statisk host)
         return text.startsWith('<') || text.length > 200 ? '' : text;

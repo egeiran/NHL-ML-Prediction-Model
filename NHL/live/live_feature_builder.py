@@ -8,7 +8,7 @@ from live.form_engine import (
     compute_team_form_from_games,
 )
 from utils.data_loader import load_team_mappings
-from utils.elo import build_elo_feature_values, load_ratings
+from utils.elo import build_elo_feature_values, load_ratings, resolve_ratings_path
 from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
 from utils.team_alias import to_canonical
 
@@ -26,12 +26,16 @@ _ELO_CACHE = {}
 
 
 def _get_elo():
+    # Fila slås opp via elo-modulen slik at den finnes uansett arbeidskatalog.
+    resolved = resolve_ratings_path(ELO_RATINGS_PATH)
     try:
-        mtime = os.path.getmtime(ELO_RATINGS_PATH)
+        mtime = os.path.getmtime(resolved)
     except OSError:
         mtime = None
-    if _ELO_CACHE.get("mtime") != mtime:
-        ratings, config = load_ratings(ELO_RATINGS_PATH)
+    # Sjekk på "ratings" i tillegg til mtime: mangler fila er mtime None både
+    # før og etter, og cachen ville aldri blitt fylt.
+    if "ratings" not in _ELO_CACHE or _ELO_CACHE.get("mtime") != mtime:
+        ratings, config = load_ratings(str(resolved))
         _ELO_CACHE["ratings"] = ratings
         _ELO_CACHE["config"] = config
         _ELO_CACHE["mtime"] = mtime

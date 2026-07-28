@@ -199,9 +199,9 @@ def predict_game(request: PredictionRequest):
         home_recent = fetch_team_games(home_abbr_raw, limit=PREDICT_GAMES_NEEDED)
         away_recent = fetch_team_games(away_abbr_raw, limit=PREDICT_GAMES_NEEDED)
     except Exception as exc:  # pragma: no cover - beskytter API-et
-        raise HTTPException(
-            status_code=502, detail=f"Feil ved henting av kamper: {exc}"
-        )
+        # Detaljene logges, men sendes ikke ut: de kan avsløre filstier o.l.
+        print(f"Henting av kamper feilet: {exc!r}")
+        raise HTTPException(status_code=502, detail="Kunne ikke hente kampdata")
 
     if not home_recent:
         raise HTTPException(

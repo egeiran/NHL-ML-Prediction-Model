@@ -115,24 +115,26 @@ def get_team_games(
     memo: Optional[Dict[str, Optional[List[Dict]]]] = None,
 ) -> Optional[List[Dict]]:
     """
-    Henter kamper via minne-/diskcache. Returnerer None hvis henting feiler,
-    slik at kallende kode kan hoppe over laget i stedet for å feile helt.
+    Henter kamper via minne-/diskcache. Returnerer None hvis henting feiler
+    eller ikke gir noen kamper, slik at kallende kode kan hoppe over laget i
+    stedet for å regne på tom form.
     """
     cache_key = to_canonical(team_abbr)
     if memo is not None and cache_key in memo:
         return memo[cache_key]
 
     cached = get_cached_team_games(cache_key)
-    if cached is None and cache_key != team_abbr:
+    if not cached and cache_key != team_abbr:
         cached = get_cached_team_games(team_abbr)
-    if cached is not None:
+    if cached:
         if memo is not None:
             memo[cache_key] = cached
         return cached
 
     try:
-        games = fetch_team_games(team_abbr, limit=limit)
-        cache_team_games(cache_key, games)
+        games = fetch_team_games(team_abbr, limit=limit) or None
+        if games:
+            cache_team_games(cache_key, games)
     except Exception as exc:  # pragma: no cover - nettverksfeil
         print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
         games = None
@@ -241,7 +243,7 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
         home_games = get_team_games(home_abbr, memo=team_games_memo)
         away_games = get_team_games(away_abbr, memo=team_games_memo)
 
-        if home_games is None or away_games is None:
+        if not home_games or not away_games:
             if verbose:
                 print(f"  Hopper over {home_abbr} vs {away_abbr} (mangler kampdata)")
             continue
@@ -333,6 +335,13 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
             "best_value": best_value,
             "best_value_delta": round_optional(best_value_delta, 5),
         })
+
+    if games and not results:
+        # Odds-APIet svarte, men vi fikk ikke kampdata for noen av kampene.
+        # Da er rapporten verdiløs – la kalleren beholde forrige versjon.
+        raise RuntimeError(
+            f"Alle {len(games)} kamper ble hoppet over (mangler kampdata)"
+        )
 
     if verbose:
         print(f"Value-rapport ferdig: {len(results)} kamper")

@@ -207,7 +207,7 @@ def build_elo_feature_values(
     }
 
 
-def _resolve_ratings_path(path: str) -> Path:
+def resolve_ratings_path(path: str) -> Path:
     """
     Returnerer en brukbar sti til ratings-fila ved LESING. Prøver oppgitt sti
     først, og faller tilbake på `NHL/models/<filnavn>` slik at scriptene leser
@@ -254,7 +254,7 @@ def load_ratings(
     Laster ratings + konfig fra JSON. Returnerer (tom dict, default-konfig)
     hvis filen mangler, slik at prediksjon faller tilbake på base-rating.
     """
-    resolved = _resolve_ratings_path(path)
+    resolved = resolve_ratings_path(path)
     if not resolved.is_file():
         return {}, EloConfig()
     with open(resolved, "r", encoding="utf-8") as f:
