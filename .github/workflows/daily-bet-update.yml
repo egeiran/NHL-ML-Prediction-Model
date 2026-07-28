@@ -125,6 +125,12 @@ jobs:
         run: |
           python generate_elo_chart.py
 
+      - name: Run export tests
+        working-directory: NHL
+        run: |
+          # Offline-test av eksportlogikken før vi skriver ny site-data.
+          python test_site_export.py
+
       - name: Export static site data
         working-directory: NHL
         env:
