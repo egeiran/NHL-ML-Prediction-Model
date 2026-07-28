@@ -212,9 +212,14 @@ def predict_game(request: PredictionRequest):
             status_code=404, detail=f"Fant ingen kamper for {away_abbr}"
         )
 
-    return PredictionResponse(
-        **build_prediction(home_abbr, away_abbr, home_recent, away_recent)
-    )
+    try:
+        prediction = build_prediction(home_abbr, away_abbr, home_recent, away_recent)
+    except Exception as exc:  # pragma: no cover - beskytter API-et
+        # F.eks. manglende Elo-ratings eller modellfil. Detaljene logges.
+        print(f"Prediksjon feilet: {exc!r}")
+        raise HTTPException(status_code=502, detail="Kunne ikke beregne prediksjonen")
+
+    return PredictionResponse(**prediction)
 
 
 @app.get("/value-report", response_model=List[ValueGameResponse])

@@ -107,6 +107,7 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
 
     keys: List[str] = []
     feature_rows: List[pd.DataFrame] = []
+    first_error: Optional[str] = None
 
     for home in abbrs:
         for away in abbrs:
@@ -123,14 +124,13 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
                     )
                 )
             except Exception as exc:  # pragma: no cover - hopper over ett lagpar
-                print(f"  [skip] {home} vs {away}: {exc}")
+                # Feilen er som regel den samme for alle par (f.eks. manglende
+                # Elo-ratings), så vi logger den én gang og tar den med videre.
+                if first_error is None:
+                    first_error = str(exc)
+                    print(f"  [skip] {home} vs {away}: {exc}")
                 continue
             keys.append(f"{home}-{away}")
-
-    if not feature_rows:
-        raise RuntimeError("Fikk ikke bygget noen feature-rader for matchups")
-
-    predictions = predict_rows(pd.concat(feature_rows, ignore_index=True))
 
     # Et lag uten brukbare kombinasjoner skal ikke kunne velges i frontend.
     usable = {abbr for key in keys for abbr in key.split("-")}
@@ -138,7 +138,10 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
         raise RuntimeError(
             f"Bare {len(usable)} lag fikk brukbare kombinasjoner "
             f"(krever {MIN_TEAMS_FOR_EXPORT})"
+            + (f": {first_error}" if first_error else "")
         )
+
+    predictions = predict_rows(pd.concat(feature_rows, ignore_index=True))
 
     return {
         "teams": {abbr: s for abbr, s in team_summaries.items() if abbr in usable},

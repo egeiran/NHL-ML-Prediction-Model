@@ -232,6 +232,9 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
 
     team_games_memo: Dict[str, Optional[List[Dict]]] = {}
     results: List[Dict[str, Any]] = []
+    # Kamper vi faktisk kan forsøke å beregne (odds-feeden gir av og til kamper
+    # vi ikke klarer å mappe til lag – de teller ikke som en feil hos oss).
+    considered = 0
 
     for game in games:
         home_abbr = game.get("home_abbr")
@@ -239,6 +242,8 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
 
         if not home_abbr or not away_abbr:
             continue  # mangler mapping
+
+        considered += 1
 
         home_games = get_team_games(home_abbr, memo=team_games_memo)
         away_games = get_team_games(away_abbr, memo=team_games_memo)
@@ -336,12 +341,12 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
             "best_value_delta": round_optional(best_value_delta, 5),
         })
 
-    if games and len(results) * 2 < len(games):
+    if considered and len(results) * 2 < considered:
         # Odds-APIet svarte, men vi mangler kampdata for de fleste kampene.
         # Da er rapporten mer villedende enn nyttig – la kalleren beholde
         # forrige versjon (og merke den som utdatert).
         raise RuntimeError(
-            f"Bare {len(results)} av {len(games)} kamper kunne beregnes"
+            f"Bare {len(results)} av {considered} kamper kunne beregnes"
         )
 
     if verbose:

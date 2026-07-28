@@ -3,13 +3,16 @@
 Offline-test av rapportlogikken og den statiske eksporten.
 
 Stubber NHL-APIet, odds-APIet og modellen, så testen krever verken nettverk
-eller en trent `models/nhl_model.pkl`. Dekker særlig feilmodusene som avgjør
-hva som havner på den statiske sida:
+eller en trent `models/nhl_model.pkl`. Den bruker derimot repoets egne
+`models/elo_ratings.json`, `data/team_info.csv` og `data/bet_history.csv`
+(alle sporet i git). Dekker særlig feilmodusene som avgjør hva som havner på
+den statiske sida:
 
   - normal eksport skriver alle filene og alle lagkombinasjoner
   - lag uten kampdata faller ut av teams.json og matchups.json
   - NHL-APIet nede -> forrige JSON beholdes, seksjonen merkes i meta.json
   - delvis nede NHL-API -> for få lag/kamper til å erstatte god data
+  - feature-bygging som feiler for de fleste lagpar -> samme beskyttelse
 
 Kjøres direkte: `cd NHL && python test_site_export.py`
 """
@@ -86,6 +89,17 @@ def fake_odds(days: int = 3):
             "odds_draw": None,  # ufullstendige odds
             "odds_away": 3.0,
         },
+        {
+            "eventId": "1003",
+            "startTime": (start + timedelta(days=1)).strftime("%Y-%m-%dT20:00:00Z"),
+            "home": "Toronto Maple Leafs",
+            "away": "New York Rangers",
+            "home_abbr": "TOR",
+            "away_abbr": "NYR",
+            "odds_home": 2.0,
+            "odds_draw": 4.0,
+            "odds_away": 3.6,
+        },
     ]
 
 
@@ -132,7 +146,7 @@ def test_value_report():
     install_stubs()
     report = rs.build_value_report(3)
 
-    assert len(report) == 2
+    assert len(report) == 3
     assert report[0]["home_abbr"] == "BOS"
     assert report[0]["best_value"] in {"home", "draw", "away"}
     # Ufullstendige odds skal ikke gi en anbefaling ...
@@ -142,12 +156,18 @@ def test_value_report():
 
 
 def test_value_report_raises_when_most_games_lack_data():
-    install_stubs(teams_with_data=set())
+    # Bare BOS/MTL har data -> 1 av 3 kamper kan beregnes.
+    install_stubs(teams_with_data={"BOS", "MTL"})
     try:
         rs.build_value_report(3)
-    except RuntimeError:
-        return
-    raise AssertionError("build_value_report skulle feilet uten kampdata")
+    except RuntimeError as exc:
+        assert "1 av 3" in str(exc), exc
+    else:
+        raise AssertionError("build_value_report skulle feilet på 1 av 3 kamper")
+
+    # 2 av 3 er over terskelen og skal slippe gjennom.
+    install_stubs(teams_with_data={"BOS", "MTL", "TOR", "NYR"})
+    assert len(rs.build_value_report(3)) == 2
 
 
 def test_elo_guard_rejects_empty_ratings():
@@ -231,6 +251,34 @@ def test_export_rejects_partial_team_data(tmp: Path):
     assert json.loads((tmp / "teams.json").read_text()) == stale_teams
 
 
+def test_export_rejects_when_most_pairs_fail(tmp: Path):
+    """Alle lag har kampdata, men feature-byggingen feiler for de fleste par."""
+    stale_teams = [{"abbreviation": "BOS", "id": "6"}]
+    (tmp / "teams.json").write_text(json.dumps(stale_teams))
+
+    install_stubs()
+    os.environ["NHL_EXPORT_DIR"] = str(tmp)
+    import export_site_data as ex
+
+    working = {"BOS", "MTL", "TOR", "NYR", "SEA"}
+    original = ex.build_live_features
+
+    def flaky(away_abbr, home_abbr, **kwargs):
+        if home_abbr not in working or away_abbr not in working:
+            raise RuntimeError("feature-bygging feilet")
+        return original(away_abbr, home_abbr, **kwargs)
+
+    ex.build_live_features = flaky
+    try:
+        assert ex.main() == 0
+    finally:
+        ex.build_live_features = original
+
+    meta = json.loads((tmp / "meta.json").read_text())
+    assert "matchups" in meta["failed"] and "teams" in meta["failed"]
+    assert json.loads((tmp / "teams.json").read_text()) == stale_teams
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -243,6 +291,7 @@ def main() -> int:
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),
+            ("rejects_failing_pairs", test_export_rejects_when_most_pairs_fail, True),
         ]
         for name, case, needs_dir in cases:
             try:
