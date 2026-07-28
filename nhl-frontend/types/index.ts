@@ -33,6 +33,33 @@ export interface PredictionResponse {
     prediction: string;
 }
 
+/** Siste 5 kamper + nøkkeltall for ett lag, slik de ligger i matchups.json. */
+export interface TeamSummary {
+    last_5: GameInfo[];
+    stats: TeamStats;
+}
+
+export interface MatchupPrediction {
+    prob_home_win: number;
+    prob_ot: number;
+    prob_away_win: number;
+    prediction: string;
+}
+
+/** Forhåndsberegnede prediksjoner for alle lagkombinasjoner ("HOME-AWAY"). */
+export interface MatchupsData {
+    generated_at: string;
+    teams: Record<string, TeamSummary>;
+    matchups: Record<string, MatchupPrediction>;
+}
+
+export interface SiteMeta {
+    generated_at: string;
+    days_ahead: number;
+    files: string[];
+    failed: string[];
+}
+
 export type ValueOutcomeKey = 'home' | 'draw' | 'away';
 
 export interface ValueGame {

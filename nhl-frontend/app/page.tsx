@@ -6,16 +6,18 @@ import { Sparkles } from 'lucide-react';
 import PortfolioSection from '@/components/PortfolioSection';
 import PredictionPanel from '@/components/PredictionPanel';
 import ValueBoardSection from '@/components/ValueBoardSection';
-import { PortfolioResponse, PredictionResponse, Team, ValueGame } from '@/types';
+import {
+  CAN_UPDATE_PORTFOLIO,
+  fetchMeta,
+  fetchPortfolio as loadPortfolio,
+  fetchPrediction,
+  fetchTeams,
+  fetchValueReport,
+  updatePortfolio,
+} from '@/lib/data';
+import { formatGeneratedAt } from '@/lib/format';
+import { PortfolioResponse, PredictionResponse, SiteMeta, Team, ValueGame } from '@/types';
 
-const API_BASE_RAW =
-  process.env.NEXT_PUBLIC_API_BASE ??
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
-const API_BASE = API_BASE_RAW.endsWith('/') ? API_BASE_RAW.slice(0, -1) : API_BASE_RAW;
-const IS_LOCAL_API =
-  API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1') || API_BASE.startsWith('/');
-
-const apiUrl = (path: string) => `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 const DAYS_AHEAD = 3; // i dag + 3 = 4 dagers horisont
 
 export default function Home() {
@@ -32,17 +34,13 @@ export default function Home() {
   const [loadingPortfolio, setLoadingPortfolio] = useState(true);
   const [portfolioError, setPortfolioError] = useState('');
   const [updatingPortfolio, setUpdatingPortfolio] = useState(false);
+  const [meta, setMeta] = useState<SiteMeta | null>(null);
 
   const fetchPortfolio = async () => {
     setLoadingPortfolio(true);
     setPortfolioError('');
     try {
-      const res = await fetch(apiUrl('/portfolio'));
-      if (!res.ok) {
-        throw new Error('Kunne ikke hente porteføljen');
-      }
-      const data = await res.json();
-      setPortfolio(data);
+      setPortfolio(await loadPortfolio());
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : '';
@@ -56,22 +54,7 @@ export default function Home() {
     setUpdatingPortfolio(true);
     setPortfolioError('');
     try {
-      const res = await fetch(apiUrl('/portfolio/update'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          days_ahead: 1,
-          stake_per_bet: 100,
-          min_value: 0.2,
-          max_odds: 4.0,
-          value_games: valueGames, // sender allerede hentet odds/matchdata for raskere oppdatering
-        }),
-      });
-      if (!res.ok) {
-        throw new Error('Oppdatering feilet');
-      }
-      const data = await res.json();
-      setPortfolio(data);
+      setPortfolio(await updatePortfolio(valueGames));
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : '';
@@ -82,10 +65,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetch(apiUrl('/teams'))
-      .then((res) => res.json())
+    fetchTeams()
       .then(setTeams)
       .catch((err) => console.error('Feil ved henting av lag:', err));
+  }, []);
+
+  useEffect(() => {
+    fetchMeta().then(setMeta);
   }, []);
 
   useEffect(() => {
@@ -93,27 +79,7 @@ export default function Home() {
       setLoadingValueBoard(true);
       setValueError('');
       try {
-        let res = await fetch(apiUrl(`/value-report?days=${DAYS_AHEAD}`));
-        if (res.status === 404) {
-          // Backend kan kjøre uten bindestrek-ruten (fallback)
-          res = await fetch(apiUrl(`/value_report?days=${DAYS_AHEAD}`));
-        }
-        if (!res.ok) {
-          let reason = '';
-          try {
-            const body = await res.json();
-            reason = body?.detail || body?.message || '';
-          } catch {
-            try {
-              reason = await res.text();
-            } catch {
-              reason = '';
-            }
-          }
-          throw new Error(reason || 'Kunne ikke hente oddsrapport');
-        }
-        const data = await res.json();
-        setValueGames(data);
+        setValueGames(await fetchValueReport(DAYS_AHEAD));
       } catch (err) {
         console.error(err);
         const message = err instanceof Error && err.message ? err.message : '';
@@ -149,21 +115,11 @@ export default function Home() {
     setPrediction(null);
 
     try {
-      const response = await fetch(apiUrl('/predict'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Feil ved prediksjon');
-      }
-
-      const data = await response.json();
-      setPrediction(data);
+      setPrediction(await fetchPrediction(homeTeam, awayTeam));
     } catch (err) {
-      setError('Kunne ikke hente prediksjon. Sjekk at API-serveren kjører.');
       console.error(err);
+      const message = err instanceof Error && err.message ? err.message : '';
+      setError(message || 'Kunne ikke hente prediksjon.');
     } finally {
       setLoadingPrediction(false);
     }
@@ -184,6 +140,17 @@ export default function Home() {
             Se modellens odds for hver kamp, sammenlign med markedet, og finn raskt hvor verdien er størst. Manuell matchup
             ligger til høyre hvis du vil teste egne scenarier.
           </p>
+          {meta && (
+            <p className="text-sm text-slate-400">
+              Data oppdatert {formatGeneratedAt(meta.generated_at)}
+              {meta.failed?.length > 0 && (
+                <span className="text-amber-300">
+                  {' '}
+                  – disse er fra forrige oppdatering: {meta.failed.join(', ')}
+                </span>
+              )}
+            </p>
+          )}
         </div>
 
         <PortfolioSection
@@ -193,7 +160,7 @@ export default function Home() {
           updatingPortfolio={updatingPortfolio}
           onRefresh={handleRefreshPortfolio}
           onRetry={fetchPortfolio}
-          showRefresh={IS_LOCAL_API}
+          showRefresh={CAN_UPDATE_PORTFOLIO}
         />
 
         <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">

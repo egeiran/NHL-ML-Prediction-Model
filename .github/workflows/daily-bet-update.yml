@@ -125,16 +125,23 @@ jobs:
         run: |
           python generate_elo_chart.py
 
+      - name: Export static site data
+        working-directory: NHL
+        env:
+          NHL_EXPORT_DAYS: "3"
+        run: |
+          # Frontend deployes statisk (Vercel) og leser disse JSON-filene i
+          # stedet for å kalle FastAPI-et. Feiler ikke jobben hvis eksporten
+          # ryker – da beholdes forrige JSON og resten av dagens data commites.
+          python export_site_data.py || echo "[WARN] Eksport av site-data feilet, beholder eksisterende JSON."
+
       - name: Commit and push changes
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-
+          # Sjekken på staged endringer under fanger både endrede og nye filer
+          # (site-dataen er utracket første gang den genereres).
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png
+          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png nhl-frontend/public/data/*.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit"

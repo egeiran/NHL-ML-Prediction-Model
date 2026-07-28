@@ -1,6 +1,7 @@
 import { RefreshCw, TrendingUp, Wallet } from 'lucide-react';
 
 import ValueOverTimeChart from '@/components/ValueOverTimeChart';
+import { STATIC_MODE } from '@/lib/data';
 import { formatCurrency, formatDateLabel, formatPercent, formatRoi } from '@/lib/format';
 import { PortfolioResponse } from '@/types';
 
@@ -43,7 +44,9 @@ export default function PortfolioSection({
             <div>
               <div className="text-sm uppercase tracking-wide text-white/60">Bankroll-spor</div>
               <div className="text-xl font-semibold text-white">Beste value-bets per dag (100 kr flat innsats – kun gevinst legges til)</div>
-              <div className="text-sm text-white/60">Data fra /portfolio endepunktet</div>
+              <div className="text-sm text-white/60">
+                {STATIC_MODE ? 'Oppdateres daglig fra modellen' : 'Data fra /portfolio endepunktet'}
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
