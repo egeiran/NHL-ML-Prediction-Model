@@ -113,6 +113,7 @@ class ValueGameResponse(BaseModel):
 
 class BetEntry(BaseModel):
     model_config = ConfigDict(protected_namespaces=(), extra="allow")
+    season: Optional[str] = None
     date: str
     event_id: str
     start_time: Optional[str] = ""
@@ -154,7 +155,15 @@ class PortfolioSummary(BaseModel):
     win_rate: float
 
 
+class PortfolioAllTime(BaseModel):
+    total_bets: int
+    profit: float
+
+
 class PortfolioResponse(BaseModel):
+    season: Optional[str] = None
+    seasons: List[str] = []
+    all_time: Optional[PortfolioAllTime] = None
     timeseries: List[PortfolioPoint]
     summary: PortfolioSummary
     bets: List[BetEntry]
@@ -239,12 +248,15 @@ def get_value_report(days: int = 3):
 
 
 @app.get("/portfolio", response_model=PortfolioResponse)
-def get_portfolio():
+def get_portfolio(season: Optional[str] = None, all_seasons: bool = False):
     """
     Returnerer historiske bets + tidsserie for investert/verdi til grafen.
+
+    Uten `season` vises nyeste sesong som har spill. `all_seasons=true` gir hele
+    historikken samlet.
     """
     history = load_history()
-    return build_portfolio_payload(history)
+    return build_portfolio_payload(history, season=season, all_seasons=all_seasons)
 
 
 @app.post("/portfolio/update", response_model=PortfolioResponse)

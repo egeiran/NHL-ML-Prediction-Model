@@ -9,6 +9,18 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 ## 📈 Portefølje over tid
 ![Portfolio](./docs/portfolio.png)
 
+<!-- STATUS:START -->
+### Sesong 2025-26
+
+| Logg | Spill | Resultat | ROI |
+| --- | ---: | ---: | ---: |
+| Portefølje | 202 | +35 kr | +0.2 % |
+| Skygge (OT/SO vi ikke tar) | – | – | – |
+| Under EV-terskel | – | – | – |
+
+Treffrate 33.7 % · 0 åpne spill · totalt siden start +35 kr på 202 spill.
+<!-- STATUS:END -->
+
 ## 📊 Daglig resultat (siste 5 dager)
 ![Daglig resultat](./docs/daily_profit.png)
 
@@ -107,6 +119,8 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
   ```
 - `GET /value-report?days=3` – Modellodds vs. Norsk Tipping-odds (0–10 dager frem). Alias: `/value_report`.
 - `GET /portfolio` – Tidsserie + sammendrag + bet-liste fra `data/bet_history.csv`.
+  Uten parametre vises nyeste sesong som har spill. `?season=2025-26` velger en
+  bestemt sesong, `?all_seasons=true` gir hele historikken samlet.
 - `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `max_odds`, `value_games` (prefetch fra frontend).
 
 ## 🎨 Frontend
@@ -224,12 +238,31 @@ Prediction Model/
    ```
    - Avregner ferdige kamper og oppdaterer profit.
    - Legger til value-bets med `value > 0.20` og `odds < 4.00` (standard stake 100 kr).
-3. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
-4. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
+3. **Tre logger, samme skjema og samme avregning**:
+   - `data/bet_history.csv` – ekte spill, det som teller i porteføljen.
+   - `data/bet_shadow.csv` – OT/SO-spill vi ikke tar, med notionell innsats.
+   - `data/bet_below_threshold.csv` – kandidater under EV-terskelen.
+
+   Alle tre avregnes med samme logikk, så vi kan svare på «tjente vi penger?»,
+   «burde vi tatt uavgjort?» og «ligger terskelen riktig?». Gamle rader i
+   under-terskel-loggen ble aldri avregnet – kjør `python backfill_shadow_results.py`
+   én gang for å etterfylle dem (slår opp mot NHL-APIet, tar noen minutter).
+4. **Sesong**: hver rad har en `season` (utledet av kampdatoen, skille 1. juli).
+   Nøkkeltallene i toppen av denne READMEen viser nyeste sesong med spill, og
+   oppdateres av den daglige jobben.
+5. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
+6. **OT/SO-spill er slått av, men følges i en skyggelogg.** Modellen har ingen
+   målbar edge på uavgjort (se `PROBLEMS.md` og `NHL/calibrate_draw.py`), så
+   `bet_tracker` legger dem ikke inn. De føres i stedet i
+   `NHL/data/bet_shadow.csv` med full innsats og avregnes som ekte spill, slik
+   at vi kan se hva beslutningen faktisk koster eller sparer oss for. Sett
+   `NHL_ALLOW_DRAW_BETS=1` for å spille dem på ekte igjen. Value-rapporten viser
+   OT/SO-odds og EV som før.
+7. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.2, "max_odds": 4.0 }
    ```
-5. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov), eksporterer statisk site-data og committer ny `bet_history.csv` + `nhl-frontend/public/data/`. Aktiver Actions og sjekk at default branch er korrekt.
+8. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov), eksporterer statisk site-data og committer ny `bet_history.csv` + `nhl-frontend/public/data/`. Aktiver Actions og sjekk at default branch er korrekt.
 
 ## 🐛 Feilsøking
 - Backend: `pip install -r NHL/requirements-api.txt`, sjekk at `models/nhl_model.pkl` finnes og at serveren kjører på port 8000.

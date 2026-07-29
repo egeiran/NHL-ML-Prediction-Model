@@ -305,6 +305,108 @@ def test_utah_alias_gets_same_form_as_a_team_without_alias():
     assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
 
 
+def test_draw_bets_go_to_the_shadow_ledger():
+    """
+    OT/SO-spill har ingen målbar edge og skal ikke legges inn – men de skal
+    føres i skyggeloggen med full innsats, så vi kan måle hva vi går glipp av
+    (eller sparer oss for).
+    """
+    import bet_tracker as bt
+
+    game = {
+        "best_value": "draw",
+        "best_value_delta": 0.30,
+        "date": "2026-10-10",
+        "start_time": "2026-10-10T18:00:00+00:00",
+        "home_abbr": "BOS",
+        "away_abbr": "MTL",
+        "event_id": "1",
+        "odds_home": 2.0,
+        "odds_draw": 3.9,
+        "odds_away": 3.5,
+        "model_draw": 0.33,
+        "implied_draw_prob": 0.256,
+        "value_draw": 0.30,
+    }
+    home_game = dict(game, event_id="2", best_value="home", model_home_win=0.55,
+                     implied_home_prob=0.5, value_home=0.25, best_value_delta=0.25)
+
+    history, shadow = [], []
+    created, shadowed = bt.record_new_bets(
+        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
+    )
+
+    # Uavgjort havner i skyggeloggen, hjemmespillet i den ekte.
+    assert (created, shadowed) == (1, 1)
+    assert [r["selection"] for r in history] == ["home"]
+    assert [r["selection"] for r in shadow] == ["draw"]
+    # Skyggespillet har full innsats og avregnes som et ekte spill.
+    assert shadow[0]["stake"] == 100.0 and shadow[0]["status"] == "pending"
+
+    # Ingen dobbeltføring ved neste kjøring.
+    created2, shadowed2 = bt.record_new_bets(
+        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
+    )
+    assert (created2, shadowed2) == (0, 0)
+
+    # Med bryteren på spilles de som før, og havner ikke i skyggeloggen.
+    original = bt.ALLOW_DRAW_BETS
+    bt.ALLOW_DRAW_BETS = True
+    try:
+        history2, shadow2 = [], []
+        created3, shadowed3 = bt.record_new_bets(
+            history2, prefetched_report=[game], shadow=shadow2, min_value=0.15
+        )
+        assert (created3, shadowed3) == (1, 0)
+        assert history2[0]["selection"] == "draw" and shadow2 == []
+    finally:
+        bt.ALLOW_DRAW_BETS = original
+
+
+def test_season_column_and_portfolio_filtering():
+    """
+    Sesongen utledes fra kampdatoen, og porteføljen viser nyeste sesong som
+    faktisk har spill (ellers ville sida stått tom hele off-season).
+    """
+    import bet_tracker as bt
+
+    assert bt.season_of("2025-12-06") == "2025-26"
+    assert bt.season_of("2026-06-30") == "2025-26"   # sesongslutt
+    assert bt.season_of("2026-07-01") == "2026-27"   # ny sesong
+    assert bt.season_of("2026-10-08") == "2026-27"
+    assert bt.season_of("") == ""
+
+    history = [
+        {"date": "2026-03-01", "season": "2025-26", "selection": "home", "odds": 2.0,
+         "stake": 100.0, "status": "won", "payout": 200.0, "profit": 100.0},
+        {"date": "2026-11-02", "season": "2026-27", "selection": "away", "odds": 2.0,
+         "stake": 100.0, "status": "lost", "payout": 0.0, "profit": -100.0},
+    ]
+
+    assert bt.available_seasons(history) == ["2025-26", "2026-27"]
+
+    # Default: nyeste sesong med spill.
+    payload = bt.build_portfolio_payload(history)
+    assert payload["season"] == "2026-27"
+    assert payload["summary"]["total_bets"] == 1
+    assert payload["summary"]["profit"] == -100.0
+
+    # Eksplisitt sesong.
+    older = bt.build_portfolio_payload(history, season="2025-26")
+    assert older["summary"]["total_bets"] == 1 and older["summary"]["profit"] == 100.0
+
+    # Hele historikken.
+    total = bt.build_portfolio_payload(history, all_seasons=True)
+    assert total["season"] is None and total["summary"]["total_bets"] == 2
+
+    # all_time følger med uansett valgt sesong.
+    assert payload["all_time"] == {"total_bets": 2, "profit": 0.0}
+
+    # Rader uten season faller tilbake på datoen.
+    legacy = [dict(history[0], season="")]
+    assert bt.build_portfolio_payload(legacy)["season"] == "2025-26"
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -315,6 +417,8 @@ def main() -> int:
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
+            ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
+            ("season_ledger", test_season_column_and_portfolio_filtering, False),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),

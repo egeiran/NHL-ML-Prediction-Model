@@ -31,18 +31,31 @@ from utils.value_utils import (
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
 BET_BELOW_THRESHOLD_PATH = BASE_DIR / "data" / "bet_below_threshold.csv"
+BET_SHADOW_PATH = BASE_DIR / "data" / "bet_shadow.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
 DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.15"))
 _MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
 DEFAULT_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
+# OT/SO-spill legges ikke inn. Modellen har ingen målbar edge der: på en
+# kronologisk backtest (calibrate_draw.py) treffer kampene den flagger som
+# value bare basisraten, uansett hvordan draw-proben skaleres, og i
+# bet_history.csv står 26 slike spill for -640 kr (19% treff mot 22% basisrate)
+# mens resten av porteføljen er +675 kr. Sett NHL_ALLOW_DRAW_BETS=1 for å
+# skru dem på igjen. Value-rapporten viser fortsatt OT/SO-odds og EV.
+ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "").strip().lower() in {"1", "true", "yes"}
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
     "UTAH": "ARI",
 }
 
+# Notionell innsats på spill vi ikke tar, men følger (skygge + under terskel).
+# Samme beløp som ekte spill, så tallene er direkte sammenlignbare.
+NOTIONAL_STAKE = DEFAULT_STAKE
+
 BET_FIELDS = [
+    "season",
     "date",
     "event_id",
     "start_time",
@@ -116,6 +129,24 @@ def normalize_event_id(
     return raw_str or str(raw_event_id or "").strip()
 
 
+def season_of(date_str: Optional[str]) -> str:
+    """
+    NHL-sesongen en dato hører til, f.eks. "2025-26". Sesongen går fra oktober
+    til juni, så vi deler på 1. juli: alt fra juli og ut året tilhører sesongen
+    som starter det året, alt før juli tilhører sesongen som startet året før.
+    """
+    try:
+        d = datetime.strptime(str(date_str)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return ""
+    start_year = d.year if d.month >= 7 else d.year - 1
+    return f"{start_year}-{(start_year + 1) % 100:02d}"
+
+
+def current_season() -> str:
+    return season_of(date.today().isoformat())
+
+
 def _read_csv(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
@@ -130,6 +161,8 @@ def _read_csv(path: Path) -> List[Dict[str, Any]]:
             row["implied_prob"] = float(row.get("implied_prob") or 0.0)
             row["value"] = float(row.get("value") or 0.0)
             row["payout"] = float(row.get("payout") or 0.0)
+            if not row.get("season"):
+                row["season"] = season_of(row.get("date"))
             row["profit"] = float(row.get("profit") or 0.0)
             rows.append(row)
     return rows
@@ -152,6 +185,15 @@ def load_history(path: Path = BET_HISTORY_PATH) -> List[Dict[str, Any]]:
 
 
 def save_history(rows: Sequence[Dict[str, Any]], path: Path = BET_HISTORY_PATH) -> None:
+    _write_csv(path, rows)
+
+
+def load_shadow(path: Path = BET_SHADOW_PATH) -> List[Dict[str, Any]]:
+    """Spill vi bevisst ikke tar, men følger videre for å måle beslutningen."""
+    return _read_csv(path)
+
+
+def save_shadow(rows: Sequence[Dict[str, Any]], path: Path = BET_SHADOW_PATH) -> None:
     _write_csv(path, rows)
 
 
@@ -397,6 +439,7 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
         away_abbr = away_abbr.upper()
 
     event_id = normalize_event_id(game.get("event_id"), home_abbr, away_abbr, start_time, date_str)
+    season = season_of(date_str)
 
     odds_lookup = {
         "home": game.get("odds_home"),
@@ -425,6 +468,7 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
 
     now_iso = datetime.utcnow().isoformat()
     return {
+        "season": season,
         "date": date_str,
         "event_id": event_id,
         "start_time": start_time,
@@ -446,13 +490,15 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
 
 
 def _build_candidate_entry(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    entry = _build_bet_entry(game, 0.0)
+    """
+    Spill som ikke nådde EV-terskelen. De føres med notionell innsats og vanlig
+    "pending"-status slik at settle_pending_bets avregner dem – da kan vi svare
+    på om terskelen ligger riktig. De havner i sin egen fil og teller aldri med
+    i porteføljen.
+    """
+    entry = _build_bet_entry(game, NOTIONAL_STAKE)
     if not entry:
         return None
-    entry["stake"] = 0.0
-    entry["status"] = "below_threshold"
-    entry["payout"] = 0.0
-    entry["profit"] = 0.0
     return entry
 
 
@@ -525,10 +571,15 @@ def record_new_bets(
     max_odds: Optional[float] = DEFAULT_MAX_ODDS,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
-) -> int:
+    shadow: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[int, int]:
     """
     Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle kamper
     (prefetchet eller bygget), filtrert på min_value.
+
+    Spill vi bevisst ikke tar (OT/SO når ALLOW_DRAW_BETS er av) havner i `shadow`
+    i stedet, med samme innsats og felter, så de kan avregnes og måles.
+    Returnerer (antall ekte spill, antall skyggespill).
     """
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
     if take_all_prefetched:
@@ -548,7 +599,9 @@ def record_new_bets(
         candidates = _choose_best_per_day(report, min_value=min_value, max_odds=max_odds)
 
     existing_keys = _existing_keys(history)
+    shadow_keys = _existing_keys(shadow) if shadow is not None else set()
     created = 0
+    shadowed = 0
 
     for game in candidates:
         entry = _build_bet_entry(game, stake_per_bet)
@@ -559,6 +612,15 @@ def record_new_bets(
                 continue
 
         key = f"{entry['event_id']}|{entry['selection']}"
+
+        # OT/SO tas ikke, men følges videre i skyggeloggen.
+        if str(entry.get("selection")).lower() == "draw" and not ALLOW_DRAW_BETS:
+            if shadow is not None and key not in shadow_keys:
+                shadow.append(entry)
+                shadow_keys.add(key)
+                shadowed += 1
+            continue
+
         if key in existing_keys:
             continue
 
@@ -566,7 +628,7 @@ def record_new_bets(
         existing_keys.add(key)
         created += 1
 
-    return created
+    return created, shadowed
 
 
 def record_bets_below_threshold(
@@ -613,6 +675,7 @@ def record_bets_below_threshold(
 def update_daily_bets(
     history_path: Path = BET_HISTORY_PATH,
     below_threshold_path: Path = BET_BELOW_THRESHOLD_PATH,
+    shadow_path: Path = BET_SHADOW_PATH,
     days_ahead: int = 3,
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = DEFAULT_MIN_VALUE,
@@ -626,9 +689,12 @@ def update_daily_bets(
     """
     history = load_history(history_path)
     below_threshold = load_below_threshold(below_threshold_path)
+    shadow = load_shadow(shadow_path)
     settled = settle_pending_bets(history)
+    # Skyggespillene avregnes med samme logikk, så tallene er sammenlignbare.
+    shadow_settled = settle_pending_bets(shadow)
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
-    created = record_new_bets(
+    created, shadowed = record_new_bets(
         history,
         days_ahead=days_ahead,
         stake_per_bet=stake_per_bet,
@@ -636,6 +702,7 @@ def update_daily_bets(
         max_odds=max_odds,
         prefetched_report=report,
         take_all_prefetched=take_all_prefetched,
+        shadow=shadow,
     )
     below_created = record_bets_below_threshold(
         history,
@@ -646,15 +713,20 @@ def update_daily_bets(
     )
     save_history(history, history_path)
     save_below_threshold(below_threshold, below_threshold_path)
+    save_shadow(shadow, shadow_path)
     portfolio = build_portfolio_payload(history)
 
     return {
         "created": created,
         "below_threshold_created": below_created,
+        "shadow_created": shadowed,
         "settled": settled,
+        "shadow_settled": shadow_settled,
         "history": history,
         "below_threshold": below_threshold,
+        "shadow": shadow,
         "portfolio": portfolio,
+        "shadow_portfolio": build_portfolio_payload(shadow),
     }
 
 
@@ -665,13 +737,50 @@ def _group_by_date(history: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str
     return grouped
 
 
-def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+def available_seasons(history: Sequence[Dict[str, Any]]) -> List[str]:
+    """Sesonger som faktisk har spill, eldste først."""
+    return sorted({row.get("season") or season_of(row.get("date")) for row in history} - {""})
+
+
+def resolve_season(history: Sequence[Dict[str, Any]], season: Optional[str] = None) -> Optional[str]:
+    """
+    Hvilken sesong som skal vises. Uten eksplisitt valg brukes nyeste sesong som
+    har spill – ellers ville sida stått tom hele sommeren, før første kamp i
+    den nye sesongen er spilt.
+    """
+    if season:
+        return season
+    seasons = available_seasons(history)
+    return seasons[-1] if seasons else None
+
+
+def filter_season(
+    history: Sequence[Dict[str, Any]], season: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not season:
+        return list(history)
+    return [
+        row for row in history
+        if (row.get("season") or season_of(row.get("date"))) == season
+    ]
+
+
+def build_portfolio_payload(
+    history: Sequence[Dict[str, Any]],
+    season: Optional[str] = None,
+    all_seasons: bool = False,
+) -> Dict[str, Any]:
     """
     Lager time series med realisert resultat og åpen innsats til bruk i graf.
     Verdier som øker kun når gevinster realiseres (stake telles ikke som påfyll).
     "Invested" per dag = innsats lagt inn den dagen (ikke kumulert).
     Profit vises basert på kampens dato (date), ikke avregningstidspunkt (updated_at).
     """
+    seasons = available_seasons(history)
+    selected_season = None if all_seasons else resolve_season(history, season)
+    all_history = list(history)
+    history = filter_season(history, selected_season)
+
     grouped = _group_by_date(history)
 
     all_dates = sorted({d for d in grouped.keys() if d})
@@ -732,7 +841,17 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
     settled_count = len(history) - pending_count
     win_rate = (won_count / settled_count) if settled_count else 0.0
 
+    all_time_profit = sum(
+        b.get("profit", 0.0) for b in all_history if b.get("status") != "pending"
+    )
+
     return {
+        "season": selected_season,
+        "seasons": seasons,
+        "all_time": {
+            "total_bets": len(all_history),
+            "profit": round(all_time_profit, 2),
+        },
         "timeseries": series,
         "summary": {
             "total_bets": len(history),
@@ -752,7 +871,10 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
 if __name__ == "__main__":
     result = update_daily_bets()
     print(
-        f"Oppdatert: {result['created']} nye bets, {result['settled']} avregnet."
+        f"Oppdatert: {result['created']} nye bets, {result['settled']} avregnet. "
+        f"Skygge (OT/SO vi ikke tok): {result['shadow_created']} nye, "
+        f"{result['shadow_settled']} avregnet, "
+        f"resultat {result['shadow_portfolio']['summary']['profit']:+.0f} kr."
     )
     print("Siste status:")
     for ts in result["portfolio"]["timeseries"][-3:]:
