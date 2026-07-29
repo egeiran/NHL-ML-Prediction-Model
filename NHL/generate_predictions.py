@@ -44,6 +44,9 @@ OUTPUT_MARKDOWN = DOCS_DIR / "TODAY.md"
 PORTFOLIO_IMAGE = DOCS_DIR / "portfolio.png"
 DAILY_PROFIT_IMAGE = DOCS_DIR / "daily_profit.png"
 BET_HISTORY_PATH = REPO_ROOT / "NHL" / "data" / "bet_history.csv"
+README_PATH = REPO_ROOT / "README.md"
+STATUS_START = "<!-- STATUS:START -->"
+STATUS_END = "<!-- STATUS:END -->"
 
 VALUE_MIN = float(os.environ.get("NHL_VALUE_MIN", "0.2"))
 _MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
@@ -463,6 +466,70 @@ def save_recent_profit_chart(
     plt.close(fig)
 
 
+def _ledger_line(label: str, rows) -> str:
+    """Én linje med nøkkeltall for en logg (ekte, skygge eller under terskel)."""
+    from bet_tracker import build_portfolio_payload
+
+    settled = [r for r in rows if r.get("status") in {"won", "lost"}]
+    if not settled:
+        return f"| {label} | – | – | – |"
+    payload = build_portfolio_payload(settled, all_seasons=False)
+    s = payload["summary"]
+    return (
+        f"| {label} | {s['total_bets']} | {s['profit']:+.0f} kr | "
+        f"{s['roi'] * 100:+.1f} % |"
+    )
+
+
+def update_readme_status() -> None:
+    """
+    Skriver nøkkeltall for inneværende sesong inn i README mellom markørene.
+    Uten markører gjør funksjonen ingenting, så README kan redigeres fritt.
+    """
+    from bet_tracker import (
+        build_portfolio_payload,
+        load_below_threshold,
+        load_history,
+        load_shadow,
+    )
+
+    if not README_PATH.exists():
+        return
+    readme = README_PATH.read_text(encoding="utf-8")
+    if STATUS_START not in readme or STATUS_END not in readme:
+        return
+
+    history = load_history()
+    payload = build_portfolio_payload(history)
+    season = payload.get("season") or "–"
+    summary = payload["summary"]
+    all_time = payload.get("all_time") or {}
+
+    lines = [
+        STATUS_START,
+        f"### Sesong {season}",
+        "",
+        "| Logg | Spill | Resultat | ROI |",
+        "| --- | ---: | ---: | ---: |",
+        _ledger_line("Portefølje", payload["bets"]),
+        _ledger_line("Skygge (OT/SO vi ikke tar)", load_shadow()),
+        _ledger_line("Under EV-terskel", load_below_threshold()),
+        "",
+        f"Treffrate {summary['win_rate'] * 100:.1f} % · "
+        f"{summary['open_bets']} åpne spill · "
+        f"totalt siden start {all_time.get('profit', 0):+.0f} kr "
+        f"på {all_time.get('total_bets', 0)} spill.",
+        STATUS_END,
+    ]
+
+    start = readme.index(STATUS_START)
+    end = readme.index(STATUS_END) + len(STATUS_END)
+    updated = readme[:start] + "\n".join(lines) + readme[end:]
+    if updated != readme:
+        atomic_write_text(README_PATH, updated)
+        print(f"Wrote {README_PATH.name} (status)")
+
+
 def main() -> None:
     report, error = load_value_report(VALUE_DAYS_AHEAD)
     used_days = VALUE_DAYS_AHEAD
@@ -499,6 +566,8 @@ def main() -> None:
         print(f"Wrote {DAILY_PROFIT_IMAGE.relative_to(REPO_ROOT)}")
     else:
         print("[portfolio] Skipped portfolio graph (no data).")
+
+    update_readme_status()
 
     print(f"Wrote {OUTPUT_MARKDOWN.relative_to(REPO_ROOT)}")
     print(f"Wrote {OUTPUT_IMAGE.relative_to(REPO_ROOT)}")

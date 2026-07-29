@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "cd nhl-frontend && npm install",
+  "buildCommand": "cd nhl-frontend && npm run build",
+  "outputDirectory": "nhl-frontend/out"
+}

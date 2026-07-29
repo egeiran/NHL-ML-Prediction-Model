@@ -50,7 +50,12 @@ TEAM_ALIAS = {
     "UTAH": "ARI",
 }
 
+# Notionell innsats på spill vi ikke tar, men følger (skygge + under terskel).
+# Samme beløp som ekte spill, så tallene er direkte sammenlignbare.
+NOTIONAL_STAKE = DEFAULT_STAKE
+
 BET_FIELDS = [
+    "season",
     "date",
     "event_id",
     "start_time",
@@ -124,6 +129,24 @@ def normalize_event_id(
     return raw_str or str(raw_event_id or "").strip()
 
 
+def season_of(date_str: Optional[str]) -> str:
+    """
+    NHL-sesongen en dato hører til, f.eks. "2025-26". Sesongen går fra oktober
+    til juni, så vi deler på 1. juli: alt fra juli og ut året tilhører sesongen
+    som starter det året, alt før juli tilhører sesongen som startet året før.
+    """
+    try:
+        d = datetime.strptime(str(date_str)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return ""
+    start_year = d.year if d.month >= 7 else d.year - 1
+    return f"{start_year}-{(start_year + 1) % 100:02d}"
+
+
+def current_season() -> str:
+    return season_of(date.today().isoformat())
+
+
 def _read_csv(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
@@ -138,6 +161,8 @@ def _read_csv(path: Path) -> List[Dict[str, Any]]:
             row["implied_prob"] = float(row.get("implied_prob") or 0.0)
             row["value"] = float(row.get("value") or 0.0)
             row["payout"] = float(row.get("payout") or 0.0)
+            if not row.get("season"):
+                row["season"] = season_of(row.get("date"))
             row["profit"] = float(row.get("profit") or 0.0)
             rows.append(row)
     return rows
@@ -414,6 +439,7 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
         away_abbr = away_abbr.upper()
 
     event_id = normalize_event_id(game.get("event_id"), home_abbr, away_abbr, start_time, date_str)
+    season = season_of(date_str)
 
     odds_lookup = {
         "home": game.get("odds_home"),
@@ -442,6 +468,7 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
 
     now_iso = datetime.utcnow().isoformat()
     return {
+        "season": season,
         "date": date_str,
         "event_id": event_id,
         "start_time": start_time,
@@ -463,13 +490,15 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
 
 
 def _build_candidate_entry(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    entry = _build_bet_entry(game, 0.0)
+    """
+    Spill som ikke nådde EV-terskelen. De føres med notionell innsats og vanlig
+    "pending"-status slik at settle_pending_bets avregner dem – da kan vi svare
+    på om terskelen ligger riktig. De havner i sin egen fil og teller aldri med
+    i porteføljen.
+    """
+    entry = _build_bet_entry(game, NOTIONAL_STAKE)
     if not entry:
         return None
-    entry["stake"] = 0.0
-    entry["status"] = "below_threshold"
-    entry["payout"] = 0.0
-    entry["profit"] = 0.0
     return entry
 
 
@@ -708,13 +737,50 @@ def _group_by_date(history: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str
     return grouped
 
 
-def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+def available_seasons(history: Sequence[Dict[str, Any]]) -> List[str]:
+    """Sesonger som faktisk har spill, eldste først."""
+    return sorted({row.get("season") or season_of(row.get("date")) for row in history} - {""})
+
+
+def resolve_season(history: Sequence[Dict[str, Any]], season: Optional[str] = None) -> Optional[str]:
+    """
+    Hvilken sesong som skal vises. Uten eksplisitt valg brukes nyeste sesong som
+    har spill – ellers ville sida stått tom hele sommeren, før første kamp i
+    den nye sesongen er spilt.
+    """
+    if season:
+        return season
+    seasons = available_seasons(history)
+    return seasons[-1] if seasons else None
+
+
+def filter_season(
+    history: Sequence[Dict[str, Any]], season: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not season:
+        return list(history)
+    return [
+        row for row in history
+        if (row.get("season") or season_of(row.get("date"))) == season
+    ]
+
+
+def build_portfolio_payload(
+    history: Sequence[Dict[str, Any]],
+    season: Optional[str] = None,
+    all_seasons: bool = False,
+) -> Dict[str, Any]:
     """
     Lager time series med realisert resultat og åpen innsats til bruk i graf.
     Verdier som øker kun når gevinster realiseres (stake telles ikke som påfyll).
     "Invested" per dag = innsats lagt inn den dagen (ikke kumulert).
     Profit vises basert på kampens dato (date), ikke avregningstidspunkt (updated_at).
     """
+    seasons = available_seasons(history)
+    selected_season = None if all_seasons else resolve_season(history, season)
+    all_history = list(history)
+    history = filter_season(history, selected_season)
+
     grouped = _group_by_date(history)
 
     all_dates = sorted({d for d in grouped.keys() if d})
@@ -775,7 +841,17 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
     settled_count = len(history) - pending_count
     win_rate = (won_count / settled_count) if settled_count else 0.0
 
+    all_time_profit = sum(
+        b.get("profit", 0.0) for b in all_history if b.get("status") != "pending"
+    )
+
     return {
+        "season": selected_season,
+        "seasons": seasons,
+        "all_time": {
+            "total_bets": len(all_history),
+            "profit": round(all_time_profit, 2),
+        },
         "timeseries": series,
         "summary": {
             "total_bets": len(history),

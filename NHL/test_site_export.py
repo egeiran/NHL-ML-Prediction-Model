@@ -363,6 +363,50 @@ def test_draw_bets_go_to_the_shadow_ledger():
         bt.ALLOW_DRAW_BETS = original
 
 
+def test_season_column_and_portfolio_filtering():
+    """
+    Sesongen utledes fra kampdatoen, og porteføljen viser nyeste sesong som
+    faktisk har spill (ellers ville sida stått tom hele off-season).
+    """
+    import bet_tracker as bt
+
+    assert bt.season_of("2025-12-06") == "2025-26"
+    assert bt.season_of("2026-06-30") == "2025-26"   # sesongslutt
+    assert bt.season_of("2026-07-01") == "2026-27"   # ny sesong
+    assert bt.season_of("2026-10-08") == "2026-27"
+    assert bt.season_of("") == ""
+
+    history = [
+        {"date": "2026-03-01", "season": "2025-26", "selection": "home", "odds": 2.0,
+         "stake": 100.0, "status": "won", "payout": 200.0, "profit": 100.0},
+        {"date": "2026-11-02", "season": "2026-27", "selection": "away", "odds": 2.0,
+         "stake": 100.0, "status": "lost", "payout": 0.0, "profit": -100.0},
+    ]
+
+    assert bt.available_seasons(history) == ["2025-26", "2026-27"]
+
+    # Default: nyeste sesong med spill.
+    payload = bt.build_portfolio_payload(history)
+    assert payload["season"] == "2026-27"
+    assert payload["summary"]["total_bets"] == 1
+    assert payload["summary"]["profit"] == -100.0
+
+    # Eksplisitt sesong.
+    older = bt.build_portfolio_payload(history, season="2025-26")
+    assert older["summary"]["total_bets"] == 1 and older["summary"]["profit"] == 100.0
+
+    # Hele historikken.
+    total = bt.build_portfolio_payload(history, all_seasons=True)
+    assert total["season"] is None and total["summary"]["total_bets"] == 2
+
+    # all_time følger med uansett valgt sesong.
+    assert payload["all_time"] == {"total_bets": 2, "profit": 0.0}
+
+    # Rader uten season faller tilbake på datoen.
+    legacy = [dict(history[0], season="")]
+    assert bt.build_portfolio_payload(legacy)["season"] == "2025-26"
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -374,6 +418,7 @@ def main() -> int:
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
+            ("season_ledger", test_season_column_and_portfolio_filtering, False),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),
