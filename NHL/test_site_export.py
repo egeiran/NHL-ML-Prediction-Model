@@ -305,6 +305,42 @@ def test_utah_alias_gets_same_form_as_a_team_without_alias():
     assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
 
 
+def test_draw_bets_are_not_placed():
+    """OT/SO-spill har ingen målbar edge – de skal ikke legges inn."""
+    import bet_tracker as bt
+
+    game = {
+        "best_value": "draw",
+        "best_value_delta": 0.30,
+        "date": "2026-10-10",
+        "start_time": "2026-10-10T18:00:00+00:00",
+        "home_abbr": "BOS",
+        "away_abbr": "MTL",
+        "event_id": "1",
+        "odds_home": 2.0,
+        "odds_draw": 3.9,
+        "odds_away": 3.5,
+        "model_draw": 0.33,
+        "implied_draw_prob": 0.256,
+        "value_draw": 0.30,
+    }
+    assert bt._build_bet_entry(game, 100.0) is None
+
+    original = bt.ALLOW_DRAW_BETS
+    bt.ALLOW_DRAW_BETS = True
+    try:
+        entry = bt._build_bet_entry(game, 100.0)
+        assert entry and entry["selection"] == "draw"
+    finally:
+        bt.ALLOW_DRAW_BETS = original
+
+    # Andre utfall er uberørt.
+    home_game = dict(game, best_value="home", model_home_win=0.55,
+                     implied_home_prob=0.5, value_home=0.25)
+    entry = bt._build_bet_entry(home_game, 100.0)
+    assert entry and entry["selection"] == "home"
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -315,6 +351,7 @@ def main() -> int:
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
+            ("no_draw_bets", test_draw_bets_are_not_placed, False),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),

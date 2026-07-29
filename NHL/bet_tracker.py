@@ -36,6 +36,13 @@ DEFAULT_STAKE = 100.0
 DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.15"))
 _MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
 DEFAULT_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
+# OT/SO-spill legges ikke inn. Modellen har ingen målbar edge der: på en
+# kronologisk backtest (calibrate_draw.py) treffer kampene den flagger som
+# value bare basisraten, uansett hvordan draw-proben skaleres, og i
+# bet_history.csv står 26 slike spill for -640 kr (19% treff mot 22% basisrate)
+# mens resten av porteføljen er +675 kr. Sett NHL_ALLOW_DRAW_BETS=1 for å
+# skru dem på igjen. Value-rapporten viser fortsatt OT/SO-odds og EV.
+ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "").strip().lower() in {"1", "true", "yes"}
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
@@ -377,6 +384,8 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
 def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, Any]]:
     selection = game.get("best_value") or game.get("selection")
     if not selection:
+        return None
+    if str(selection).lower() == "draw" and not ALLOW_DRAW_BETS:
         return None
 
     raw_start = game.get("start_time") or ""

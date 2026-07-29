@@ -225,7 +225,11 @@ Prediction Model/
    - Avregner ferdige kamper og oppdaterer profit.
    - Legger til value-bets med `value > 0.20` og `odds < 4.00` (standard stake 100 kr).
 3. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
-4. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
+4. **OT/SO-spill er slått av.** Modellen har ingen målbar edge på uavgjort (se
+   `PROBLEMS.md` og `NHL/calibrate_draw.py`), så `bet_tracker` hopper over dem.
+   Sett `NHL_ALLOW_DRAW_BETS=1` for å skru dem på igjen. Value-rapporten viser
+   OT/SO-odds og EV som før.
+5. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.2, "max_odds": 4.0 }
    ```
