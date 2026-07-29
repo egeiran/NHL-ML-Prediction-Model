@@ -125,7 +125,23 @@ jobs:
         run: |
           python generate_elo_chart.py
 
+      - name: Run export tests
+        id: export_tests
+        working-directory: NHL
+        # Feilende tester skal stoppe eksporten, men ikke hindre at dagens
+        # bet-historikk og Elo-ratings blir committet.
+        continue-on-error: true
+        run: |
+          if ! python test_site_export.py; then
+            {
+              echo "> [!WARNING]"
+              echo "> Eksporttestene feilet – site-dataen ble ikke oppdatert."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - name: Export static site data
+        if: steps.export_tests.outcome == 'success'
         working-directory: NHL
         env:
           NHL_EXPORT_DAYS: "3"

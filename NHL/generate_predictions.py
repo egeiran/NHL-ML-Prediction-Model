@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # Ensure matplotlib can cache fonts in environments without a writable home.
 MPL_CACHE_DIR = Path(os.environ.setdefault("MPLCONFIGDIR", str(Path("/tmp/mplcache"))))
@@ -134,15 +134,34 @@ def _report_date_range(report: Sequence[Dict[str, Any]]) -> str:
     return f"{dates[0]} to {dates[-1]}"
 
 
-def load_value_report(days_ahead: int) -> List[Dict[str, Any]]:
+def load_value_report(days_ahead: int) -> Tuple[List[Dict[str, Any]], str]:
+    """
+    Returnerer (rapport, feilmelding). Tom rapport uten feilmelding betyr at
+    det ikke er kamper i perioden – med feilmelding betyr det at noe røk.
+    Skillet er viktig: begge ser like tomme ut i artefaktene.
+    """
     if _build_value_report is None:
-        print(f"[value-report] Missing bet_tracker import: {_IMPORT_ERROR}")
-        return []
+        message = f"Missing bet_tracker import: {_IMPORT_ERROR}"
+        print(f"[value-report] {message}")
+        return [], message
     try:
-        return _build_value_report(days_ahead)
+        return _build_value_report(days_ahead), ""
     except Exception as exc:
-        print(f"[value-report] Failed to build report: {exc}")
-        return []
+        message = f"{type(exc).__name__}: {exc}"
+        print(f"[value-report] Failed to build report: {message}")
+        return [], message
+
+
+def report_failure(message: str) -> None:
+    """Løfter en feil opp i GitHub Actions-sammendraget når vi kjører i CI."""
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write(f"\n> [!WARNING]\n> Value-rapporten kunne ikke bygges: {message}\n")
+    except OSError as exc:  # pragma: no cover - skal aldri velte jobben
+        print(f"[value-report] Kunne ikke skrive job-sammendrag: {exc}")
 
 
 def build_value_table(
@@ -236,6 +255,7 @@ def save_markdown(
     total_games = report_meta.get("total_games", 0)
     fallback_used = report_meta.get("fallback_used", False)
     fallback_days = report_meta.get("fallback_days")
+    error = report_meta.get("error") or ""
 
     header = [
         f"# Value Bets for {date_range}",
@@ -256,7 +276,12 @@ def save_markdown(
         header.append("")
 
     if table.empty:
-        content = "\n".join(header + ["_Ingen value-bets over terskel i denne perioden._", ""])
+        empty_note = (
+            f"⚠️ _Rapporten kunne ikke bygges: {error}_"
+            if error
+            else "_Ingen value-bets over terskel i denne perioden._"
+        )
+        content = "\n".join(header + [empty_note, ""])
         atomic_write_text(output_path, content)
         return
 
@@ -439,14 +464,17 @@ def save_recent_profit_chart(
 
 
 def main() -> None:
-    report = load_value_report(VALUE_DAYS_AHEAD)
+    report, error = load_value_report(VALUE_DAYS_AHEAD)
     used_days = VALUE_DAYS_AHEAD
     fallback_used = False
 
     if not report and VALUE_FALLBACK_DAYS > VALUE_DAYS_AHEAD:
-        report = load_value_report(VALUE_FALLBACK_DAYS)
+        report, error = load_value_report(VALUE_FALLBACK_DAYS)
         used_days = VALUE_FALLBACK_DAYS
         fallback_used = True
+
+    if error:
+        report_failure(error)
 
     table = build_value_table(report, VALUE_MIN, VALUE_MAX_ODDS)
     report_meta = {
@@ -457,6 +485,7 @@ def main() -> None:
         "total_games": len(report),
         "fallback_used": fallback_used,
         "fallback_days": VALUE_FALLBACK_DAYS if fallback_used else None,
+        "error": error,
     }
 
     save_markdown(table, OUTPUT_MARKDOWN, report_meta)

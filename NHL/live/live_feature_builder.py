@@ -10,7 +10,7 @@ from live.form_engine import (
 from utils.data_loader import load_team_mappings
 from utils.elo import build_elo_feature_values, load_ratings, resolve_ratings_path
 from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
-from utils.team_alias import to_canonical
+from utils.team_alias import to_canonical, to_display
 
 ELO_RATINGS_PATH = "models/elo_ratings.json"
 
@@ -62,15 +62,28 @@ def build_live_features(
     """
 
     # 1. form-features
+    #
+    # Kampene kommer fra NHL-APIet og bruker visningsforkortelsen (UTA), mens
+    # resten av featurene slås opp på den kanoniske (ARI). Formberegningen
+    # avgjør hjemme/borte ved å sammenligne forkortelsen med kampens lag, så
+    # den må få den forkortelsen kampene faktisk bruker. Ellers regnes alle
+    # Utahs hjemmekamper som bortekamper – med mål for/mot byttet om.
+    home_match_abbr = to_display(to_canonical(home_abbr))
+    away_match_abbr = to_display(to_canonical(away_abbr))
+
     if home_games is not None:
-        home_form = compute_team_form_from_games(home_abbr, home_games, windows=windows)
+        home_form = compute_team_form_from_games(
+            home_match_abbr, home_games, windows=windows
+        )
     else:
-        home_form = compute_team_form(home_abbr, windows=windows)
+        home_form = compute_team_form(home_match_abbr, windows=windows)
 
     if away_games is not None:
-        away_form = compute_team_form_from_games(away_abbr, away_games, windows=windows)
+        away_form = compute_team_form_from_games(
+            away_match_abbr, away_games, windows=windows
+        )
     else:
-        away_form = compute_team_form(away_abbr, windows=windows)
+        away_form = compute_team_form(away_match_abbr, windows=windows)
 
     # 2. team_id-features
     abbr_to_id = load_team_ids()

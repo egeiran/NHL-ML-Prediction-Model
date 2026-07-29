@@ -1,0 +1,45 @@
+name: Tests
+
+# Offline-tester av rapportlogikken og den statiske dataeksporten. Krever
+# verken nettverk eller trent modell, så de kan kjøre på hver push og PR.
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+    paths:
+      - "NHL/**"
+      - ".github/workflows/tests.yml"
+  pull_request:
+    paths:
+      - "NHL/**"
+      - ".github/workflows/tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          # Kravfila heter ikke requirements.txt, så cachen må peke på den selv.
+          cache-dependency-path: NHL/requirements-api.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r NHL/requirements-api.txt
+
+      - name: Run tests
+        working-directory: NHL
+        run: python test_site_export.py

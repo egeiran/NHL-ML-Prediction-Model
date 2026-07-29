@@ -279,6 +279,32 @@ def test_export_rejects_when_most_pairs_fail(tmp: Path):
     assert json.loads((tmp / "teams.json").read_text()) == stale_teams
 
 
+def test_utah_alias_gets_same_form_as_a_team_without_alias():
+    """
+    Utah heter UTA i NHL-APIet, men ARI i modellen. Formberegningen må matche
+    på forkortelsen kampene bruker, ellers telles alle hjemmekampene som
+    bortekamper med mål for/mot byttet om.
+    """
+    from live.live_feature_builder import build_live_features
+
+    install_stubs()
+    control = build_live_features(
+        "MTL", "BOS", home_games=fake_games("BOS"), away_games=fake_games("MTL")
+    )
+    utah = build_live_features(
+        "MTL", "UTA", home_games=fake_games("UTA"), away_games=fake_games("MTL")
+    )
+
+    form_cols = [c for c in control.columns if c.startswith("home_form_")]
+    assert control[form_cols].iloc[0].equals(utah[form_cols].iloc[0])
+    # Kampene i fixturen er 20 seire. Med feil alias-oppslag ble raten 0.5.
+    assert utah["home_form_win_rate_w20"].iloc[0] == 1.0
+
+    # Id og Elo skal fortsatt slås opp kanonisk (ARI), ikke på visningsnavnet.
+    _, abbr_to_id = rs.load_team_mappings(str(rs.TEAM_INFO_PATH))
+    assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -288,6 +314,7 @@ def main() -> int:
             ("value_report", test_value_report, False),
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
+            ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),

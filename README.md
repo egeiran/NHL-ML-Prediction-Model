@@ -147,6 +147,12 @@ ferske fila; `update-elo.yml` kan også kjøres på forespørsel. Live-API-et la
 fila på nytt automatisk når den endres. Nye franchiser (SEA) får cold-start på
 base-rating; Utah arver Arizonas historikk via alias.
 
+> Merk om alias: NHL-APIet bruker `UTA`, mens modellen bruker `ARI`. Form-
+> beregningen matcher derfor på visningsforkortelsen (den kampene faktisk
+> bruker), mens `team_id` og Elo slås opp kanonisk. Uten dette skillet ble
+> alle Utahs hjemmekamper regnet som bortekamper med mål for/mot byttet om.
+> `test_site_export.py` låser oppførselen mot et lag uten alias.
+
 Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning
 av baseline vs. +Elo på både tilfeldig og kronologisk splitt (accuracy, balanced
 accuracy, macro F1, log loss og Brier). Evalueringen kjøres også automatisk i
