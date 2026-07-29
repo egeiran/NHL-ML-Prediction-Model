@@ -1,1 +1,130 @@
-[]
+[
+  {
+    "abbreviation": "ANA",
+    "id": "24"
+  },
+  {
+    "abbreviation": "UTA",
+    "id": "53"
+  },
+  {
+    "abbreviation": "BOS",
+    "id": "6"
+  },
+  {
+    "abbreviation": "BUF",
+    "id": "7"
+  },
+  {
+    "abbreviation": "CAR",
+    "id": "12"
+  },
+  {
+    "abbreviation": "CBJ",
+    "id": "29"
+  },
+  {
+    "abbreviation": "CGY",
+    "id": "20"
+  },
+  {
+    "abbreviation": "CHI",
+    "id": "16"
+  },
+  {
+    "abbreviation": "COL",
+    "id": "21"
+  },
+  {
+    "abbreviation": "DAL",
+    "id": "25"
+  },
+  {
+    "abbreviation": "DET",
+    "id": "17"
+  },
+  {
+    "abbreviation": "EDM",
+    "id": "22"
+  },
+  {
+    "abbreviation": "FLA",
+    "id": "13"
+  },
+  {
+    "abbreviation": "LAK",
+    "id": "26"
+  },
+  {
+    "abbreviation": "MIN",
+    "id": "30"
+  },
+  {
+    "abbreviation": "MTL",
+    "id": "8"
+  },
+  {
+    "abbreviation": "NJD",
+    "id": "1"
+  },
+  {
+    "abbreviation": "NSH",
+    "id": "18"
+  },
+  {
+    "abbreviation": "NYI",
+    "id": "2"
+  },
+  {
+    "abbreviation": "NYR",
+    "id": "3"
+  },
+  {
+    "abbreviation": "OTT",
+    "id": "9"
+  },
+  {
+    "abbreviation": "PHI",
+    "id": "4"
+  },
+  {
+    "abbreviation": "PIT",
+    "id": "5"
+  },
+  {
+    "abbreviation": "SEA",
+    "id": "55"
+  },
+  {
+    "abbreviation": "SJS",
+    "id": "28"
+  },
+  {
+    "abbreviation": "STL",
+    "id": "19"
+  },
+  {
+    "abbreviation": "TBL",
+    "id": "14"
+  },
+  {
+    "abbreviation": "TOR",
+    "id": "10"
+  },
+  {
+    "abbreviation": "VAN",
+    "id": "23"
+  },
+  {
+    "abbreviation": "VGK",
+    "id": "54"
+  },
+  {
+    "abbreviation": "WPG",
+    "id": "52"
+  },
+  {
+    "abbreviation": "WSH",
+    "id": "15"
+  }
+]
