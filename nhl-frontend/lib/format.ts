@@ -43,3 +43,15 @@ export function formatCurrency(amount: number) {
 export function formatRoi(roi: number) {
   return `${(roi * 100).toFixed(1)}%`;
 }
+
+export function formatGeneratedAt(iso?: string | null) {
+  if (!iso) return 'ukjent tidspunkt';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'ukjent tidspunkt';
+  return date.toLocaleString('nb-NO', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

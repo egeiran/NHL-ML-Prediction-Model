@@ -1,7 +1,5 @@
 # api.py
 import os
-from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -15,33 +13,16 @@ from bet_tracker import (
     DEFAULT_MIN_VALUE,
     DEFAULT_MAX_ODDS,
 )
-from live.nhl_api import get_team_recent_games
-from live.nt_odds import get_nhl_matches_range
-from live.form_engine import (
-    compute_stats_from_games,
-    format_recent_games,
+from live.team_cache import clear_team_cache
+from report_service import (
+    PREDICT_GAMES_NEEDED,
+    build_prediction,
+    build_value_report,
+    fetch_team_games,
+    get_data,
+    list_teams,
 )
-from live.live_feature_builder import build_live_features
-from live.team_cache import (
-    get_cached_team_games as get_from_cache,
-    cache_team_games,
-    clear_team_cache,
-)
-from utils.data_loader import load_team_mappings
-from utils.feature_engineering import DEFAULT_WINDOWS
-from utils.model_utils import load_model
-from utils.value_utils import (
-    adjust_three_way_probs,
-    expected_value,
-    implied_probability,
-    odds_complete,
-    round_optional,
-)
-from utils.team_alias import to_canonical, to_display
-
-BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "data" / "team_info.csv"
-MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
+from utils.team_alias import to_canonical
 
 app = FastAPI(title="NHL Prediction API", version="1.0.0")
 
@@ -66,42 +47,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-LABELS = ["Home Win", "OT / SO", "Away Win"]
-
-# Cache for å unngå å laste data på nytt for hver request
-_cache = {}
-
-
-def get_data():
-    """Henter og cacher data"""
-    if "data" not in _cache:
-        id_to_abbr, abbr_to_id = load_team_mappings(str(DATA_PATH))
-        model = load_model(str(MODEL_PATH))
-
-        _cache["data"] = {
-            "id_to_abbr": id_to_abbr,
-            "abbr_to_id": abbr_to_id,
-            "model": model,
-        }
-    return _cache["data"]
-
-
-def normalize_probs(*probs: Optional[float]):
-    """Sørger for at sannsynlighetene summerer til 1."""
-    clean = [p if p is not None else 0.0 for p in probs]
-    total = sum(clean)
-    if total <= 0:
-        return tuple(0.0 for _ in clean)
-    return tuple(p / total for p in clean)
-
-
-def prob_to_decimal_odds(prob: float) -> Optional[float]:
-    """Konverterer modell-prob til decimal odds (fair odds)."""
-    if prob <= 0:
-        return None
-    return round(1 / prob, 2)
-
 
 class PredictionRequest(BaseModel):
     home_team: str
@@ -231,19 +176,7 @@ def read_root():
 @app.get("/teams", response_model=List[Dict[str, str]])
 def get_teams():
     """Returnerer liste over alle tilgjengelige lag"""
-    data = get_data()
-    teams = []
-    seen = set()
-    for abbr in sorted(data["abbr_to_id"].keys()):
-        display_abbr = to_display(abbr)
-        if display_abbr in seen:
-            continue  # unngå duplikater (f.eks. ARI -> UTA)
-        seen.add(display_abbr)
-        teams.append({
-            "abbreviation": display_abbr,
-            "id": str(data["abbr_to_id"][abbr])
-        })
-    return teams
+    return list_teams()
 
 
 @app.post("/predict", response_model=PredictionResponse)
@@ -253,33 +186,22 @@ def predict_game(request: PredictionRequest):
     away_abbr_raw = request.away_team.upper()
     home_abbr = to_canonical(home_abbr_raw)
     away_abbr = to_canonical(away_abbr_raw)
-    
+
     data = get_data()
-    
+
     # Valider at lagene eksisterer i modelloppsettet (kanonisert)
     if home_abbr not in data["abbr_to_id"]:
         raise HTTPException(status_code=404, detail=f"Team {home_abbr_raw} not found")
     if away_abbr not in data["abbr_to_id"]:
         raise HTTPException(status_code=404, detail=f"Team {away_abbr_raw} not found")
 
-    max_games_needed = max(max(DEFAULT_WINDOWS), 5)
-
-    def _recent_with_alias(abbr: str):
-        primary = get_team_recent_games(abbr, limit=max_games_needed)
-        if primary:
-            return primary
-        canonical = to_canonical(abbr)
-        if canonical != abbr:
-            return get_team_recent_games(canonical, limit=max_games_needed)
-        return primary
-
     try:
-        home_recent = _recent_with_alias(home_abbr_raw)
-        away_recent = _recent_with_alias(away_abbr_raw)
+        home_recent = fetch_team_games(home_abbr_raw, limit=PREDICT_GAMES_NEEDED)
+        away_recent = fetch_team_games(away_abbr_raw, limit=PREDICT_GAMES_NEEDED)
     except Exception as exc:  # pragma: no cover - beskytter API-et
-        raise HTTPException(
-            status_code=502, detail=f"Feil ved henting av kamper: {exc}"
-        )
+        # Detaljene logges, men sendes ikke ut: de kan avsløre filstier o.l.
+        print(f"Henting av kamper feilet: {exc!r}")
+        raise HTTPException(status_code=502, detail="Kunne ikke hente kampdata")
 
     if not home_recent:
         raise HTTPException(
@@ -290,43 +212,14 @@ def predict_game(request: PredictionRequest):
             status_code=404, detail=f"Fant ingen kamper for {away_abbr}"
         )
 
-    home_last_5 = format_recent_games(home_abbr, home_recent, limit=5)
-    away_last_5 = format_recent_games(away_abbr, away_recent, limit=5)
-    home_stats = compute_stats_from_games(home_abbr, home_recent[:5])
-    away_stats = compute_stats_from_games(away_abbr, away_recent[:5])
+    try:
+        prediction = build_prediction(home_abbr, away_abbr, home_recent, away_recent)
+    except Exception as exc:  # pragma: no cover - beskytter API-et
+        # F.eks. manglende Elo-ratings eller modellfil. Detaljene logges.
+        print(f"Prediksjon feilet: {exc!r}")
+        raise HTTPException(status_code=502, detail="Kunne ikke beregne prediksjonen")
 
-    feature_row = build_live_features(
-        away_abbr,
-        home_abbr,
-        windows=DEFAULT_WINDOWS,
-        home_games=home_recent,
-        away_games=away_recent,
-    )
-
-    probs = data["model"].predict_proba(feature_row)[0]
-    pred_idx = probs.argmax()
-    pred_class = data["model"].classes_[pred_idx]
-    class_prob_map = dict(zip(data["model"].classes_, probs))
-
-    prob_home_win = round(float(class_prob_map.get(0, 0.0)), 3)
-    prob_ot = round(float(class_prob_map.get(1, 0.0)), 3)
-    prob_away_win = round(float(class_prob_map.get(2, 0.0)), 3)
-
-    label_idx = int(pred_class) if isinstance(pred_class, (int, float)) else pred_idx
-    prediction_label = LABELS[label_idx] if 0 <= label_idx < len(LABELS) else str(pred_class)
-
-    return PredictionResponse(
-        home_team=to_display(home_abbr),
-        away_team=to_display(away_abbr),
-        home_last_5=home_last_5,
-        away_last_5=away_last_5,
-        home_stats=TeamStats(**home_stats),
-        away_stats=TeamStats(**away_stats),
-        prob_home_win=prob_home_win,
-        prob_ot=prob_ot,
-        prob_away_win=prob_away_win,
-        prediction=prediction_label,
-    )
+    return PredictionResponse(**prediction)
 
 
 @app.get("/value-report", response_model=List[ValueGameResponse])
@@ -335,171 +228,14 @@ def get_value_report(days: int = 3):
     Returnerer kamper for de neste `days` dagene med modell-sannsynlighet,
     markedets odds og forventet EV.
     """
-    # Begrens antall dager for å unngå unødvendig store kall
-    days = max(0, min(days, 10))
-    
-    import time
-    start_total = time.time()
-    print(f"\n=== VALUE REPORT START (days={days}) ===")
-    
-    data = get_data()
-    model = data["model"]
-
-    start_fetch = time.time()
     try:
-        games = get_nhl_matches_range(days)
+        report = build_value_report(days, verbose=True)
     except Exception as exc:  # pragma: no cover - beskytter API-et
-        raise HTTPException(status_code=502, detail=f"Feil ved henting av odds: {exc}")
-    print(f"Fetched {len(games)} games in {time.time() - start_fetch:.2f}s")
-    
-    # Cache team games for å unngå å hente samme lag flere ganger
-    team_games_cache: Dict[str, List] = {}
-    max_games_needed = max(DEFAULT_WINDOWS)
-    
-    def get_cached_team_games(team_abbr: str) -> Optional[List]:
-        """Henter team games fra cache (disk + memory) eller API"""
-        cache_key = to_canonical(team_abbr)
-        if cache_key in team_games_cache:
-            return team_games_cache[cache_key]
+        # Detaljene logges, men sendes ikke ut: de kan avsløre filstier o.l.
+        print(f"Value-rapport feilet: {exc!r}")
+        raise HTTPException(status_code=502, detail="Kunne ikke bygge value-rapporten")
 
-        cached = get_from_cache(cache_key)
-        if cached is None and cache_key != team_abbr:
-            cached = get_from_cache(team_abbr)
-        if cached is not None:
-            team_games_cache[cache_key] = cached
-            return cached
-
-        try:
-            games = get_team_recent_games(team_abbr, limit=max_games_needed)
-            if not games and cache_key != team_abbr:
-                games = get_team_recent_games(cache_key, limit=max_games_needed)
-            cache_team_games(cache_key, games)
-            team_games_cache[cache_key] = games
-        except Exception as exc:
-            print(f"Feil ved henting av kamper for {team_abbr}: {exc}")
-            team_games_cache[cache_key] = None
-        return team_games_cache[cache_key]
-    
-    results: List[ValueGameResponse] = []
-    
-    start_processing = time.time()
-    for i, game in enumerate(games):
-        home_abbr = game.get("home_abbr")
-        away_abbr = game.get("away_abbr")
-
-        if not home_abbr or not away_abbr:
-            # Mangler mapping - hopp over
-            continue
-
-        home_canon = to_canonical(home_abbr)
-        away_canon = to_canonical(away_abbr)
-
-        # Hent cached team games
-        start_cache = time.time()
-        home_games = get_cached_team_games(home_abbr)
-        away_games = get_cached_team_games(away_abbr)
-        cache_time = time.time() - start_cache
-        
-        if home_games is None or away_games is None:
-            # Kunne ikke hente data for et av lagene - hopp over
-            print(f"  [{i+1}/{len(games)}] SKIP {home_abbr} vs {away_abbr} (no data)")
-            continue
-
-        start_features = time.time()
-        try:
-            feature_row = build_live_features(
-                away_canon,
-                home_canon,
-                windows=DEFAULT_WINDOWS,
-                home_games=home_games,
-                away_games=away_games,
-            )
-            probs = model.predict_proba(feature_row)[0]
-            features_time = time.time() - start_features
-            print(f"  [{i+1}/{len(games)}] {home_abbr} vs {away_abbr}: cache={cache_time:.2f}s, features={features_time:.2f}s")
-        except Exception as exc:  # pragma: no cover - beskytter API-et
-            print(f"Skipper kamp {home_abbr} vs {away_abbr}: {exc}")
-            continue
-
-        class_prob_map = dict(zip(model.classes_, probs))
-        home_prob, draw_prob, away_prob = normalize_probs(
-            float(class_prob_map.get(0, 0.0)),
-            float(class_prob_map.get(1, 0.0)),
-            float(class_prob_map.get(2, 0.0)),
-        )
-        home_prob, draw_prob, away_prob = adjust_three_way_probs(
-            home_prob,
-            draw_prob,
-            away_prob,
-        )
-
-        odds_home = game.get("odds_home")
-        odds_draw = game.get("odds_draw")
-        odds_away = game.get("odds_away")
-
-        imp_home = implied_probability(odds_home)
-        imp_draw = implied_probability(odds_draw)
-        imp_away = implied_probability(odds_away)
-
-        odds_ok = odds_complete(odds_home, odds_draw, odds_away)
-        value_home = expected_value(home_prob, odds_home) if odds_ok else None
-        value_draw = expected_value(draw_prob, odds_draw) if odds_ok else None
-        value_away = expected_value(away_prob, odds_away) if odds_ok else None
-
-        value_map = {
-            "home": value_home,
-            "draw": value_draw,
-            "away": value_away,
-        }
-        available_values = {k: v for k, v in value_map.items() if v is not None}
-        best_value = None
-        best_value_delta = None
-        if available_values and odds_ok:
-            best_value, best_value_delta = max(
-                available_values.items(), key=lambda kv: kv[1]
-            )
-
-        raw_start = game.get("startTime") or ""
-        try:
-            start_dt = datetime.fromisoformat(raw_start.replace("Z", "+00:00"))
-            date_str = start_dt.strftime("%Y-%m-%d")
-            start_time = start_dt.isoformat()
-        except Exception:
-            date_str = ""
-            start_time = raw_start if isinstance(raw_start, str) else ""
-
-        results.append(ValueGameResponse(
-            event_id=str(game.get("eventId") or f"{home_abbr}-{away_abbr}-{start_time}"),
-            date=date_str,
-            start_time=start_time,
-            home=str(game.get("home") or home_abbr or ""),
-            away=str(game.get("away") or away_abbr or ""),
-            home_abbr=to_display(home_abbr) or None,
-            away_abbr=to_display(away_abbr) or None,
-            odds_home=odds_home,
-            odds_draw=odds_draw,
-            odds_away=odds_away,
-            model_home_win=round(home_prob, 3),
-            model_draw=round(draw_prob, 3),
-            model_away_win=round(away_prob, 3),
-            model_home_odds=prob_to_decimal_odds(home_prob),
-            model_draw_odds=prob_to_decimal_odds(draw_prob),
-            model_away_odds=prob_to_decimal_odds(away_prob),
-            implied_home_prob=round_optional(imp_home, 5),
-            implied_draw_prob=round_optional(imp_draw, 5),
-            implied_away_prob=round_optional(imp_away, 5),
-            value_home=round_optional(value_home, 5),
-            value_draw=round_optional(value_draw, 5),
-            value_away=round_optional(value_away, 5),
-            best_value=best_value,
-            best_value_delta=round_optional(best_value_delta, 5),
-        ))
-
-    print(f"Processing took {time.time() - start_processing:.2f}s")
-    print(f"Total time: {time.time() - start_total:.2f}s")
-    print(f"=== VALUE REPORT END ({len(results)} results) ===\n")
-    
-    return results
+    return [ValueGameResponse(**row) for row in report]
 
 
 @app.get("/portfolio", response_model=PortfolioResponse)

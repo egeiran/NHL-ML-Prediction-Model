@@ -39,7 +39,64 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
   export NEXT_PUBLIC_API_BASE=http://localhost:8000
   npm run dev
   ```
-- Frontend kjører på `http://localhost:3000`. For prod: `npm run build && npm start`.
+- Frontend kjører på `http://localhost:3000`. For prod (statisk eksport): `npm run build` legger sida i `nhl-frontend/out/`.
+- Frontend har to datakilder:
+  - **API-modus** (`NEXT_PUBLIC_API_BASE` satt): alt hentes live fra FastAPI-et.
+  - **Statisk modus** (`NEXT_PUBLIC_API_BASE` tom): alt leses fra ferdiggenerert JSON i
+    `nhl-frontend/public/data/`. Dette er modusen som brukes i prod på Vercel.
+    Sett `NEXT_PUBLIC_API_BASE=` (tom) i dev for å teste den lokalt.
+
+## ▲ Hosting på Vercel
+Frontend deployes som en helt statisk side – ingen backend, ingen serverless-funksjoner.
+All modellkjøring skjer i den daglige GitHub Actions-workflowen, som committer ferdig
+beregnet JSON til `nhl-frontend/public/data/`. Vercel bygger på nytt for hver commit.
+
+1. Importer repoet i Vercel og sett **Root Directory** = `nhl-frontend`.
+   Framework (Next.js), build-kommando og output detekteres automatisk.
+2. Ingen miljøvariabler er nødvendige. La `NEXT_PUBLIC_API_BASE` være usatt –
+   da bruker sida de statiske JSON-filene.
+3. Kjør `Daily Bet Update`-workflowen én gang manuelt (`workflow_dispatch`) hvis du vil
+   fylle dataen umiddelbart; ellers oppdateres den 08:00 UTC hver dag.
+
+Hva som følger med i statisk modus:
+
+| Funksjon | Statisk | Kommentar |
+| --- | --- | --- |
+| Value board | ✅ | `value-report.json`, oppdateres daglig |
+| Portefølje + graf | ✅ | `portfolio.json`, oppdateres daglig |
+| Egendefinert matchup | ✅ | `matchups.json` – alle lagkombinasjoner er forhåndsberegnet |
+| «Oppdater portefølje»-knappen | ❌ | Krever skriving til disk; knappen skjules automatisk |
+
+Vil du heller ha live-API i prod, må FastAPI-et hostes et sted med skrivbart filsystem
+(Fly.io, Render, Railway e.l.). Sett da `NEXT_PUBLIC_API_BASE` til backend-URLen i Vercel
+og `FRONTEND_ORIGINS` til Vercel-domenet i backend.
+
+## 🗂️ Statisk dataeksport
+`NHL/export_site_data.py` genererer alt frontend trenger:
+
+```bash
+cd NHL
+python export_site_data.py    # skriver til ../nhl-frontend/public/data/
+```
+
+| Fil | Innhold |
+| --- | --- |
+| `teams.json` | Lagene som kan velges (kun lag med ferske data) |
+| `value-report.json` | Samme payload som `GET /value-report` |
+| `portfolio.json` | Samme payload som `GET /portfolio` |
+| `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
+| `meta.json` | Når dataen ble generert (vises i UI-et) |
+
+- Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
+- Hver seksjon skrives uavhengig: feiler f.eks. NHL-APIet, beholdes forrige versjon av den
+  fila og resten oppdateres som normalt.
+- Er NHL-APIet delvis nede, skrives ikke halve laglister eller halve oddsrapporter:
+  eksporten krever data for minst 24 lag og minst halvparten av kampene, ellers beholdes
+  forrige fil. Seksjoner som ble hoppet over listes i `meta.json` og vises i UI-et.
+- Logikken deles med API-et via `NHL/report_service.py`, så JSON-filene og endepunktene
+  gir identiske payloads.
+- `python test_site_export.py` kjører en offline-test av rapportlogikken og eksporten
+  (stubber nettverk og modell, krever ingen trent `nhl_model.pkl`).
 
 ## 📋 API Endpoints
 - `GET /` – API info.
@@ -56,7 +113,7 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 - Value board for i dag + neste 7 dager med modellodds, markedodds og best value pr. utfall.
 - Porteføljeseksjon med investert/verdi-graf, ROI og manuell oppdatering via `/portfolio/update`.
 - Egendefinert matchup-panelet viser sannsynlighet (Home/OT/Away), siste 5 kamper og nøkkelstatistikk for valgte lag.
-- API-base kan settes via `NEXT_PUBLIC_API_BASE` (default: `http://localhost:8000` i dev).
+- API-base kan settes via `NEXT_PUBLIC_API_BASE` (default: `http://localhost:8000` i dev). Uten verdi kjører frontend i statisk modus mot `public/data/`.
 
 ## 🧠 Backend
 - FastAPI med CORS for frontend og caching av modell/lag-mapping.
@@ -110,6 +167,8 @@ job-sammendraget.
 Prediction Model/
 ├── NHL/
 │   ├── api.py                  # FastAPI API
+│   ├── report_service.py       # Delt prediksjons-/rapportlogikk (API + eksport)
+│   ├── export_site_data.py     # Genererer statisk JSON til frontend
 │   ├── bet_tracker.py          # Value-bets + portefølje
 │   ├── predict.py              # CLI-prediksjon fra lag-id
 │   ├── predict_live.py         # CLI-prediksjon med live data
@@ -136,7 +195,9 @@ Prediction Model/
 └── nhl-frontend/
     ├── app/page.tsx
     ├── components/             # Value board, portefølje, matchup
+    ├── lib/data.ts             # Datakilde: API eller statisk JSON
     ├── lib/format.ts
+    ├── public/data/            # Generert JSON (committes av workflowen)
     ├── types/index.ts
     ├── package.json
     └── ...
@@ -162,7 +223,7 @@ Prediction Model/
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.2, "max_odds": 4.0 }
    ```
-5. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov) og committer ny `bet_history.csv`. Aktiver Actions og sjekk at default branch er korrekt.
+5. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov), eksporterer statisk site-data og committer ny `bet_history.csv` + `nhl-frontend/public/data/`. Aktiver Actions og sjekk at default branch er korrekt.
 
 ## 🐛 Feilsøking
 - Backend: `pip install -r NHL/requirements-api.txt`, sjekk at `models/nhl_model.pkl` finnes og at serveren kjører på port 8000.
