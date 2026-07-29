@@ -90,6 +90,31 @@
   Sannsynlig retning: kalibrer sannsynlighetene (isotonisk eller Platt) på en
   kronologisk holdout før EV regnes ut, i stedet for å bruke Random Forest-ens
   rå `predict_proba`.
+- [ ] **EV er ikke informativ nok til å skalere innsatsen etter.** Undersøkt i
+  `NHL/analyze_stake_sizing.py` (teoretisk omregning av de 202 avregnede spillene
+  – ingen logger endres). Korrelasjonen mellom EV og realisert avkastning per
+  krone er r = −0,03 (permutasjonstest p = 0,74): sammenhengen finnes ikke i
+  dataen. Delt i EV-kvartiler ligger ROI på −1 %, −13 %, +32 %, −17 % – hele
+  resultatet sitter i tredje kvartil, ikke i den høyeste. Å satse mer på høy EV
+  gjør derfor bare varians dyrere: lineær skalering gir −311 kr mot flat innsats,
+  kvadratisk −1 004 kr, ved lik omsetning. Ingen av regimene har et
+  bootstrap-intervall som utelukker null.
+
+  To ting er verdt å merke seg videre:
+  - Lineær krymping av sannsynligheten mot markedet endrer **ikke** rangeringen.
+    Siden `implied_prob = 1/odds` gir λ·(1/o) + (1−λ)·p at p·o − 1 skaleres med
+    (1−λ), så «kalibrering mot markedet» *er* fraksjonell Kelly. Skal kalibrering
+    flytte på hvilke spill som prioriteres, må den være ikke-lineær (Platt).
+  - Kelly slår flat innsats med +448 kr, men gevinsten kommer fra odds-leddet,
+    ikke EV-leddet: en regel som satser 1/(odds−1) og **ignorerer EV helt** gir
+    +634 kr. Odds-kvartilene peker samme vei (+39 %, −10 %, −19 %, −9 %), men
+    korrelasjonen odds ↔ avkastning er heller ikke signifikant (p = 0,24), så
+    dette er en hypotese å teste videre – ikke et etablert funn.
+
+  Ekte Kelly med sammensatt bankrull er direkte farlig med dagens overkonfidens:
+  full Kelly ender på −93 %, halv Kelly −51 %, kvart Kelly −6 %, mot flat +0,2 %.
+  Konklusjon: behold flat innsats til sannsynlighetene er kalibrert.
+
 - [ ] **Loggene lagrer bare det valgte utfallet.** `model_prob` og
   `implied_prob` finnes kun for utfallet vi spilte, ikke for alle tre. Det gir
   seleksjonsskjevhet i all etteranalyse – vi kan ikke se hva modellen mente om
