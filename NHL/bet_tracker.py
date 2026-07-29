@@ -31,6 +31,7 @@ from utils.value_utils import (
 BASE_DIR = Path(__file__).resolve().parent
 BET_HISTORY_PATH = BASE_DIR / "data" / "bet_history.csv"
 BET_BELOW_THRESHOLD_PATH = BASE_DIR / "data" / "bet_below_threshold.csv"
+BET_SHADOW_PATH = BASE_DIR / "data" / "bet_shadow.csv"
 MODEL_PATH = BASE_DIR / "models" / "nhl_model.pkl"
 DEFAULT_STAKE = 100.0
 DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.15"))
@@ -159,6 +160,15 @@ def load_history(path: Path = BET_HISTORY_PATH) -> List[Dict[str, Any]]:
 
 
 def save_history(rows: Sequence[Dict[str, Any]], path: Path = BET_HISTORY_PATH) -> None:
+    _write_csv(path, rows)
+
+
+def load_shadow(path: Path = BET_SHADOW_PATH) -> List[Dict[str, Any]]:
+    """Spill vi bevisst ikke tar, men følger videre for å måle beslutningen."""
+    return _read_csv(path)
+
+
+def save_shadow(rows: Sequence[Dict[str, Any]], path: Path = BET_SHADOW_PATH) -> None:
     _write_csv(path, rows)
 
 
@@ -385,8 +395,6 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
     selection = game.get("best_value") or game.get("selection")
     if not selection:
         return None
-    if str(selection).lower() == "draw" and not ALLOW_DRAW_BETS:
-        return None
 
     raw_start = game.get("start_time") or ""
     start_dt = _parse_iso(raw_start)
@@ -534,10 +542,15 @@ def record_new_bets(
     max_odds: Optional[float] = DEFAULT_MAX_ODDS,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
-) -> int:
+    shadow: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[int, int]:
     """
     Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle kamper
     (prefetchet eller bygget), filtrert på min_value.
+
+    Spill vi bevisst ikke tar (OT/SO når ALLOW_DRAW_BETS er av) havner i `shadow`
+    i stedet, med samme innsats og felter, så de kan avregnes og måles.
+    Returnerer (antall ekte spill, antall skyggespill).
     """
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
     if take_all_prefetched:
@@ -557,7 +570,9 @@ def record_new_bets(
         candidates = _choose_best_per_day(report, min_value=min_value, max_odds=max_odds)
 
     existing_keys = _existing_keys(history)
+    shadow_keys = _existing_keys(shadow) if shadow is not None else set()
     created = 0
+    shadowed = 0
 
     for game in candidates:
         entry = _build_bet_entry(game, stake_per_bet)
@@ -568,6 +583,15 @@ def record_new_bets(
                 continue
 
         key = f"{entry['event_id']}|{entry['selection']}"
+
+        # OT/SO tas ikke, men følges videre i skyggeloggen.
+        if str(entry.get("selection")).lower() == "draw" and not ALLOW_DRAW_BETS:
+            if shadow is not None and key not in shadow_keys:
+                shadow.append(entry)
+                shadow_keys.add(key)
+                shadowed += 1
+            continue
+
         if key in existing_keys:
             continue
 
@@ -575,7 +599,7 @@ def record_new_bets(
         existing_keys.add(key)
         created += 1
 
-    return created
+    return created, shadowed
 
 
 def record_bets_below_threshold(
@@ -622,6 +646,7 @@ def record_bets_below_threshold(
 def update_daily_bets(
     history_path: Path = BET_HISTORY_PATH,
     below_threshold_path: Path = BET_BELOW_THRESHOLD_PATH,
+    shadow_path: Path = BET_SHADOW_PATH,
     days_ahead: int = 3,
     stake_per_bet: float = DEFAULT_STAKE,
     min_value: float = DEFAULT_MIN_VALUE,
@@ -635,9 +660,12 @@ def update_daily_bets(
     """
     history = load_history(history_path)
     below_threshold = load_below_threshold(below_threshold_path)
+    shadow = load_shadow(shadow_path)
     settled = settle_pending_bets(history)
+    # Skyggespillene avregnes med samme logikk, så tallene er sammenlignbare.
+    shadow_settled = settle_pending_bets(shadow)
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
-    created = record_new_bets(
+    created, shadowed = record_new_bets(
         history,
         days_ahead=days_ahead,
         stake_per_bet=stake_per_bet,
@@ -645,6 +673,7 @@ def update_daily_bets(
         max_odds=max_odds,
         prefetched_report=report,
         take_all_prefetched=take_all_prefetched,
+        shadow=shadow,
     )
     below_created = record_bets_below_threshold(
         history,
@@ -655,15 +684,20 @@ def update_daily_bets(
     )
     save_history(history, history_path)
     save_below_threshold(below_threshold, below_threshold_path)
+    save_shadow(shadow, shadow_path)
     portfolio = build_portfolio_payload(history)
 
     return {
         "created": created,
         "below_threshold_created": below_created,
+        "shadow_created": shadowed,
         "settled": settled,
+        "shadow_settled": shadow_settled,
         "history": history,
         "below_threshold": below_threshold,
+        "shadow": shadow,
         "portfolio": portfolio,
+        "shadow_portfolio": build_portfolio_payload(shadow),
     }
 
 
@@ -761,7 +795,10 @@ def build_portfolio_payload(history: Sequence[Dict[str, Any]]) -> Dict[str, Any]
 if __name__ == "__main__":
     result = update_daily_bets()
     print(
-        f"Oppdatert: {result['created']} nye bets, {result['settled']} avregnet."
+        f"Oppdatert: {result['created']} nye bets, {result['settled']} avregnet. "
+        f"Skygge (OT/SO vi ikke tok): {result['shadow_created']} nye, "
+        f"{result['shadow_settled']} avregnet, "
+        f"resultat {result['shadow_portfolio']['summary']['profit']:+.0f} kr."
     )
     print("Siste status:")
     for ts in result["portfolio"]["timeseries"][-3:]:

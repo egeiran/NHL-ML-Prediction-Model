@@ -54,5 +54,9 @@
 
   OT/SO-spill legges derfor ikke inn lenger (`NHL_ALLOW_DRAW_BETS=1` skrur dem
   på igjen). I `bet_history.csv` sto de for 26 spill og −640 kr, mens resten av
-  porteføljen er +675 kr. Value-rapporten viser fortsatt OT/SO-odds og EV, så vi
-  kan fortsette å måle om edgen dukker opp.
+  porteføljen er +675 kr.
+
+  De forsvinner ikke ut av datagrunnlaget: hvert OT/SO-spill vi *ville* tatt
+  føres i `data/bet_shadow.csv` med full innsats og avregnes med samme logikk
+  som ekte spill. Da måler vi løpende om beslutningen var riktig i stedet for å
+  anta det. Value-rapporten viser OT/SO-odds og EV som før.

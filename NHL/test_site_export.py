@@ -305,8 +305,12 @@ def test_utah_alias_gets_same_form_as_a_team_without_alias():
     assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
 
 
-def test_draw_bets_are_not_placed():
-    """OT/SO-spill har ingen målbar edge – de skal ikke legges inn."""
+def test_draw_bets_go_to_the_shadow_ledger():
+    """
+    OT/SO-spill har ingen målbar edge og skal ikke legges inn – men de skal
+    føres i skyggeloggen med full innsats, så vi kan måle hva vi går glipp av
+    (eller sparer oss for).
+    """
     import bet_tracker as bt
 
     game = {
@@ -324,21 +328,39 @@ def test_draw_bets_are_not_placed():
         "implied_draw_prob": 0.256,
         "value_draw": 0.30,
     }
-    assert bt._build_bet_entry(game, 100.0) is None
+    home_game = dict(game, event_id="2", best_value="home", model_home_win=0.55,
+                     implied_home_prob=0.5, value_home=0.25, best_value_delta=0.25)
 
+    history, shadow = [], []
+    created, shadowed = bt.record_new_bets(
+        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
+    )
+
+    # Uavgjort havner i skyggeloggen, hjemmespillet i den ekte.
+    assert (created, shadowed) == (1, 1)
+    assert [r["selection"] for r in history] == ["home"]
+    assert [r["selection"] for r in shadow] == ["draw"]
+    # Skyggespillet har full innsats og avregnes som et ekte spill.
+    assert shadow[0]["stake"] == 100.0 and shadow[0]["status"] == "pending"
+
+    # Ingen dobbeltføring ved neste kjøring.
+    created2, shadowed2 = bt.record_new_bets(
+        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
+    )
+    assert (created2, shadowed2) == (0, 0)
+
+    # Med bryteren på spilles de som før, og havner ikke i skyggeloggen.
     original = bt.ALLOW_DRAW_BETS
     bt.ALLOW_DRAW_BETS = True
     try:
-        entry = bt._build_bet_entry(game, 100.0)
-        assert entry and entry["selection"] == "draw"
+        history2, shadow2 = [], []
+        created3, shadowed3 = bt.record_new_bets(
+            history2, prefetched_report=[game], shadow=shadow2, min_value=0.15
+        )
+        assert (created3, shadowed3) == (1, 0)
+        assert history2[0]["selection"] == "draw" and shadow2 == []
     finally:
         bt.ALLOW_DRAW_BETS = original
-
-    # Andre utfall er uberørt.
-    home_game = dict(game, best_value="home", model_home_win=0.55,
-                     implied_home_prob=0.5, value_home=0.25)
-    entry = bt._build_bet_entry(home_game, 100.0)
-    assert entry and entry["selection"] == "home"
 
 
 def main() -> int:
@@ -351,7 +373,7 @@ def main() -> int:
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
-            ("no_draw_bets", test_draw_bets_are_not_placed, False),
+            ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),
