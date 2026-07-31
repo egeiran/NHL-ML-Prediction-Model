@@ -1,0 +1,56 @@
+/*
+ * Lagcelle: logo-kvadrat + navn.
+ * Plassholderen (1px stiplet --dash + forkortelse i Mono) er både laste- og
+ * feiltilstand — den er allerede designet, så en logo som ikke svarer
+ * degraderer til noe som hører hjemme i designet.
+ */
+
+.logo {
+  flex: 0 0 auto;
+  width: var(--logo-size, 38px);
+  height: var(--logo-size, 38px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--dash);
+  color: var(--muted);
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.06em;
+  overflow: hidden;
+}
+
+/* Når bildet er lastet skal den stiplede rammen bort. */
+.lastet {
+  border-color: transparent;
+}
+
+.bilde {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.celle {
+  display: flex;
+  align-items: center;
+  gap: var(--celle-gap, 13px);
+  min-width: 0;
+}
+
+.tekst {
+  min-width: 0;
+}
+
+.navn {
+  display: block;
+}
+
+.under {
+  display: block;
+  margin-top: 4px;
+  font: 400 10px/1.3 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}

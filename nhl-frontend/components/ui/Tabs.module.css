@@ -1,0 +1,34 @@
+/* Understrekede faner (§E.2). Brukes til kurvelab-modus. */
+
+.faner {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.fane {
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  padding-bottom: 5px;
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.fane:hover {
+  color: var(--ink);
+}
+
+.fane[aria-current='true'] {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+@media (max-width: 767px) {
+  .fane {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: flex-end;
+  }
+}

@@ -1,0 +1,37 @@
+/* §B.3 */
+
+.footer {
+  border-top: 1px solid var(--rule-strong);
+}
+
+.rad {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 26px var(--shell-pad) 44px;
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.venstre {
+  font: 400 11px/1.7 var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.høyre {
+  font: 400 11px/1.7 var(--mono);
+  color: var(--faint);
+}
+
+@media (max-width: 767px) {
+  .rad {
+    padding: 22px var(--shell-pad-mobil) 32px;
+    gap: 10px;
+  }
+
+  .venstre {
+    white-space: normal;
+  }
+}

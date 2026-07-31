@@ -1,26 +1,428 @@
 @import "tailwindcss";
 
+/* ========================================================================== *
+ * Blålinja — tokens og global grunnmur.
+ *
+ * Alle farger er definert her og NOWHERE else. Ingen skjerm skal skrive en
+ * hex-verdi; bruk var(--token). Semantikken er streng:
+ *   --teal       = gevinst / modell / value / SPILL / fokusring
+ *   --vermillion = tap / risiko / advarsel
+ * Ingen av dem brukes dekorativt.
+ * ========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* grunnflater */
+  --paper: #f2ede4; /* sideflate, knappeflate, tooltip-tekst */
+  --ink: #17150f; /* primærtekst, sterke linjer, aktiv pillefyll */
+  --body: #4a453b; /* brødtekst */
+  --muted: #7a7364; /* etiketter, kickers, sekundære tall */
+  --faint: #9a9284; /* akseetiketter, tidsstempler, tertiær tekst */
+  --fainter: #b0a794; /* meta-krom */
+
+  /* linjer */
+  --rule-strong: #17150f; /* seksjonstopplinjer, headerkant */
+  --rule: #d8cfbc; /* kolonneskiller, kontrollbunn */
+  --rule-light: #e4dccb; /* radskillere, barspor */
+  --tint: #eae3d5; /* radhover, innfelte paneler, callout-flate */
+  --tint-rule: #dcd3c1; /* linjer inne i et tintet panel */
+  --dash: #c9bfa9; /* logo-placeholder, nullinje, diagonal, skjemaramme */
+  --chart-grid: #e0d7c5; /* KUN rutenettet i kurvelabben */
+
+  /* semantikk — aldri dekorativt */
+  --teal: #0e4b47;
+  --vermillion: #b23a1b;
+
+  /* tooltip */
+  --tooltip-bg: #17150f;
+  --tooltip-fg: #f2ede4;
+  --tooltip-muted: #a8a091;
+
+  /* diverse */
+  --selection: #dce5e2;
+  --link-underline: #b6c7c3;
+
+  /* opasiteter på grafflater */
+  --area-op-hero: 0.12;
+  --area-op-lab: 0.13;
+  --bar-op: 0.85;
+
+  /* ---------------------------------------------------------------------- *
+   * Layout
+   * --------------------------------------------------------------------- */
+
+  /* Faktisk boksmodellhøyde på <header>: masthead 18+33+14 = 65px,
+   * nav 1+11+10+9+2 = 33px, headerens egen border-bottom 1px = 99px.
+   * Ett token, brukt både som headerens høyde-referanse og i
+   * calc(100vh - var(--header-h)) på hero. De kan ikke drifte fra hverandre. */
+  --header-h: 99px;
+
+  --shell-max: 1440px;
+  --shell-pad: 48px;
+  --shell-pad-mobil: 20px;
+
+  /* fontstakker — next/font setter --font-serif/--font-sans/--font-mono */
+  --serif: var(--font-serif), Georgia, "Times New Roman", serif;
+  --sans: var(--font-sans), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ========================================================================== *
+ * Globalt
+ * ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  /* Ingen runde hjørner i designet. Unntakene er navngitt: .rund (grafprikker,
+   * tegnforklaring). En klasse (0,1,0) slår denne regelen (0,0,0). */
+  border-radius: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(23, 21, 15, 0.045) 1px, transparent 1px);
+  background-size: 5px 5px;
+  color: var(--ink);
+  font: 400 15px/1.7 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+  border-bottom: 1px solid var(--link-underline);
+}
+
+a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+select,
+input {
+  font-family: inherit;
+  color: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--rule);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--tint);
+}
+
+/* Den eneste keyframen i hele appen. Brukes kun på kampradene i /verdi. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+}
+
+/* ========================================================================== *
+ * Layoutprimitiver
+ * ========================================================================== */
+
+.app-ground {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-ground > main {
+  flex: 1 0 auto;
+}
+
+.shell {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--shell-pad);
+}
+
+main {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--shell-pad) 96px;
+}
+
+/*
+ * To-kolonners splitt (§B.5). Venstre kolonne bærer skillelinja som
+ * border-right; aldri et eget element, aldri gap.
+ *
+ * Bruk:
+ *   <div className="split" style={{ '--split-cols': 'minmax(300px,.62fr) minmax(0,1fr)',
+ *                                   '--split-gutter': '44px' } as React.CSSProperties}>
+ * Under 768px stables den automatisk og border-right blir border-bottom.
+ */
+.split {
+  display: grid;
+  gap: 0;
+  grid-template-columns: var(--split-cols, minmax(0, 1fr) minmax(0, 1fr));
+}
+
+.split > :first-child {
+  border-right: 1px solid var(--rule);
+  padding-right: var(--split-gutter, 44px);
+}
+
+.split > :last-child {
+  padding-left: var(--split-gutter, 44px);
+}
+
+/* ========================================================================== *
+ * Typografiskala (§A.4). Klassenavnene er kontrakten mot skjermagentene.
+ * ========================================================================== */
+
+.t-kicker {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.t-screen-title {
+  font: 400 38px/1.05 var(--serif);
+  color: var(--ink);
+  margin: 0;
+}
+
+.t-hero-headline {
+  font: 400 clamp(38px, 4.4vw, 62px) / 1.05 var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* §H.3: README-ens clamp vinner. Prototypens faste 52px er en artefakt av
+ * smal fangstbredde; designbredden er 1440px. */
+.t-hero-figure {
+  font: 400 clamp(52px, 6vw, 88px) / 0.85 var(--serif);
+  letter-spacing: -0.03em;
+}
+
+.t-calib-figure {
+  font: 400 clamp(56px, 6vw, 82px) / 0.9 var(--serif);
+}
+
+.t-team-name-list {
+  font: 400 22px/1.12 var(--serif);
+  color: var(--ink);
+}
+
+.t-team-name-table {
+  font: 400 15px/1.2 var(--serif);
+  color: var(--ink);
+}
+
+.t-body {
+  font: 400 15px/1.7 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+.t-body-small {
+  font: 400 13px/1.6 var(--sans);
+  color: var(--body);
+}
+
+/* §H.11: 1.25 både på desktop og mobil. */
+.t-row-label {
+  font: 400 14.5px/1.25 var(--sans);
+  color: var(--ink);
+}
+
+.t-nav-item {
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.t-control-pill {
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.t-stat-label {
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.t-table-header {
+  font: 500 8.5px/1.3 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.t-table-figure {
+  font: 400 12.5px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.t-stat-figure {
+  font: 400 19px/1 var(--mono);
+  color: var(--ink);
+}
+
+.t-stat-figure-lg {
+  font: 400 24px/1 var(--mono);
+  color: var(--ink);
+}
+
+.t-axis-label {
+  font: 400 10px/1 var(--mono);
+  color: var(--faint);
+}
+
+/* Panelheading (Elo, Kampanalyse, Skyggelogg) — §A.5. */
+.t-panel-heading {
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Ordmerket i mastheaden — §A.5. Eksponert fordi Oversikt bruker samme snitt. */
+.t-wordmark {
+  font: 400 34px/0.9 var(--serif);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* Lastetilstand. Ingen spinner, ingen skjelettpuls — designet beveger seg ikke. */
+.laster {
+  font: 400 11px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ========================================================================== *
+ * Fargeklasser. Farge er presentasjon; formatterne returnerer aldri klassenavn.
+ * ========================================================================== */
+
+.c-ink {
+  color: var(--ink);
+}
+.c-body {
+  color: var(--body);
+}
+.c-muted {
+  color: var(--muted);
+}
+.c-faint {
+  color: var(--faint);
+}
+.c-teal {
+  color: var(--teal);
+}
+.c-vermillion {
+  color: var(--vermillion);
+}
+
+/* Eneste tillatte runde hjørner: grafprikker og tegnforklaringsprikker. */
+.rund {
+  border-radius: 50%;
+}
+
+/* Skjult for øyet, lest av skjermlesere. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================================================== *
+ * Responsivt — ett brytepunkt: 768px (§F)
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .shell {
+    padding: 0 var(--shell-pad-mobil);
+  }
+
+  main {
+    padding: 0 var(--shell-pad-mobil) 48px;
+  }
+
+  /* Bunnbaren er fixed; wrapperen bærer plassen slik at heller ikke footeren
+   * havner under den. */
+  .app-ground {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split > :first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding-right: 0;
+    padding-bottom: var(--split-gutter, 44px);
+  }
+
+  .split > :last-child {
+    padding-left: 0;
+    padding-top: var(--split-gutter, 44px);
+  }
+
+  .t-hero-figure {
+    font: 400 44px/0.9 var(--serif);
+    letter-spacing: -0.03em;
+  }
 }
