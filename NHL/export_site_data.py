@@ -10,7 +10,10 @@ workflowen og legger ferdig beregnet data i `nhl-frontend/public/data/`:
   value-report.json  - dagens/kommende kamper med modellodds og EV
   portfolio.json     - porteføljens tidsserie, sammendrag og bets
   matchups.json      - forhåndsberegnet prediksjon for alle lagkombinasjoner
-  meta.json          - når dataen ble generert + hvilke filer som finnes
+  elo.json           - Elo-ratings for de 32 aktive lagene (visningsforkortelser)
+  shadow.json        - skyggeloggen (OT/SO-spill vi bevisst ikke tar)
+  meta.json          - når dataen ble generert, hvilke filer som finnes og
+                       pipelinens EV-/odds-terskler
 
 Hver seksjon skrives uavhengig: feiler én av dem (f.eks. fordi NHL-APIet er
 nede), beholdes forrige versjon av den fila og resten oppdateres som normalt.
@@ -28,8 +31,16 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 
-from bet_tracker import build_portfolio_payload, load_history
+from bet_tracker import (
+    ALLOW_DRAW_BETS,
+    DEFAULT_MAX_ODDS,
+    DEFAULT_MIN_VALUE,
+    build_portfolio_payload,
+    load_history,
+    load_shadow,
+)
 from live.live_feature_builder import build_live_features
+from live.nhl_results import CURRENT_TEAMS
 from report_service import (
     PREDICT_GAMES_NEEDED,
     build_team_summary,
@@ -39,11 +50,12 @@ from report_service import (
     predict_rows,
 )
 from utils.feature_engineering import DEFAULT_WINDOWS
-from utils.team_alias import to_canonical
+from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "nhl-frontend" / "public" / "data"
+ELO_RATINGS_PATH = BASE_DIR / "models" / "elo_ratings.json"
 
 # Antall dager frem i tid value-boardet viser (frontend bruker samme horisont).
 DEFAULT_DAYS_AHEAD = 3
@@ -149,6 +161,58 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
     }
 
 
+def build_elo(generated_at: str) -> Dict[str, Any]:
+    """
+    Elo-ratings klare for visning.
+
+    Modellens tilstandsfil (`models/elo_ratings.json`) er kanonisk: den bruker
+    ARI for Utah og har fortsatt ratings for nedlagte franchiser (ATL, PHX).
+    Frontend skal ikke ha aliaslogikk, så oversettelsen skjer her:
+      - nøklene skrives med visningsforkortelse (ARI -> UTA)
+      - bare de 32 aktive lagene er med
+      - lagene ligger i rangert rekkefølge, høyest rating først
+    `config` og `meta` følger med uendret, så Elo-skjermen kan vise
+    parametrene og hvilken dato ratingene er oppdatert til.
+    """
+    payload = json.loads(ELO_RATINGS_PATH.read_text(encoding="utf-8"))
+    raw_ratings = payload.get("ratings") or {}
+
+    current = set(CURRENT_TEAMS)  # visningsforkortelser, inkl. UTA
+    rated = {}
+    for abbr, rating in raw_ratings.items():
+        display = to_display(abbr)
+        if display not in current:
+            continue  # ATL, PHX og andre historiske lag
+        rated[display] = float(rating)
+
+    if len(rated) < MIN_TEAMS_FOR_EXPORT:
+        raise RuntimeError(
+            f"Bare {len(rated)} aktive lag har Elo-rating (krever {MIN_TEAMS_FOR_EXPORT})"
+        )
+
+    ranked = dict(sorted(rated.items(), key=lambda kv: kv[1], reverse=True))
+
+    return {
+        "generated_at": generated_at,
+        "config": payload.get("config", {}),
+        "meta": payload.get("meta", {}),
+        # Sier fra at `ratings` bruker visningsforkortelser, ikke modellens
+        # kanoniske nøkler. Frontend skal aldri mappe om selv.
+        "display_keys": True,
+        "ratings": ranked,
+    }
+
+
+def build_shadow() -> List[Dict[str, Any]]:
+    """
+    Skyggeloggen: spill vi bevisst ikke tar (OT/SO), men følger videre.
+
+    Samme radform som `portfolio.json`s `bets[]` – `load_shadow` gjør den
+    samme typekonverteringen. Fila er normalt tom, og da er `[]` riktig svar.
+    """
+    return load_shadow()
+
+
 def main() -> int:
     output_dir = _output_dir()
     days = _days_ahead()
@@ -195,6 +259,8 @@ def main() -> int:
     run("teams", "teams.json", build_teams_section)
     run("value-report", "value-report.json", lambda: build_value_report(days, verbose=True))
     run("portfolio", "portfolio.json", lambda: build_portfolio_payload(load_history()))
+    run("elo", "elo.json", lambda: build_elo(generated_at))
+    run("shadow", "shadow.json", build_shadow)
 
     write_json(
         output_dir / "meta.json",
@@ -203,6 +269,12 @@ def main() -> int:
             "days_ahead": days,
             "files": sorted(written),
             "failed": sorted(failed),
+            # Pipelinens egne terskler. Frontend bruker dem som default og kan
+            # si fra når brukerens innstilling avviker – og forklare hvorfor
+            # OT/SO-raden er merket UTELATT.
+            "value_min": DEFAULT_MIN_VALUE,
+            "max_odds": DEFAULT_MAX_ODDS,
+            "allow_draw_bets": ALLOW_DRAW_BETS,
         },
     )
     print("  Skrev meta.json")

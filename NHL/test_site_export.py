@@ -13,6 +13,10 @@ den statiske sida:
   - NHL-APIet nede -> forrige JSON beholdes, seksjonen merkes i meta.json
   - delvis nede NHL-API -> for få lag/kamper til å erstatte god data
   - feature-bygging som feiler for de fleste lagpar -> samme beskyttelse
+  - elo.json skrives med visningsforkortelser (UTA) og bare aktive lag
+  - shadow.json takler en tom skyggelogg
+  - meta.json bærer pipelinens EV-/odds-terskler
+  - alle tre utfall logges, og gamle rader uten kolonnene overlever
 
 Kjøres direkte: `cd NHL && python test_site_export.py`
 """
@@ -201,6 +205,8 @@ def test_full_export(tmp: Path):
         "value-report.json",
         "portfolio.json",
         "matchups.json",
+        "elo.json",
+        "shadow.json",
         "meta.json",
     }
 
@@ -215,6 +221,29 @@ def test_full_export(tmp: Path):
     assert {t["abbreviation"] for t in teams} == set(matchups["teams"])
     assert files["meta.json"]["failed"] == []
     assert files["portfolio.json"]["summary"]["total_bets"] >= 0
+
+    # Nye filer skal ligge i meta.json.files, ellers finner ikke frontend dem.
+    assert {"elo.json", "shadow.json"} <= set(files["meta.json"]["files"])
+
+    elo = files["elo.json"]
+    assert "UTA" in elo["ratings"] and "ARI" not in elo["ratings"]
+    assert DEFUNCT.isdisjoint(elo["ratings"])
+    assert len(elo["ratings"]) == 32
+    assert elo["display_keys"] is True
+    assert elo["config"]["base_rating"] and elo["meta"]["through"]
+    # Rangert liste: høyeste rating først.
+    values = list(elo["ratings"].values())
+    assert values == sorted(values, reverse=True)
+
+    assert isinstance(files["shadow.json"], list)
+
+    # Pipelinens terskler, så frontend slipper å gjette dem.
+    import bet_tracker as bt
+
+    meta = files["meta.json"]
+    assert meta["value_min"] == bt.DEFAULT_MIN_VALUE
+    assert meta["max_odds"] == bt.DEFAULT_MAX_ODDS
+    assert meta["allow_draw_bets"] == bt.ALLOW_DRAW_BETS
 
 
 def test_export_keeps_previous_files_when_nhl_api_is_down(tmp: Path):
@@ -407,6 +436,158 @@ def test_season_column_and_portfolio_filtering():
     assert bt.build_portfolio_payload(legacy)["season"] == "2025-26"
 
 
+def test_elo_export_uses_display_abbreviations():
+    """
+    Aliasingen skjer i eksport-steget, ikke i frontend: modellens tilstandsfil
+    bruker ARI og har fortsatt nedlagte franchiser, `elo.json` gjør ikke.
+    """
+    import export_site_data as ex
+
+    elo = ex.build_elo("2026-07-31T00:00:00+00:00")
+
+    assert "UTA" in elo["ratings"]
+    assert "ARI" not in elo["ratings"]
+    assert DEFUNCT.isdisjoint(elo["ratings"])
+    assert len(elo["ratings"]) == 32
+
+    # Tilstandsfila skal være urørt – der heter Utah fortsatt ARI.
+    raw = json.loads(ex.ELO_RATINGS_PATH.read_text(encoding="utf-8"))
+    assert "ARI" in raw["ratings"] and "UTA" not in raw["ratings"]
+
+    # UTA-verdien er ARI-verdien, ikke en ny beregning.
+    assert elo["ratings"]["UTA"] == raw["ratings"]["ARI"]
+
+    # config/meta følger uendret med, og flagget sier at nøklene er visningsnavn.
+    assert elo["config"] == raw["config"] and elo["meta"] == raw["meta"]
+    assert elo["display_keys"] is True
+
+    values = list(elo["ratings"].values())
+    assert values == sorted(values, reverse=True)
+
+
+def test_shadow_export_survives_an_empty_ledger(tmp: Path):
+    """
+    `bet_shadow.csv` er tom utenfor sesong. Da skal eksporten gi [] – ikke
+    krasje, og ikke droppe fila.
+    """
+    import bet_tracker as bt
+    import export_site_data as ex
+
+    # Repoets egen (tomme) skyggelogg.
+    assert ex.build_shadow() == []
+
+    # Bare header, ingen rader.
+    empty = tmp / "bet_shadow.csv"
+    bt.save_shadow([], empty)
+    assert bt.load_shadow(empty) == []
+
+    # Med en rad skal formen matche portfolio.json sine bets[]: tall som tall.
+    row = bt._build_bet_entry(
+        {
+            "best_value": "home",
+            "date": "2026-10-10",
+            "start_time": "2026-10-10T18:00:00+00:00",
+            "home_abbr": "BOS",
+            "away_abbr": "MTL",
+            "event_id": "1",
+            "odds_home": 2.0,
+            "odds_draw": 3.9,
+            "odds_away": 3.5,
+            "model_home_win": 0.55,
+            "implied_home_prob": 0.5,
+            "value_home": 0.1,
+        },
+        100.0,
+    )
+    bt.save_shadow([row], empty)
+    loaded = bt.load_shadow(empty)
+    assert len(loaded) == 1
+    for field in ("odds", "model_prob", "implied_prob", "value", "stake", "payout", "profit"):
+        assert isinstance(loaded[0][field], float), field
+    assert json.dumps(loaded)  # må være serialiserbar som den er
+
+
+def test_bet_entry_logs_all_three_outcomes(tmp: Path):
+    """
+    PROBLEMS.md funn 02: bare det spilte utfallet ble logget, så odds og EV for
+    de to andre var borte for alltid. Nå lagres hele markedsbildet – med samme
+    feltnavn som value-rapporten bruker.
+    """
+    import bet_tracker as bt
+
+    game = {
+        "best_value": "home",
+        "date": "2026-10-10",
+        "start_time": "2026-10-10T18:00:00+00:00",
+        "home_abbr": "BOS",
+        "away_abbr": "MTL",
+        "event_id": "1",
+        "odds_home": 2.0,
+        "odds_draw": 3.9,
+        "odds_away": 3.5,
+        "model_home_win": 0.55,
+        "model_draw": 0.2,
+        "model_away_win": 0.25,
+        "implied_home_prob": 0.5,
+        "implied_draw_prob": 0.25641,
+        "implied_away_prob": 0.28571,
+        "value_home": 0.1,
+        "value_draw": -0.22,
+        "value_away": -0.125,
+    }
+
+    entry = bt._build_bet_entry(game, 100.0)
+    for field in bt.OUTCOME_FIELDS:
+        assert entry[field] is not None, field
+    assert (entry["odds_home"], entry["odds_draw"], entry["odds_away"]) == (2.0, 3.9, 3.5)
+    assert (entry["model_home_win"], entry["model_draw"], entry["model_away_win"]) == (0.55, 0.2, 0.25)
+    assert (entry["value_home"], entry["value_draw"], entry["value_away"]) == (0.1, -0.22, -0.125)
+
+    # De gamle enkeltfeltene er fortsatt det spilte utfallet.
+    assert entry["odds"] == entry["odds_home"]
+    assert entry["model_prob"] == entry["model_home_win"]
+    assert entry["value"] == entry["value_home"]
+
+    # Under terskel og skygge bruker samme radbygger -> samme felter.
+    assert set(bt._build_candidate_entry(game)) == set(bt.BET_FIELDS)
+    assert set(entry) == set(bt.BET_FIELDS)
+
+
+def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
+    """
+    De 202 historiske radene har ikke de nye kolonnene. De skal kunne leses og
+    skrives uten å krasje, og uten at noe eksisterende felt endrer verdi.
+    """
+    import bet_tracker as bt
+
+    legacy_path = tmp / "bet_history.csv"
+    shutil.copy(bt.BET_HISTORY_PATH, legacy_path)
+
+    original_text = legacy_path.read_text(encoding="utf-8")
+    assert "value_home" not in original_text.splitlines()[0]  # gammel header
+
+    rows = bt.load_history(legacy_path)
+    assert rows, "fixturen skal ha rader"
+    for field in bt.OUTCOME_FIELDS:
+        assert rows[0][field] is None, field
+
+    bt.save_history(rows, legacy_path)
+    header = legacy_path.read_text(encoding="utf-8").splitlines()[0]
+    assert header.split(",") == bt.BET_FIELDS
+
+    reread = bt.load_history(legacy_path)
+    assert len(reread) == len(rows)
+    assert reread == rows
+
+    # Ingen av de gamle verdiene skal ha flyttet på seg.
+    for before, after in zip(rows, reread):
+        for field in ("date", "event_id", "selection", "odds", "profit", "status"):
+            assert before[field] == after[field], field
+
+    # Porteføljen bygges fortsatt av gamle rader.
+    assert bt.build_portfolio_payload(reread)["summary"]["total_bets"] > 0
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -419,6 +600,10 @@ def main() -> int:
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
+            ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, False),
+            ("three_outcome_fields", test_bet_entry_logs_all_three_outcomes, True),
+            ("legacy_round_trip", test_legacy_rows_survive_a_read_write_round_trip, True),
+            ("shadow_empty_ledger", test_shadow_export_survives_an_empty_ledger, True),
             ("full_export", test_full_export, True),
             ("keeps_previous_files", test_export_keeps_previous_files_when_nhl_api_is_down, True),
             ("rejects_partial_data", test_export_rejects_partial_team_data, True),
