@@ -1,0 +1,95 @@
+/*
+ * Slider for EV-terskelen. Designet har ingen kontroll for dette i prototypen,
+ * så den er bygget av de samme delene som resten: hårfine linjer, Mono-tall,
+ * ingen runde hjørner, ingen skygge.
+ */
+
+.blokk {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.etikett {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.rad {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spor {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 160px;
+  height: 4px;
+  background: var(--rule-light);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.spor::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 16px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.spor::-moz-range-thumb {
+  width: 3px;
+  height: 16px;
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.verdi {
+  font: 400 14px/1 var(--mono);
+  color: var(--ink);
+  min-width: 5ch;
+  text-align: right;
+}
+
+.note {
+  font: 400 11.5px/1.5 var(--mono);
+  color: var(--vermillion);
+  max-width: 46ch;
+}
+
+.tilbakestill {
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+}
+
+.tilbakestill:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+@media (max-width: 767px) {
+  .spor {
+    width: 100%;
+    min-width: 140px;
+    height: 44px;
+    background: none;
+  }
+
+  .rad {
+    width: 100%;
+  }
+}

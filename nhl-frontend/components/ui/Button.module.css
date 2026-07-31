@@ -1,0 +1,56 @@
+/* Outline-knapper (§E.3). Standard padding er 13px 20px (§H.5). */
+
+.knapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--btn-pad, 13px 20px);
+  font: 500 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--dash);
+  color: var(--body);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primary {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.primary:hover {
+  background: var(--teal);
+  color: var(--paper);
+  border-color: var(--teal);
+}
+
+.secondary {
+  border-color: var(--dash);
+  color: var(--body);
+}
+
+.secondary:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* Tredje, mindre variant: «⇅ Bytt» i Kampanalyse. */
+.compact {
+  padding: var(--btn-pad, 9px 13px);
+  border-color: var(--rule);
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.compact:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+@media (max-width: 767px) {
+  .knapp {
+    min-height: 44px;
+  }
+}

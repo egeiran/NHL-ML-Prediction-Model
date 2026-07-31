@@ -1,0 +1,26 @@
+/* Tagger: SPILL / NEI / UTELATT (§C.2). Kildestrengene er små bokstaver. */
+
+.tag {
+  display: inline-block;
+  font: 500 8.5px/1.5 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.spill {
+  color: var(--teal);
+  border-color: var(--teal);
+}
+
+.nei {
+  color: var(--muted);
+  border-color: var(--rule);
+}
+
+.utelatt {
+  color: var(--muted);
+  border-color: var(--rule);
+}
