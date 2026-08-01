@@ -83,12 +83,28 @@ body {
   padding: 0;
 }
 
+/*
+ * Rullefeltet er stylet (se `::-webkit-scrollbar` under), og et stylet rullefelt
+ * er klassisk, ikke overlagt: det spiser 10px av bredden. Uten reservert renne
+ * krymper hele `main` med 10px i det en side blir høyere enn vinduet, og siden
+ * skallet er sentrert flytter alt innhold seg 5px sidelengs. Det er nok til at
+ * to lagparinger på Kampanalyse måler ulikt bare fordi den ene har én
+ * formkamp mer. Renna reserveres derfor alltid.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: var(--paper);
   background-image: radial-gradient(rgba(23, 21, 15, 0.045) 1px, transparent 1px);
   background-size: 5px 5px;
   color: var(--ink);
   font: 400 15px/1.7 var(--sans);
+  /* Tall skal måle likt uansett hvilke sifre som står der. Alle tabellrader,
+   * kolonnetall og etiketter arver dette; det som ikke har tabulære sifre i
+   * fonten faller stille tilbake til proporsjonale. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 

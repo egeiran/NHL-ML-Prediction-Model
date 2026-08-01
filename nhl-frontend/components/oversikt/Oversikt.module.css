@@ -41,17 +41,16 @@
 
 /*
  * EV-terskelen styrer hero-overskriften («N spill over terskel»), ikke bare
- * /verdi, så kontrollen står her. Kolonne framfor rad, slik at avviksnotisen
- * legger seg under slideren i stedet for å presse overskriften.
+ * /verdi, så kontrollen står her.
  *
- * Etterstilt `.heroTopp` for å slå `.blokk` i EvTerskelSlider.module.css:
- * rekkefølgen mellom to CSS-moduler er ikke garantert, spesifisiteten er det.
+ * Oppsettet eies nå av `EvTerskelSlider` selv, og er likt på alle tre
+ * skjermene som viser kontrollen. Den gamle overstyringen her gjorde blokka til
+ * en kolonne med innholdsbredde, og det var nettopp innholdsbredden som fikk
+ * slideren til å hoppe 100px mot venstre i det avviksnotisen dukket opp.
+ * Hero-en trenger bare toppjustering mot overskriften.
  */
 .heroTopp .heroTerskel {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: 46ch;
+  align-self: start;
 }
 
 .heroFeil {

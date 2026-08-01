@@ -2,16 +2,33 @@
  * Slider for EV-terskelen. Designet har ingen kontroll for dette i prototypen,
  * så den er bygget av de samme delene som resten: hårfine linjer, Mono-tall,
  * ingen runde hjørner, ingen skygge.
+ *
+ * Blokka er en grid med to faste kolonner — notis til venstre, kontroll til
+ * høyre — nettopp fordi den står i en `space-between`-rad. Med innholdsbredde
+ * vokste blokka i det øyeblikket avviksnotisen dukket opp, og siden den er
+ * forankret i høyre kant sklei hele kontrollen mot venstre så snart terskelen
+ * gikk forbi pipelinens. Faste spor gir fast fotavtrykk: slideren ligger på
+ * samme piksel på 5 % og på 45 %.
  */
 
 .blokk {
-  display: flex;
+  /* Kolonnene er faste tall, ikke innhold. Det er hele poenget. */
+  --notis-bredde: 320px;
+  --spor-bredde: 160px;
+
+  display: grid;
+  grid-template-columns: var(--notis-bredde) auto;
   align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
 }
 
+/* Kontrollen står i kolonne 2, notisen i kolonne 1 — motsatt av
+ * DOM-rekkefølgen, som beholdes slik at tastaturet møter slideren først. */
 .etikett {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -23,12 +40,17 @@
   gap: 12px;
 }
 
+/*
+ * Elementet er 20px høyt, men sporet males som en 4px linje i midten med en
+ * gradient. Det gir et treffområde man kan sikte på, og en fokusring som rammer
+ * inn kontrollen i stedet for å legge seg som en tynn boks rundt en 4px strek.
+ */
 .spor {
   -webkit-appearance: none;
   appearance: none;
-  width: 160px;
-  height: 4px;
-  background: var(--rule-light);
+  width: var(--spor-bredde);
+  height: 20px;
+  background: linear-gradient(var(--rule-light), var(--rule-light)) center / 100% 4px no-repeat;
   border: 0;
   padding: 0;
   cursor: pointer;
@@ -54,17 +76,33 @@
   cursor: pointer;
 }
 
+/* «5 %» og «45 %» skal ta like mye plass. Mono, tabulære siffer, fast
+ * minstebredde og høyrekant gjør at slideren ikke merker ett siffer fra to. */
 .verdi {
   font: 400 14px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
   min-width: 5ch;
   text-align: right;
 }
 
 .note {
+  grid-column: 1;
+  grid-row: 1;
   font: 400 11.5px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
   color: var(--vermillion);
-  max-width: 46ch;
+  text-align: right;
+}
+
+/*
+ * Terskelen følger pipelinen: setningen rendres likevel, men usynlig. Da er
+ * høyden reservert av teksten selv — ingen hardkodet min-height som må
+ * vedlikeholdes hvis ordlyden endres — og `visibility: hidden` holder den unna
+ * både skjermleser og tabulator.
+ */
+.noteReservert {
+  visibility: hidden;
 }
 
 .tilbakestill {
@@ -81,12 +119,45 @@
   border-bottom-color: var(--ink);
 }
 
+/*
+ * Under 900px er det ikke plass til notis og kontroll ved siden av hverandre.
+ * Da stables de — kontrollen øverst, notisen under — men begge sporene er
+ * fortsatt faste, så kontrollen står i ro også her.
+ */
+@media (max-width: 899px) {
+  .blokk {
+    grid-template-columns: minmax(0, var(--notis-bredde));
+    justify-items: start;
+    gap: 10px;
+  }
+
+  .etikett {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .note {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+}
+
 @media (max-width: 767px) {
-  .spor {
+  .blokk {
+    --spor-bredde: 100%;
+
+    grid-template-columns: minmax(0, 1fr);
+    /* Må slå `justify-items: start` fra 899px-regelen: med `start` blir
+     * `.etikett` innholdsbred, og da faller sporet ned på sin egen min-width i
+     * stedet for å fylle raden. */
+    justify-items: stretch;
     width: 100%;
+  }
+
+  .spor {
     min-width: 140px;
     height: 44px;
-    background: none;
   }
 
   .rad {
