@@ -12,7 +12,7 @@
  * på det; forveksles de to blir både vindusnettoen og søylene feil.
  */
 
-import { LAG, lagNavn } from '@/lib/teams';
+import { erTall, evForUtfall, navnFor, overOddstak } from '@/lib/spill';
 import type { PortfolioPoint, ValueGame } from '@/types';
 
 /* -------------------------------------------------------------------------- */
@@ -160,17 +160,8 @@ export interface Spill {
     start: string | null;
     modellProb: number;
     odds: number;
-    /** `model_prob * odds − 1`. */
+    /** `value_*` når pipelinen har skrevet det, ellers `model_prob * odds − 1`. */
     ev: number;
-}
-
-function erTall(n: number | null | undefined): n is number {
-    return typeof n === 'number' && Number.isFinite(n);
-}
-
-/** Kjent forkortelse gir det fulle lagnavnet; ellers står navnet fra fila. */
-function navnFor(abbr: string | null | undefined, rå: string): string {
-    return abbr && LAG[abbr] ? lagNavn(abbr) : rå;
 }
 
 /**
@@ -181,8 +172,17 @@ function navnFor(abbr: string | null | undefined, rå: string): string {
  *
  * `evTerskel` SKAL komme fra `useEvTerskel()`. Leses den fra noe annet sted,
  * driver skjermene fra hverandre (DECISIONS punkt 6).
+ *
+ * `maxOdds` er `meta.json:max_odds`. Pipelinen krever `odds < max_odds`
+ * (`NHL/bet_tracker.py`), så uten den kunne «Dagens spill» vise et utfall med
+ * odds 4,5 og EV 0,30 som `bet_history.csv` aldri får. Utelates argumentet,
+ * gjelder ingen grense — send den alltid inn når `meta` er lastet.
  */
-export function finnSpill(kamper: readonly ValueGame[], evTerskel: number): Spill[] {
+export function finnSpill(
+    kamper: readonly ValueGame[],
+    evTerskel: number,
+    maxOdds?: number | null,
+): Spill[] {
     const ut: Spill[] = [];
 
     for (const k of kamper) {
@@ -196,6 +196,7 @@ export function finnSpill(kamper: readonly ValueGame[], evTerskel: number): Spil
                 motstander: navnFor(borteAbbr, k.away),
                 prob: k.model_home_win,
                 odds: k.odds_home,
+                verdi: k.value_home,
             },
             {
                 side: 'borte' as const,
@@ -204,13 +205,15 @@ export function finnSpill(kamper: readonly ValueGame[], evTerskel: number): Spil
                 motstander: navnFor(hjemmeAbbr, k.home),
                 prob: k.model_away_win,
                 odds: k.odds_away,
+                verdi: k.value_away,
             },
         ];
 
         for (const c of kandidater) {
             if (!erTall(c.prob) || !erTall(c.odds) || c.odds <= 0) continue;
-            const ev = c.prob * c.odds - 1;
-            if (ev < evTerskel) continue;
+            if (overOddstak(c.odds, maxOdds)) continue;
+            const ev = evForUtfall(c.verdi, c.prob, c.odds);
+            if (ev === null || ev < evTerskel) continue;
             ut.push({
                 nøkkel: `${k.event_id}-${c.side}`,
                 abbr: c.abbr ?? c.rå,

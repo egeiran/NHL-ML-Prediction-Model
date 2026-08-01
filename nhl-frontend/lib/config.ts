@@ -68,9 +68,15 @@ export interface EvTerskelKontekst {
     avviker: boolean;
     /** Tilbake til pipelinens terskel, og glem den lagrede verdien. */
     tilbakestill: () => void;
-    /** `false` under første render (før localStorage er lest). */
-    klar: boolean;
 }
+
+/*
+ * Det fantes en `klar: boolean` her — «localStorage er lest» — men ingen skjerm
+ * leste den, så den var en løs tråd som så ut som en garanti. Serversnapshotet
+ * er `null`, altså pipelinens terskel, og den er riktig for de aller fleste
+ * brukerne; en bruker med lagret avvik ser ett kort blink. Trengs et flagg for
+ * å utsette rendringen, legges det tilbake sammen med kallstedet som bruker det.
+ */
 
 const Kontekst = createContext<EvTerskelKontekst | null>(null);
 
@@ -139,14 +145,10 @@ function settLagret(verdi: number | null): void {
     for (const l of lyttere) l();
 }
 
-const sant = () => true;
-const usant = () => false;
-
 export function EvTerskelProvider({ children }: { children: ReactNode }): ReactNode {
     const meta = useMeta();
     // `null` = brukeren har ikke valgt noe; da følger vi pipelinen.
     const valgt = useSyncExternalStore(abonner, klientSnapshot, serverSnapshot);
-    const klar = useSyncExternalStore(abonner, sant, usant);
 
     const pipelineTerskel = useMemo(() => {
         const fraMeta = meta.data?.value_min;
@@ -172,9 +174,8 @@ export function EvTerskelProvider({ children }: { children: ReactNode }): ReactN
             pipelineTerskel,
             avviker: avvikerFraPipeline(evTerskel, pipelineTerskel),
             tilbakestill,
-            klar,
         }),
-        [evTerskel, setEvTerskel, pipelineTerskel, tilbakestill, klar],
+        [evTerskel, setEvTerskel, pipelineTerskel, tilbakestill],
     );
 
     return createElement(Kontekst.Provider, { value: verdi }, children);

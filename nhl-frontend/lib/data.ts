@@ -127,16 +127,22 @@ export function fetchShadow(): Promise<ShadowEntry[]> {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Slår opp en paring i `matchups.json`: først `"HOME-AWAY"`, deretter
- * `"AWAY-HOME"`. Returnerer `null` når ingen av dem finnes — kalleren bestemmer
- * fallback (Kampanalyse bruker `{h:.33, o:.25, a:.42}` og en note).
+ * Slår opp en paring i `matchups.json` på `"HOME-AWAY"`.
+ *
+ * **Ingen `"AWAY-HOME"`-fallback.** Nøklene i `matchups.json` er ordnede par:
+ * fila har alle 32×31 = 992 kombinasjoner, så oppslaget bommer bare hvis fila
+ * er ufullstendig. Et omvendt oppslag ville gitt `prob_home_win` fra oppsettet
+ * der det *andre* laget hadde hjemmefordelen, og merket den med `homeTeam` —
+ * altså speilvendte priser uten varsel. Returnerer heller `null`, og kalleren
+ * bestemmer fallback (Kampanalyse bruker `{h:.33, o:.25, a:.42}` og en note om
+ * at det ikke finnes en lagret modellpris).
  */
 export function slåOppParing(
     data: MatchupsData,
     homeTeam: string,
     awayTeam: string,
 ): PredictionResponse | null {
-    const matchup = data.matchups[`${homeTeam}-${awayTeam}`] ?? data.matchups[`${awayTeam}-${homeTeam}`];
+    const matchup = data.matchups[`${homeTeam}-${awayTeam}`];
     const home = data.teams[homeTeam];
     const away = data.teams[awayTeam];
     if (!matchup || !home || !away) return null;

@@ -2,20 +2,36 @@
  * Rene utregninger for «Verdi i dag». Ingen React, ingen formatering — bare
  * tallene skjermen skal vise.
  *
- * Formlene står ordrett i `docs/blalinja/DECISIONS.md`:
+ * Formlene og tagge-logikken ligger i `lib/spill.ts` — Kampanalyse bruker de
+ * samme. Her står bare det som er Verdi-skjermens eget: radoppbyggingen,
+ * sorteringen og kampkonteksten.
  *
- *     implied_prob = 1 / odds
- *     EV           = model_prob * odds - 1
- *     is_value     = EV >= evTerskel
- *
- * `value_*`-feltene i `value-report.json` leses IKKE som EV: pipelinen har
- * historisk skrevet flere ulike definisjoner der, og DECISIONS er tydelig på at
- * EV regnes fra modellsannsynlighet og odds. Mangler oddsen, finnes ingen EV.
+ * EV leses fra `value_*` når feltet finnes. Det er samme definisjon som
+ * formelen (PROBLEMS.md melder den gamle tvetydigheten som lukket), men regnet
+ * fra den urundede sannsynligheten — se `evForUtfall` i `lib/spill.ts`.
  */
 
 import type { TagVariant } from '@/components/ui';
+import {
+    erTall,
+    evAv,
+    evForUtfall,
+    evKlasse,
+    markedAv,
+    navnFor,
+    stolpeBredde,
+    tagg,
+    utelattGrunn,
+    type UtelattGrunn,
+} from '@/lib/spill';
 import { LAG } from '@/lib/teams';
 import type { EloData, MatchupsData, ValueGame } from '@/types';
+
+/**
+ * Videresendt fra `lib/spill.ts` så kallstedene i denne mappen slipper å vite
+ * hvor de bor. `evAv`/`markedAv` er samme funksjoner som før.
+ */
+export { evAv, evKlasse, markedAv, stolpeBredde, type UtelattGrunn };
 
 export type UtfallNøkkel = 'away' | 'draw' | 'home';
 
@@ -28,11 +44,17 @@ export interface Utfall {
     /** Markedets implisitte sannsynlighet som brøk. */
     marked: number | null;
     odds: number | null;
-    /** `model_prob * odds - 1`. */
+    /** `value_*` når pipelinen har skrevet det, ellers `model_prob * odds - 1`. */
     ev: number | null;
     tagg: TagVariant;
     /** OT/SO — alltid `UTELATT`, alltid halv opasitet. */
     erUavgjort: boolean;
+    /**
+     * Hvorfor utfallet er `UTELATT`: `uavgjort` (OT/SO) eller `oddstak`
+     * (odds ≥ `meta.max_odds`, altså over pipelinens grense). `null` når
+     * utfallet vurderes på EV.
+     */
+    utelattGrunn: UtelattGrunn | null;
 }
 
 export interface Kamp {
@@ -60,23 +82,6 @@ export interface KampKontekst {
     form: string | null;
 }
 
-function erTall(n: number | null | undefined): n is number {
-    return typeof n === 'number' && Number.isFinite(n);
-}
-
-/** `EV = model_prob * odds - 1`. `null` når ett av leddene mangler. */
-export function evAv(modell: number | null, odds: number | null): number | null {
-    if (!erTall(modell) || !erTall(odds)) return null;
-    return modell * odds - 1;
-}
-
-/** Markedets implisitte sannsynlighet: feltet fra pipelinen, ellers `1 / odds`. */
-export function markedAv(implisitt: number | null | undefined, odds: number | null): number | null {
-    if (erTall(implisitt)) return implisitt;
-    if (erTall(odds) && odds > 0) return 1 / odds;
-    return null;
-}
-
 function tall(n: number | null | undefined): number | null {
     return erTall(n) ? n : null;
 }
@@ -98,18 +103,18 @@ export function finnAbbr(abbr: string | null | undefined, navn: string): string 
     return rent;
 }
 
-/** Fullt lagnavn for en forkortelse som kan være ukjent. */
-function navnFor(abbr: string, fallback: string): string {
-    return LAG[abbr]?.navn ?? (fallback.trim() !== '' ? fallback.trim() : abbr);
-}
-
-function tagg(ev: number | null, evTerskel: number, erUavgjort: boolean): TagVariant {
-    if (erUavgjort) return 'utelatt';
-    return ev !== null && ev >= evTerskel ? 'spill' : 'nei';
-}
-
-/** Bygger de tre utfallsradene i rekkefølgen borte · OT/SO · hjemme. */
-export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
+/**
+ * Bygger de tre utfallsradene i rekkefølgen borte · OT/SO · hjemme.
+ *
+ * `maxOdds` er `meta.json:max_odds` — pipelinens oddstak. Utelates den, gjelder
+ * ingen grense, og skjermen kan komme til å tagge et utfall `SPILL` som
+ * `bet_history.csv` aldri får. Send den alltid inn når `meta` er lastet.
+ */
+export function byggKamp(
+    spill: ValueGame,
+    evTerskel: number,
+    maxOdds?: number | null,
+): Kamp {
     const hjemme = finnAbbr(spill.home_abbr, spill.home);
     const borte = finnAbbr(spill.away_abbr, spill.away);
     const hjemmeNavn = navnFor(hjemme, spill.home);
@@ -121,6 +126,7 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
         modell: number | null;
         odds: number | null;
         implisitt: number | null | undefined;
+        verdi: number | null | undefined;
     }[] = [
         {
             nøkkel: 'away',
@@ -128,6 +134,7 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
             modell: tall(spill.model_away_win),
             odds: tall(spill.odds_away),
             implisitt: spill.implied_away_prob,
+            verdi: spill.value_away,
         },
         {
             nøkkel: 'draw',
@@ -135,6 +142,7 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
             modell: tall(spill.model_draw),
             odds: tall(spill.odds_draw),
             implisitt: spill.implied_draw_prob,
+            verdi: spill.value_draw,
         },
         {
             nøkkel: 'home',
@@ -142,12 +150,14 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
             modell: tall(spill.model_home_win),
             odds: tall(spill.odds_home),
             implisitt: spill.implied_home_prob,
+            verdi: spill.value_home,
         },
     ];
 
     const utfall: Utfall[] = rå.map((r) => {
         const erUavgjort = r.nøkkel === 'draw';
-        const ev = evAv(r.modell, r.odds);
+        const ev = evForUtfall(r.verdi, r.modell, r.odds);
+        const grunn = utelattGrunn(erUavgjort, r.odds, maxOdds);
         return {
             nøkkel: r.nøkkel,
             etikett: r.etikett,
@@ -155,8 +165,9 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
             marked: markedAv(r.implisitt, r.odds),
             odds: r.odds,
             ev,
-            tagg: tagg(ev, evTerskel, erUavgjort),
+            tagg: tagg(ev, evTerskel, grunn),
             erUavgjort,
+            utelattGrunn: grunn,
         };
     });
 
@@ -173,10 +184,18 @@ export function byggKamp(spill: ValueGame, evTerskel: number): Kamp {
     };
 }
 
-/** Alle kampene, sortert på avkast og deretter kamp-id, slik at rekkefølgen er stabil. */
-export function byggKamper(rapport: readonly ValueGame[], evTerskel: number): Kamp[] {
+/**
+ * Alle kampene, sortert på avkast og deretter kamp-id, slik at rekkefølgen er
+ * stabil. `maxOdds` er `meta.json:max_odds` — send den inn så skjermen ikke
+ * tagger spill pipelinen ville forkastet.
+ */
+export function byggKamper(
+    rapport: readonly ValueGame[],
+    evTerskel: number,
+    maxOdds?: number | null,
+): Kamp[] {
     return rapport
-        .map((g) => byggKamp(g, evTerskel))
+        .map((g) => byggKamp(g, evTerskel, maxOdds))
         .sort((a, b) => {
             const av = a.start ?? a.dato;
             const bv = b.start ?? b.dato;
@@ -220,17 +239,4 @@ export function kampKontekst(
         eloDiff: eloBorte !== null && eloHjemme !== null ? eloHjemme - eloBorte : null,
         form: formBorte !== null && formHjemme !== null ? `${formBorte} / ${formHjemme}` : null,
     };
-}
-
-/** Bredden på et sannsynlighetslag i stolpen. */
-export function stolpeBredde(p: number | null): string {
-    if (!erTall(p)) return '0%';
-    return `${Math.min(Math.max(p, 0), 1) * 100}%`;
-}
-
-/** EV-farge: over terskel → teal, positiv → ink, ellers muted. */
-export function evKlasse(ev: number | null, evTerskel: number): string {
-    if (ev === null) return 'c-muted';
-    if (ev >= evTerskel) return 'c-teal';
-    return ev > 0 ? 'c-ink' : 'c-muted';
 }

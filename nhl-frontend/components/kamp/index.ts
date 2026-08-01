@@ -4,9 +4,9 @@ export { Skjema, type SkjemaProps, type LagFelt, type OddsFelt } from './Skjema'
 export { Utfallskolonne, type UtfallskolonneProps } from './Utfallskolonne';
 export {
     byggAnalyse,
-    evAv,
+    evAvHåndskrevet,
     evKlasse,
-    markedAv,
+    markedAvHåndskrevet,
     stolpeBredde,
     tolkOdds,
     FALLBACK_PRIS,
@@ -16,6 +16,7 @@ export {
     type FormRad,
     type Utfall,
     type UtfallNøkkel,
+    type UtelattGrunn,
     type Valg,
 } from './beregn';
 export { fraQuery, tilQuery, NØKLER, STANDARD_VALG, type Søk } from './url';

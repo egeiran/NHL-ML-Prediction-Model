@@ -20,7 +20,7 @@
   color: var(--ink);
 }
 
-.fane[aria-current='true'] {
+.fane[aria-pressed='true'] {
   border-bottom-color: var(--ink);
   color: var(--ink);
 }

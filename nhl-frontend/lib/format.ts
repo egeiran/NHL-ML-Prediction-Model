@@ -41,7 +41,12 @@ const MND_LANG = [
     'desember',
 ];
 
-const MND = [
+/**
+ * Korte månedsnavn, indeksert 0–11. Eksportert fordi akseetikettene i
+ * `components/chart/geometry.ts` trenger nøyaktig de samme strengene — to lister
+ * er én liste for mye.
+ */
+export const MND = [
     'jan',
     'feb',
     'mar',

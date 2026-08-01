@@ -1,5 +1,7 @@
 /**
- * Delt SVG-geometri (§D). Rene funksjoner, ingen React, ingen avhengigheter.
+ * Delt SVG-geometri (§D). Rene funksjoner, ingen React, ingen npm-avhengigheter
+ * — eneste import er månedsnavnene fra `lib/format`, som akseetikettene deler
+ * med datoformattererne.
  *
  * De fire graftypene deler skala, path-bygging og hover-matematikk; det eneste
  * som skiller dem er viewBox og padding. Derfor er alt her parametrisert på
@@ -7,6 +9,8 @@
  * (§H.1 — prototypens paddede formel er den riktige, README-ens gjelder bare
  * hero-kurven fordi den ikke har horisontal padding).
  */
+
+import { MND } from '@/lib/format';
 
 export interface SkalaOpsjoner {
     /** viewBox-bredde. Hero 1200 · lab 1000 · sparkline 320. */
@@ -252,21 +256,6 @@ export interface MånedsTick {
     label: string;
 }
 
-const MND_KORT = [
-    'jan',
-    'feb',
-    'mar',
-    'apr',
-    'mai',
-    'jun',
-    'jul',
-    'aug',
-    'sep',
-    'okt',
-    'nov',
-    'des',
-];
-
 /**
  * X-etikettene i kurvelabben: én etikett hver gang måneden skifter.
  * `datoer` er `YYYY-MM-DD`-strenger i serierekkefølge.
@@ -279,7 +268,7 @@ export function månedsTicks(datoer: readonly string[]): MånedsTick[] {
         if (!m || m === forrige) continue;
         forrige = m;
         const nr = Number(m.slice(5, 7));
-        if (Number.isFinite(nr) && nr >= 1 && nr <= 12) ut.push({ i, label: MND_KORT[nr - 1] });
+        if (Number.isFinite(nr) && nr >= 1 && nr <= 12) ut.push({ i, label: MND[nr - 1] });
     }
     return ut;
 }

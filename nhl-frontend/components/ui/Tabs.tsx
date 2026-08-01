@@ -11,6 +11,11 @@
  *       options={[{ value: 'pnl', label: 'Daglig P&L' }, …]}
  *       onChange={setModus}
  *     />
+ *
+ * Aktiv fane markeres med `aria-pressed`, som også er selektoren i CSS-en —
+ * samme mønster som `PillGroup`. `aria-current` ble byttet ut fordi den er en
+ * enum-attributt: `aria-current="false"` på hver inaktive fane er støy for
+ * skjermlesere, og to tilnærmet like kontroller bør ikke annonseres ulikt.
  */
 
 import styles from './Tabs.module.css';
@@ -36,7 +41,7 @@ export function Tabs<V extends string>({ options, value, onChange, label, classN
                     key={o.value}
                     type="button"
                     className={styles.fane}
-                    aria-current={o.value === value}
+                    aria-pressed={o.value === value}
                     onClick={() => onChange(o.value)}
                 >
                     {o.label}
