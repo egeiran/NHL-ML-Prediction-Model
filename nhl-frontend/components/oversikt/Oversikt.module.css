@@ -39,6 +39,21 @@
   margin-top: 16px;
 }
 
+/*
+ * EV-terskelen styrer hero-overskriften («N spill over terskel»), ikke bare
+ * /verdi, så kontrollen står her. Kolonne framfor rad, slik at avviksnotisen
+ * legger seg under slideren i stedet for å presse overskriften.
+ *
+ * Etterstilt `.heroTopp` for å slå `.blokk` i EvTerskelSlider.module.css:
+ * rekkefølgen mellom to CSS-moduler er ikke garantert, spesifisiteten er det.
+ */
+.heroTopp .heroTerskel {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 46ch;
+}
+
 .heroFeil {
   margin-bottom: 24px;
 }
@@ -223,6 +238,14 @@
   align-items: baseline;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+/* Figuren og «kr siden start» hører sammen: mellomrommet er en NBSP i markupen
+ * (så kopiert tekst blir riktig), og gapet her er redusert tilsvarende. */
+.stortMed {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .stortSuffiks {

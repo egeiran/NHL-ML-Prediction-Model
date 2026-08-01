@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react';
 import { Tag } from '@/components/ui';
 import { MANGLER, dl, klokke, odds as fmtOdds, pc, sgn, sgnRaw } from '@/lib/format';
+import { utelattTekst } from '@/lib/spill';
 import { evKlasse, type Kamp, type KampKontekst, type Utfall } from './beregn';
 import { Stolpe } from './Stolpe';
 import styles from './Verdi.module.css';
@@ -44,12 +45,18 @@ function DetaljTall({
 }
 
 function DetaljUtfall({ utfall, evTerskel }: { utfall: Utfall; evTerskel: number }) {
+    // Dempingen gjelder begge utelatelsesgrunnene; teksten skiller OT/SO fra en
+    // odds pipelinen ville forkastet.
+    const grunn = utelattTekst(utfall.utelattGrunn);
     return (
-        <div className={`${styles.detaljUtfall}${utfall.erUavgjort ? ` ${styles.utfallDempet}` : ''}`}>
+        <div
+            className={`${styles.detaljUtfall}${utfall.utelattGrunn !== null ? ` ${styles.utfallDempet}` : ''}`}
+        >
             <div className={styles.detaljTopp}>
                 <span className="t-row-label">{utfall.etikett}</span>
                 <Tag variant={utfall.tagg} />
             </div>
+            {grunn !== null ? <span className={styles.utelattNotis}>{grunn}</span> : null}
             <Stolpe
                 marked={utfall.marked}
                 modell={utfall.modell}

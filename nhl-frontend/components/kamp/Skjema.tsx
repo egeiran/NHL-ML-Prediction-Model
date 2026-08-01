@@ -9,14 +9,27 @@
  *
  * Hver kontroll har en ekte `<label htmlFor>`. Oddsradene har etiketten til
  * venstre og feltet til høyre, så innpakning ville brutt oppsettet.
+ *
+ * Oddsfeltene er `type="text" inputMode="decimal"`, ikke `type="number"`. En
+ * `number`-input gir tom streng fra `.value` når innholdet ikke er en gyldig
+ * flyttallsstreng, så «2,4» ble enten spist eller tømte feltet — avhengig av
+ * nettleser og locale — og komma-støtten i `tolkOdds` var uvirksom. `min`/`step`
+ * gjorde heller ingenting: det finnes ingen `<form>` og ingen validering som
+ * leser dem, så tilstanden «odds ≤ 1 → EV −100 %» som `beregn.ts` implementerer
+ * var uoppnåelig fra tastaturet. Nå er `tolkOdds` eneste kilde til sannhet, og
+ * det som sto i `min` står som hjelpetekst via `aria-describedby`.
  */
 
+import { pc } from '@/lib/format';
 import { lagEtikett } from '@/lib/teams';
 import type { Valg } from './beregn';
 import styles from './Kamp.module.css';
 
 export type LagFelt = 'home' | 'away';
 export type OddsFelt = 'oh' | 'od' | 'oa';
+
+/** Én hjelpetekst for alle tre feltene — de har samme regler. */
+const ODDS_HJELP_ID = 'kamp-odds-hjelp';
 
 export interface SkjemaProps {
     /** Forkortelsene som skal ligge i nedtrekkene, ferdig sortert. */
@@ -114,10 +127,10 @@ export function Skjema({ lag, valg, onLag, onOdds, onBytt, deaktivert = false }:
                             <input
                                 id={`kamp-odds-${rad.felt}`}
                                 className={styles.oddsFelt}
-                                type="number"
-                                step="0.05"
-                                min="1.01"
+                                type="text"
                                 inputMode="decimal"
+                                autoComplete="off"
+                                aria-describedby={ODDS_HJELP_ID}
                                 value={valg[rad.felt]}
                                 disabled={deaktivert}
                                 onChange={(e) => onOdds(rad.felt, e.target.value)}
@@ -125,6 +138,9 @@ export function Skjema({ lag, valg, onLag, onOdds, onBytt, deaktivert = false }:
                         </div>
                     ))}
                 </div>
+                <p id={ODDS_HJELP_ID} className={styles.oddsHjelp}>
+                    {`Desimalodds. Både komma og punktum virker som desimalskille. Odds på 1 eller lavere gir EV ${pc(-1, 0)}.`}
+                </p>
             </div>
         </>
     );

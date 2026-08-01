@@ -8,7 +8,7 @@
 
 import { Laster } from '@/components/ui';
 import { ds, kr, odds as fmtOdds } from '@/lib/format';
-import { lagNavn } from '@/lib/teams';
+import { kampTekst } from '@/lib/spill';
 import type { BetEntry } from '@/types';
 import styles from './Oversikt.module.css';
 
@@ -21,11 +21,19 @@ function sideEtikett(seleksjon: string): string {
     return 'OT/SO';
 }
 
-function kampTekst(b: BetEntry): string {
-    const borte = b.away_abbr ? lagNavn(b.away_abbr) : '';
-    const hjemme = b.home_abbr ? lagNavn(b.home_abbr) : '';
-    if (!borte || !hjemme) return b.event_id;
-    return `${borte} hos ${hjemme}`;
+/** Millisekunder for radens kamptidspunkt. Datoen alene er nok når `start_time` mangler. */
+function tid(b: BetEntry): number {
+    if (b.start_time) {
+        const t = Date.parse(b.start_time);
+        if (!Number.isNaN(t)) return t;
+    }
+    const d = Date.parse(`${b.date}T00:00:00Z`);
+    return Number.isNaN(d) ? 0 : d;
+}
+
+/** Nyeste først, med `event_id` som siste, deterministiske skille. */
+function nyesteFørst(a: BetEntry, b: BetEntry): number {
+    return tid(b) - tid(a) || (a.event_id < b.event_id ? -1 : a.event_id > b.event_id ? 1 : 0);
 }
 
 export interface SisteAvgjorteProps {
@@ -35,10 +43,15 @@ export interface SisteAvgjorteProps {
 
 export function SisteAvgjorte({ bets, laster }: SisteAvgjorteProps) {
     // Seksjonen heter «Siste avgjorte», så åpne spill hører ikke hjemme her.
+    //
+    // Sorteringen er eksplisitt. `bets[]` er kronologisk stigende i dagens fil,
+    // men «nyeste ni» skal ikke være en egenskap ved filrekkefølgen — Historikk
+    // sorterer selv, og denne lista viser de samme radene.
     const rader = bets
         .filter((b) => b.status !== 'pending')
-        .slice(-ANTALL)
-        .reverse();
+        .slice()
+        .sort(nyesteFørst)
+        .slice(0, ANTALL);
 
     return (
         <section className={styles.siste} aria-labelledby="siste-avgjorte">

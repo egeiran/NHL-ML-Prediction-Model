@@ -13,9 +13,9 @@
  */
 
 import { useMemo, type CSSProperties } from 'react';
-import { ErrorState, Laster } from '@/components/ui';
+import { ErrorState, EvTerskelSlider, Laster } from '@/components/ui';
 import { useEvTerskel } from '@/lib/config';
-import { dl, nf } from '@/lib/format';
+import { dl, nf, pc } from '@/lib/format';
 import { kombiner, useMeta, usePortfolio, useValueReport } from '@/lib/use-data';
 import { finnSpill } from './beregninger';
 import { DagensSpill } from './DagensSpill';
@@ -51,14 +51,21 @@ export function Oversikt() {
     // Referansestabile fallbacks: en fersk `[]` per render ville invalidert
     // hver `useMemo` nedover i treet.
     const kamper = useMemo(() => verdirapport.data ?? [], [verdirapport.data]);
-    const spill = useMemo(() => finnSpill(kamper, evTerskel), [kamper, evTerskel]);
+    // `max_odds` er en del av spill-utvelgelsen, ikke bare EV-terskelen:
+    // pipelinen krever `odds < max_odds`. Uten den kunne heroen tagge SPILL på
+    // et utfall `bet_history.csv` aldri får.
+    const maxOdds = meta.data?.max_odds;
+    const spill = useMemo(() => finnSpill(kamper, evTerskel, maxOdds), [kamper, evTerskel, maxOdds]);
 
     const timeseries = useMemo(() => portefølje.data?.timeseries ?? [], [portefølje.data]);
     const bets = useMemo(() => portefølje.data?.bets ?? [], [portefølje.data]);
 
     const harKamper = kamper.length > 0;
     // Dagetiketten er kicker: «Sesongpause», ellers datoen kampene gjelder.
-    const kicker = harKamper ? dl(kamper[0].date) : 'Sesongpause';
+    // Terskelen står i samme linje fordi overskriften teller «spill over
+    // terskel» uten å si hvilken — en bruker som har dratt slideren til 40 %
+    // på /verdi får ellers en permanent, uforklart «Ingen spill over terskel».
+    const kicker = `${harKamper ? dl(kamper[0].date) : 'Sesongpause'} · terskel EV ≥ ${pc(evTerskel, 0)}`;
     const tittel = overskrift(kamper.length, spill.length);
 
     // Tomlinja skiller sesongpause fra «det spilles, men ingenting kvalifiserer».
@@ -79,6 +86,11 @@ export function Oversikt() {
                             {loading ? <Laster /> : tittel}
                         </h1>
                     </div>
+                    {/* Terskelen styrer overskriften her, ikke bare /verdi.
+                        Slideren står derfor der spørsmålet «hvorfor er lista
+                        tom?» faktisk stilles, og bærer avviksnotisen fra
+                        DECISIONS punkt 6. */}
+                    <EvTerskelSlider className={styles.heroTerskel} />
                 </div>
 
                 {error !== null ? (

@@ -171,7 +171,22 @@
 
 /* ========================================================================== *
  * Utfallstabellen
+ *
+ * Ekte <table> med <th scope>, men radene er grid slik at kolonnene holder
+ * linja. `display: block/grid` fjerner de implisitte ARIA-rollene i flere
+ * nettlesere, derfor står rollene eksplisitt i JSX-en — samme mønster som
+ * Elo-tabellen.
  * ========================================================================== */
+
+.utfallTabell {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.utfallGruppe {
+  display: block;
+}
 
 .utfallGrid {
   display: grid;
@@ -188,19 +203,30 @@
   color: var(--muted);
 }
 
+/* Nettleserens `th { text-align: center; font-weight: bold }` gjelder også når
+ * cellene er grid-elementer, så begge må settes tilbake her. */
+.utfallHodeCelle {
+  text-align: left;
+  font-weight: 500;
+  min-width: 0;
+}
+
 .utfallRad {
   align-items: center;
   padding: 13px 0;
   border-bottom: 1px solid var(--rule-light);
 }
 
-/* OT/SO. Prisen står, men spillet tas ikke. */
+/* Utelatt av pipelinen: OT/SO, eller odds over `meta.json:max_odds`. Dempingen
+ * er lik for begge; `.utelattNotis` sier hvilken grunn det er. */
 .utfallDempet {
   opacity: 0.5;
 }
 
 .utfallCelle {
   min-width: 0;
+  text-align: left;
+  font-weight: 400;
 }
 
 .utfallTopp {
@@ -208,6 +234,15 @@
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Forklaringen bak UTELATT-taggen. Teksten kommer fra `utelattTekst()` i
+ * `lib/spill.ts`, så de tre skjermene sier det samme. */
+.utelattNotis {
+  display: block;
+  margin-top: 7px;
+  font: 400 10px/1.4 var(--mono);
+  color: var(--faint);
 }
 
 .hoyre {
@@ -318,6 +353,16 @@
 
 .kortTaggSpill {
   color: var(--teal);
+}
+
+/* Oddstaket på kortet. OT/SO-grunnen står i skjermens fotnote og gjentas ikke
+ * per kort; oddstaket gjør det ikke, og uten den ser «ingen» ut som at markedet
+ * priser kampen riktig. */
+.kortNotis {
+  display: block;
+  margin-top: 7px;
+  font: 400 10px/1.4 var(--mono);
+  color: var(--faint);
 }
 
 .kortLag {

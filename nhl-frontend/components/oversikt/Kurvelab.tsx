@@ -116,6 +116,34 @@ export function Kurvelab({ timeseries, laster }: KurvelabProps) {
     const peker = hi !== null && hi < utsnitt.length ? utsnitt[hi] : null;
     const harData = verdier.length > 0;
 
+    /*
+     * Tekstalternativet til plottet. Tooltip og hover-prikk er `aria-hidden` og
+     * `onMouseMove`-basert, så tittelen alene ga ingen vei til tallene.
+     *
+     * De to modusene er to forskjellige størrelser: «Verdikurve» er kumulativ
+     * nettogevinst, «Daglig P&L» er differansen per kampdag. Setningen sier
+     * hvilken, ellers blir «høyeste» tvetydig.
+     */
+    const ariaTekst = useMemo(() => {
+        if (!harData) return `${labTittel(modus)}. Ingen kampdager å tegne ennå.`;
+        const siste = verdier.length - 1;
+        const høyeste = Math.max(...verdier);
+        const laveste = Math.min(...verdier);
+        const spill = utsnitt.reduce((s, p) => s + p.bets_placed, 0);
+        const treff = utsnitt.reduce((s, p) => s + p.bets_won, 0);
+        const periode =
+            `${labTittel(modus)}, ${nf(verdier.length)} kampdager fra ` +
+            `${dl(utsnitt[0].date)} til ${dl(utsnitt[siste].date)}. `;
+        const kropp =
+            modus === 'dag'
+                ? `Netto i utsnittet ${kr(verdier.reduce((s, v) => s + v, 0))}. ` +
+                  `Beste dag ${kr(høyeste)}, svakeste dag ${kr(laveste)}. `
+                : `Fra ${kr(verdier[0])} til ${kr(verdier[siste])}, altså ` +
+                  `${kr(verdier[siste] - verdier[0])} i utsnittet. ` +
+                  `Høyeste ${kr(høyeste)}, laveste ${kr(laveste)}. `;
+        return `${periode}${kropp}${nf(spill)} spill, ${nf(treff)} traff.`;
+    }, [harData, modus, utsnitt, verdier]);
+
     return (
         <section className={styles.lab} aria-labelledby="kurvelab-tittel">
             <div className={styles.labHode}>
@@ -154,7 +182,7 @@ export function Kurvelab({ timeseries, laster }: KurvelabProps) {
                                     preserveAspectRatio="none"
                                     className={styles.labSvg}
                                     role="img"
-                                    aria-label={labTittel(modus)}
+                                    aria-label={ariaTekst}
                                 >
                                     <path
                                         d={rutenett}

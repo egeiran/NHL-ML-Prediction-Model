@@ -16,7 +16,7 @@ import { useSearchParams } from 'next/navigation';
 import { ErrorState, Laster } from '@/components/ui';
 import { useEvTerskel } from '@/lib/config';
 import { ALLE_LAG, LAG, sorterAbbr } from '@/lib/teams';
-import { kombiner, useElo, useMatchups, useTeams } from '@/lib/use-data';
+import { kombiner, useElo, useMatchups, useMeta, useTeams } from '@/lib/use-data';
 import { byggAnalyse, type Valg } from './beregn';
 import { Analyse } from './Analyse';
 import { Skjema, type LagFelt, type OddsFelt } from './Skjema';
@@ -33,7 +33,12 @@ export function KampSkjerm() {
     const teams = useTeams();
     const matchups = useMatchups();
     const elo = useElo();
-    const { loading, error, retry } = kombiner(teams, matchups, elo);
+    // `meta` er med i lastetilstanden fordi `max_odds` er en del av
+    // spill-utvelgelsen: pipelinen krever `odds < max_odds`. Uten den kan
+    // skjermen tagge SPILL på en odds pipelinen ville forkastet, og uten at
+    // meta er lastet før første render ville taggen skiftet under føttene.
+    const meta = useMeta();
+    const { loading, error, retry } = kombiner(teams, matchups, elo, meta);
     const { evTerskel } = useEvTerskel();
 
     // Query-parametrene leses én gang, som starttilstand. Etterpå eier skjemaet
@@ -70,9 +75,10 @@ export function KampSkjerm() {
         return sorterAbbr(Array.from(new Set(kilde)));
     }, [teams.data]);
 
+    const maxOdds = meta.data?.max_odds;
     const analyse = useMemo(
-        () => byggAnalyse(matchups.data, elo.data, valg, evTerskel),
-        [matchups.data, elo.data, valg, evTerskel],
+        () => byggAnalyse(matchups.data, elo.data, valg, evTerskel, maxOdds),
+        [matchups.data, elo.data, valg, evTerskel, maxOdds],
     );
 
     if (error) {
