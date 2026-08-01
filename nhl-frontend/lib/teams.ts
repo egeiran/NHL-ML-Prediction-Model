@@ -57,9 +57,16 @@ const LAG_LISTE: readonly LagInfo[] = [
     { abbr: 'WSH', navn: 'Washington Capitals', konferanse: 'Øst', id: '15' },
 ];
 
-/** Oppslag på forkortelse. 32 lag. */
-export const LAG: Readonly<Record<string, LagInfo>> = Object.fromEntries(
-    LAG_LISTE.map((l) => [l.abbr, l]),
+/**
+ * Oppslag på forkortelse. 32 lag.
+ *
+ * Prototypeløst: forkortelser slås opp fra data vi ikke kontrollerer navnet på,
+ * og med `Object.prototype` i kjeden ville `LAG['constructor']` vært sannhets-
+ * verdi-sann og gjort et tilfeldig navn til et gyldig lag.
+ */
+export const LAG: Readonly<Record<string, LagInfo>> = Object.assign(
+    Object.create(null) as Record<string, LagInfo>,
+    Object.fromEntries(LAG_LISTE.map((l) => [l.abbr, l])),
 );
 
 /** Norsk kollasjon: æ ø å sorteres sist, ikke som a/o. */
@@ -106,7 +113,7 @@ export function lagId(abbr: string | null | undefined): string | null {
 export const LOGO_BASE = 'https://assets.nhle.com/logos/nhl/svg';
 
 export function logoUrl(abbr: string): string {
-    return `${LOGO_BASE}/${abbr}_light.svg`;
+    return `${LOGO_BASE}/${encodeURIComponent(abbr)}_light.svg`;
 }
 
 /** Sorterer forkortelser på fullt norsk-kollasjonert lagnavn. */

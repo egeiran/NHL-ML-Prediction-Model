@@ -91,7 +91,7 @@ export function finnAbbr(abbr: string | null | undefined, navn: string): string 
     if (rå !== '') return rå;
     const rent = navn.trim();
     if (rent === '') return '';
-    if (LAG[rent]) return rent;
+    if (Object.hasOwn(LAG, rent)) return rent;
     for (const lag of Object.values(LAG)) {
         if (lag.navn.toLowerCase() === rent.toLowerCase()) return lag.abbr;
     }
