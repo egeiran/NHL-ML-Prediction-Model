@@ -3,10 +3,11 @@
 Offline-test av rapportlogikken og den statiske eksporten.
 
 Stubber NHL-APIet, odds-APIet og modellen, så testen krever verken nettverk
-eller en trent `models/nhl_model.pkl`. Den bruker derimot repoets egne
-`models/elo_ratings.json`, `data/team_info.csv` og `data/bet_history.csv`
-(alle sporet i git). Dekker særlig feilmodusene som avgjør hva som havner på
-den statiske sida:
+eller en trent `models/nhl_model.pkl`. Den leser `data/team_info.csv` og
+`models/elo_ratings.json` fra repoet, men asserter aldri på innholdet i filer
+pipelinen skriver om (`data/bet_*.csv`, `models/elo_ratings.json`): der bygges
+fixtures, ellers ville testene begynt å feile natta etter en kjøring. Dekker
+særlig feilmodusene som avgjør hva som havner på den statiske sida:
 
   - normal eksport skriver alle filene og alle lagkombinasjoner
   - lag uten kampdata faller ut av teams.json og matchups.json
@@ -225,12 +226,16 @@ def test_full_export(tmp: Path):
     # Nye filer skal ligge i meta.json.files, ellers finner ikke frontend dem.
     assert {"elo.json", "shadow.json"} <= set(files["meta.json"]["files"])
 
+    # Innholdet i models/elo_ratings.json rulles framover hver natt, så her
+    # sjekkes bare formen. Aliasing/rangering testes mot fixture i
+    # test_elo_export_uses_display_abbreviations.
     elo = files["elo.json"]
-    assert "UTA" in elo["ratings"] and "ARI" not in elo["ratings"]
+    assert "ARI" not in elo["ratings"]
+    assert set(elo["ratings"]) <= set(ex.CURRENT_TEAMS)
     assert DEFUNCT.isdisjoint(elo["ratings"])
-    assert len(elo["ratings"]) == 32
+    assert len(elo["ratings"]) >= ex.MIN_TEAMS_FOR_EXPORT
     assert elo["display_keys"] is True
-    assert elo["config"]["base_rating"] and elo["meta"]["through"]
+    assert isinstance(elo["config"], dict) and isinstance(elo["meta"], dict)
     # Rangert liste: høyeste rating først.
     values = list(elo["ratings"].values())
     assert values == sorted(values, reverse=True)
@@ -436,33 +441,80 @@ def test_season_column_and_portfolio_filtering():
     assert bt.build_portfolio_payload(legacy)["season"] == "2025-26"
 
 
-def test_elo_export_uses_display_abbreviations():
+def test_elo_export_uses_display_abbreviations(tmp: Path):
     """
     Aliasingen skjer i eksport-steget, ikke i frontend: modellens tilstandsfil
     bruker ARI og har fortsatt nedlagte franchiser, `elo.json` gjør ikke.
+
+    Tilstandsfila rulles framover hver natt (`update_elo_ratings.py`), så
+    oppførselen testes mot en fixture. Mot den ekte fila sjekkes bare det som
+    holder uansett innhold.
     """
     import export_site_data as ex
 
-    elo = ex.build_elo("2026-07-31T00:00:00+00:00")
+    # Fixture: ARI (ikke UTA), to nedlagte franchiser, og usortert rekkefølge.
+    canonical = [ex.to_canonical(a) for a in ex.CURRENT_TEAMS]
+    assert "ARI" in canonical and "UTA" not in canonical
+    fixture_ratings = {
+        abbr: 1500.0 + i for i, abbr in enumerate(canonical)
+    }
+    fixture_ratings.update({"ATL": 1490.0, "PHX": 1480.0})
+    fixture = {
+        "config": {"base_rating": 1500.0, "k_factor": 6.0},
+        "meta": {"through": "2020-01-01", "n_games": 1},
+        "ratings": fixture_ratings,
+    }
+    fixture_path = tmp / "elo_ratings.json"
+    fixture_path.write_text(json.dumps(fixture), encoding="utf-8")
 
-    assert "UTA" in elo["ratings"]
-    assert "ARI" not in elo["ratings"]
+    original_path = ex.ELO_RATINGS_PATH
+    ex.ELO_RATINGS_PATH = fixture_path
+    try:
+        elo = ex.build_elo("2026-07-31T00:00:00+00:00")
+    finally:
+        ex.ELO_RATINGS_PATH = original_path
+
+    # Alle aktive lag med visningsnavn, ingen kanoniske nøkler, ingen nedlagte.
+    assert set(elo["ratings"]) == set(ex.CURRENT_TEAMS)
+    assert "UTA" in elo["ratings"] and "ARI" not in elo["ratings"]
     assert DEFUNCT.isdisjoint(elo["ratings"])
-    assert len(elo["ratings"]) == 32
-
-    # Tilstandsfila skal være urørt – der heter Utah fortsatt ARI.
-    raw = json.loads(ex.ELO_RATINGS_PATH.read_text(encoding="utf-8"))
-    assert "ARI" in raw["ratings"] and "UTA" not in raw["ratings"]
 
     # UTA-verdien er ARI-verdien, ikke en ny beregning.
-    assert elo["ratings"]["UTA"] == raw["ratings"]["ARI"]
+    assert elo["ratings"]["UTA"] == fixture_ratings["ARI"]
+
+    # Tilstandsfila skal være urørt.
+    assert json.loads(fixture_path.read_text(encoding="utf-8")) == fixture
 
     # config/meta følger uendret med, og flagget sier at nøklene er visningsnavn.
-    assert elo["config"] == raw["config"] and elo["meta"] == raw["meta"]
+    assert elo["config"] == fixture["config"] and elo["meta"] == fixture["meta"]
     assert elo["display_keys"] is True
+    assert elo["generated_at"] == "2026-07-31T00:00:00+00:00"
 
     values = list(elo["ratings"].values())
     assert values == sorted(values, reverse=True)
+
+    # For få aktive lag -> hellere ingen eksport enn en halv Elo-tabell.
+    thin = dict(fixture, ratings={a: 1500.0 for a in canonical[: ex.MIN_TEAMS_FOR_EXPORT - 1]})
+    fixture_path.write_text(json.dumps(thin), encoding="utf-8")
+    ex.ELO_RATINGS_PATH = fixture_path
+    try:
+        ex.build_elo("2026-07-31T00:00:00+00:00")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("build_elo skulle feilet på for få lag")
+    finally:
+        ex.ELO_RATINGS_PATH = original_path
+
+    # Mot repoets egen tilstandsfil: bare invarianter, ingen antagelser om
+    # hvilke tall eller hvilken dato som står der i dag.
+    real = ex.build_elo("2026-07-31T00:00:00+00:00")
+    assert set(real["ratings"]) <= set(ex.CURRENT_TEAMS)
+    assert len(real["ratings"]) >= ex.MIN_TEAMS_FOR_EXPORT
+    assert "ARI" not in real["ratings"] and DEFUNCT.isdisjoint(real["ratings"])
+    real_values = list(real["ratings"].values())
+    assert real_values == sorted(real_values, reverse=True)
+    assert all(isinstance(v, float) for v in real_values)
 
 
 def test_shadow_export_survives_an_empty_ledger(tmp: Path):
@@ -473,13 +525,27 @@ def test_shadow_export_survives_an_empty_ledger(tmp: Path):
     import bet_tracker as bt
     import export_site_data as ex
 
-    # Repoets egen (tomme) skyggelogg.
-    assert ex.build_shadow() == []
-
     # Bare header, ingen rader.
     empty = tmp / "bet_shadow.csv"
     bt.save_shadow([], empty)
     assert bt.load_shadow(empty) == []
+
+    # ... og en helt fraværende fil.
+    assert bt.load_shadow(tmp / "finnes-ikke.csv") == []
+
+    # build_shadow() leser standardstien. Vi peker den mot fixturen i stedet for
+    # å anta at repoets egen logg er tom – den fylles så snart en sesong kjører.
+    original = ex.load_shadow
+    ex.load_shadow = lambda path=empty: bt.load_shadow(path)
+    try:
+        assert ex.build_shadow() == []
+    finally:
+        ex.load_shadow = original
+
+    # Mot den ekte fila holder bare invarianten: en JSON-serialiserbar liste.
+    real = ex.build_shadow()
+    assert isinstance(real, list)
+    assert json.dumps(real)
 
     # Med en rad skal formen matche portfolio.json sine bets[]: tall som tall.
     row = bt._build_bet_entry(
@@ -553,27 +619,133 @@ def test_bet_entry_logs_all_three_outcomes(tmp: Path):
     assert set(entry) == set(bt.BET_FIELDS)
 
 
+def write_legacy_history(path: Path) -> list[dict]:
+    """
+    Skriver en `bet_history.csv` slik den så ut FØR utfallskolonnene kom:
+    headeren er `BET_FIELDS` minus `OUTCOME_FIELDS`.
+
+    Fixturen bygges her og leses aldri fra `data/bet_history.csv`. Den ekte fila
+    skrives om med den nye headeren første gang pipelinen kjører `save_history`,
+    og en test som leste den ville da stille slutte å teste det den heter.
+    """
+    import csv
+
+    import bet_tracker as bt
+
+    legacy_fields = [f for f in bt.BET_FIELDS if f not in set(bt.OUTCOME_FIELDS)]
+    rows = [
+        {
+            "season": "2025-26",
+            "date": "2025-12-05",
+            "event_id": "BOS-STL-2025-12-05",
+            "start_time": "2025-12-05T01:00:00+01:00",
+            "home_abbr": "BOS",
+            "away_abbr": "STL",
+            "selection": "home",
+            "odds": "2.65",
+            "model_prob": "0.461",
+            "implied_prob": "0.37736",
+            "value": "0.22165",
+            "stake": "100.0",
+            "status": "won",
+            "payout": "265.0",
+            "profit": "165.0",
+            "actual_outcome": "home",
+            "created_at": "2025-12-04T08:48:28.383157",
+            "updated_at": "2025-12-05T11:10:10.674074",
+        },
+        {
+            "season": "2025-26",
+            "date": "2025-12-05",
+            "event_id": "FLA-NSH-2025-12-05",
+            "start_time": "2025-12-05T01:00:00+01:00",
+            "home_abbr": "FLA",
+            "away_abbr": "NSH",
+            "selection": "away",
+            "odds": "3.35",
+            "model_prob": "0.447",
+            "implied_prob": "0.29851",
+            "value": "0.49745",
+            "stake": "100.0",
+            "status": "lost",
+            "payout": "0.0",
+            "profit": "-100.0",
+            "actual_outcome": "draw",
+            "created_at": "2025-12-04T08:48:28.383089",
+            "updated_at": "2025-12-05T11:10:10.674243",
+        },
+        # Helt gammel rad: `season` fantes ikke og skal utledes av datoen.
+        {
+            **{f: "" for f in legacy_fields},
+            "date": "2026-06-10",
+            "event_id": "VGK-CAR-2026-06-10",
+            "start_time": "2026-06-10T02:00:00+02:00",
+            "home_abbr": "VGK",
+            "away_abbr": "CAR",
+            "selection": "home",
+            "odds": "2.4",
+            "model_prob": "0.512",
+            "implied_prob": "0.41667",
+            "value": "0.22863",
+            "stake": "100.0",
+            "status": "pending",
+            "payout": "0.0",
+            "profit": "0.0",
+            "actual_outcome": "",
+            "created_at": "2026-06-08T12:40:24.860804",
+            "updated_at": "2026-06-08T12:40:24.860804",
+        },
+    ]
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=legacy_fields)
+        writer.writeheader()
+        writer.writerows(rows)
+    return rows
+
+
 def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
     """
-    De 202 historiske radene har ikke de nye kolonnene. De skal kunne leses og
-    skrives uten å krasje, og uten at noe eksisterende felt endrer verdi.
+    Historiske rader har ikke de nye utfallskolonnene. De skal kunne leses og
+    skrives uten å krasje, uten at noe eksisterende felt endrer verdi, og de
+    nye feltene skal bli ukjente (None/tomme) – ikke 0.0.
     """
     import bet_tracker as bt
 
     legacy_path = tmp / "bet_history.csv"
-    shutil.copy(bt.BET_HISTORY_PATH, legacy_path)
+    written = write_legacy_history(legacy_path)
 
-    original_text = legacy_path.read_text(encoding="utf-8")
-    assert "value_home" not in original_text.splitlines()[0]  # gammel header
+    old_header = legacy_path.read_text(encoding="utf-8").splitlines()[0].split(",")
+    assert set(old_header).isdisjoint(bt.OUTCOME_FIELDS)
+    assert old_header == [f for f in bt.BET_FIELDS if f not in set(bt.OUTCOME_FIELDS)]
 
     rows = bt.load_history(legacy_path)
-    assert rows, "fixturen skal ha rader"
-    for field in bt.OUTCOME_FIELDS:
-        assert rows[0][field] is None, field
+    assert len(rows) == len(written)
+    # Ukjent er ikke null: 0.0 ville lest som "oddsen/EVen var faktisk null".
+    for row in rows:
+        for field in bt.OUTCOME_FIELDS:
+            assert row[field] is None, field
+
+    # Verdiene fra fila skal være der, typekonvertert men uendret.
+    first, last = rows[0], rows[-1]
+    assert (first["event_id"], first["selection"], first["status"]) == (
+        "BOS-STL-2025-12-05", "home", "won",
+    )
+    assert (first["odds"], first["stake"], first["payout"], first["profit"]) == (
+        2.65, 100.0, 265.0, 165.0,
+    )
+    assert first["season"] == "2025-26"
+    # Rad uten season får den utledet av datoen ved innlesing.
+    assert last["season"] == bt.season_of("2026-06-10") == "2025-26"
 
     bt.save_history(rows, legacy_path)
-    header = legacy_path.read_text(encoding="utf-8").splitlines()[0]
-    assert header.split(",") == bt.BET_FIELDS
+
+    lines = legacy_path.read_text(encoding="utf-8").splitlines()
+    assert lines[0].split(",") == bt.BET_FIELDS
+    # De nye kolonnene skrives som tomme celler, ikke som 0.
+    n_outcome = len(bt.OUTCOME_FIELDS)
+    for line in lines[1:]:
+        assert line.split(",")[-n_outcome:] == [""] * n_outcome, line
 
     reread = bt.load_history(legacy_path)
     assert len(reread) == len(rows)
@@ -585,7 +757,7 @@ def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
             assert before[field] == after[field], field
 
     # Porteføljen bygges fortsatt av gamle rader.
-    assert bt.build_portfolio_payload(reread)["summary"]["total_bets"] > 0
+    assert bt.build_portfolio_payload(reread, all_seasons=True)["summary"]["total_bets"] == len(rows)
 
 
 def main() -> int:
@@ -600,7 +772,7 @@ def main() -> int:
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
-            ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, False),
+            ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, True),
             ("three_outcome_fields", test_bet_entry_logs_all_three_outcomes, True),
             ("legacy_round_trip", test_legacy_rows_survive_a_read_write_round_trip, True),
             ("shadow_empty_ledger", test_shadow_export_survives_an_empty_ledger, True),

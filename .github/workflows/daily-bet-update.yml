@@ -166,3 +166,13 @@ jobs:
 
           git commit -m "chore: daily bet + predictions update"
           git push
+
+      # Eksporten hoppes over når testene feiler, og committen over skal
+      # fortsatt gå gjennom — men uten dette steget blir jobben grønn mens
+      # site-dataen stille slutter å oppdateres. Feil til slutt, så dagens
+      # historikk er lagret og avviket likevel er synlig.
+      - name: Fail if site data was not exported
+        if: steps.export_tests.outcome != 'success'
+        run: |
+          echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert. Historikken er committet, men nhl-frontend/public/data/ står på gårsdagens tall."
+          exit 1
