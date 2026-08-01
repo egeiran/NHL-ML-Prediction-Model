@@ -141,15 +141,16 @@ jobs:
           fi
 
       - name: Export static site data
+        id: export
         if: steps.export_tests.outcome == 'success'
+        # Stopper ikke jobben her: forrige JSON beholdes, og dagens
+        # bet-historikk skal fortsatt bli committet under. Utfallet leses av
+        # sluttsteget, som feiler jobben i stedet.
+        continue-on-error: true
         working-directory: NHL
         env:
           NHL_EXPORT_DAYS: "3"
-        run: |
-          # Frontend deployes statisk (Vercel) og leser disse JSON-filene i
-          # stedet for å kalle FastAPI-et. Feiler ikke jobben hvis eksporten
-          # ryker – da beholdes forrige JSON og resten av dagens data commites.
-          python export_site_data.py || echo "[WARN] Eksport av site-data feilet, beholder eksisterende JSON."
+        run: python export_site_data.py
 
       - name: Commit and push changes
         run: |
@@ -167,12 +168,17 @@ jobs:
           git commit -m "chore: daily bet + predictions update"
           git push
 
-      # Eksporten hoppes over når testene feiler, og committen over skal
-      # fortsatt gå gjennom — men uten dette steget blir jobben grønn mens
-      # site-dataen stille slutter å oppdateres. Feil til slutt, så dagens
-      # historikk er lagret og avviket likevel er synlig.
+      # Site-dataen kan bli stående på gårsdagens tall av to grunner: testene
+      # feilet så eksporten ble hoppet over, eller eksporten selv røk. Begge
+      # skal gjøre jobben rød. Committen over har allerede gått gjennom, så
+      # dagens historikk er lagret uansett — det er bare stillheten vi ikke vil ha.
       - name: Fail if site data was not exported
-        if: steps.export_tests.outcome != 'success'
+        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success'
         run: |
-          echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert. Historikken er committet, men nhl-frontend/public/data/ står på gårsdagens tall."
+          if [ "${{ steps.export_tests.outcome }}" != "success" ]; then
+            echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert."
+          else
+            echo "::error::Eksporten feilet – site-dataen ble ikke oppdatert."
+          fi
+          echo "::error::Historikken er committet, men nhl-frontend/public/data/ står på gårsdagens tall."
           exit 1
