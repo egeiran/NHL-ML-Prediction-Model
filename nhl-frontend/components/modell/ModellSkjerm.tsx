@@ -66,32 +66,13 @@ function korrelasjon(c: CorrelationResult): string {
     return `r = ${nf(c.r, 3)} (p = ${nf(c.p_value, 2)})`;
 }
 
-/**
- * `BetEntry.home_abbr` er `string | null | undefined`, `AnalysisBet.home_abbr`
- * er `string | undefined`. Feltene brukes bare til stabil sortering, og
- * `compareBets` leser dem med `?? ''`, så konverteringen er atferdsnøytral.
- * Den hører egentlig hjemme i `types/index.ts` eller `lib/analysis.ts`, men de
- * ligger utenfor denne skjermens filsone.
- */
-function tilAnalyse(spill: readonly BetEntry[]): AnalysisBet[] {
-    return spill.map((b) => ({
-        ...b,
-        home_abbr: b.home_abbr ?? undefined,
-        away_abbr: b.away_abbr ?? undefined,
-    }));
-}
-
-/* -------------------------------------------------------------------------- */
-
 export function ModellSkjerm() {
     const portefølje = usePortfolio();
     const [utvalg, setUtvalg] = useState<Utvalg>('alle');
     const utenDraw = utvalg === 'utenDraw';
 
-    const alleSpill = useMemo(
-        () => tilAnalyse(portefølje.data?.bets ?? INGEN_SPILL),
-        [portefølje.data],
-    );
+    const alleSpill: readonly AnalysisBet[] =
+        portefølje.data?.bets ?? INGEN_SPILL;
 
     const datoer = useMemo(
         () => (portefølje.data?.timeseries ?? []).map((t) => t.date),

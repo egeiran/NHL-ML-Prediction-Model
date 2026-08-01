@@ -1,16 +1,20 @@
 'use client';
 
 /**
- * Er vi under brytepunktet (§F, 768px)?
+ * Er vi under skjermens ene brytepunkt (§F, 768px)?
  *
- * Under 768px er tabellen ikke en smalere tabell, den er kort: «Away hos Home»
- * på én linje og `dato · side · odds` under. Den omgrupperingen kan ikke gjøres
- * i CSS uten å enten duplisere 202 rader i DOM-en eller ofre tabellsemantikken,
- * så brytepunktet leses i JS.
+ * De fleste responsive forskjellene i designet er ren layout og hører hjemme i
+ * CSS. To av dem er ikke det, og begge trenger brytepunktet i JS:
+ *
+ * - Verdi i dag bytter navigasjon på mobil, ikke bare layout: lista blir
+ *   tappbar og fører til en detaljvisning per kamp.
+ * - Historikk bytter fra tabell til kort, med «Away hos Home» på én linje og
+ *   `dato · side · odds` under. Å gjøre den omgrupperingen i CSS ville krevd
+ *   enten 202 dupliserte rader i DOM-en eller at tabellsemantikken ofres.
  *
  * `useSyncExternalStore` framfor `useEffect`: serversnapshotet er `false`, så
  * statisk HTML og første klientrender er like, og React bytter til
- * klientsnapshotet uten en ekstra kaskade.
+ * klientsnapshotet uten en ekstra kaskaderende render.
  */
 
 import { useSyncExternalStore } from 'react';

@@ -26,6 +26,21 @@ export const NBSP = ' ';
 /** Ekte minustegn U+2212. */
 export const MINUS = '−';
 
+const MND_LANG = [
+    'januar',
+    'februar',
+    'mars',
+    'april',
+    'mai',
+    'juni',
+    'juli',
+    'august',
+    'september',
+    'oktober',
+    'november',
+    'desember',
+];
+
 const MND = [
     'jan',
     'feb',
@@ -234,6 +249,18 @@ export function dl(iso: string | null | undefined): string {
     const p = datoDeler(iso);
     if (!p) return MANGLER;
     return `${p.d}. ${MND[p.m - 1]} ${p.y}`;
+}
+
+/**
+ * Lang dato med utskrevet måned: `dLang('2026-03-14')` → `14. mars 2026`.
+ *
+ * Brukes der datoen er brødtekst og ikke en tabellcelle — kickere og
+ * skjermtitler — der forkortelsen i `dl()` leser som en logglinje.
+ */
+export function dLang(iso: string | null | undefined): string {
+    const p = datoDeler(iso);
+    if (!p) return MANGLER;
+    return `${p.d}. ${MND_LANG[p.m - 1]} ${p.y}`;
 }
 
 /** ISO-dato: `dISO('2026-07-29T10:48:17+00:00')` → `2026-07-29`. */
