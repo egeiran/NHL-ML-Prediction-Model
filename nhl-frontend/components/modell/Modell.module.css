@@ -1,0 +1,720 @@
+/*
+ * Modell (§C.6). Alt her er lokalt for /modell.
+ *
+ * Ingen border-radius (unntatt .rund fra globals på grafprikkene), ingen
+ * box-shadow. Alle farger er tokens fra globals.css.
+ */
+
+/* ========================================================================== *
+ * Toppen — de tre tallene
+ * ========================================================================== */
+
+.toppTall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.tallCelle {
+  padding: 38px 32px 34px;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.tallCelle:first-child {
+  padding-left: 0;
+}
+
+.tallCelle:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.tallFigur {
+  display: block;
+  margin-top: 12px;
+}
+
+.tallEnhet {
+  display: block;
+  margin-top: 10px;
+  font: 400 13px/1.6 var(--sans);
+  color: var(--body);
+}
+
+/* ========================================================================== *
+ * Seksjonsramme
+ * ========================================================================== */
+
+.seksjon {
+  display: grid;
+  grid-template-columns: var(--modell-cols, minmax(0, 1fr));
+  gap: 0;
+}
+
+.kalibrering {
+  --modell-cols: minmax(340px, 0.8fr) minmax(0, 1.2fr);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.kalibreringVenstre {
+  padding: 36px 44px 36px 0;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.kalibreringHoyre {
+  padding: 36px 0 36px 44px;
+  min-width: 0;
+}
+
+.panelTittel {
+  font: 400 24px/1.2 var(--serif);
+  color: var(--ink);
+  margin: 8px 0 0;
+}
+
+.panelTittelLiten {
+  font: 400 17px/1.3 var(--serif);
+  color: var(--ink);
+  margin: 8px 0 0;
+}
+
+.note {
+  margin: 12px 0 0;
+  font: 400 12.5px/1.65 var(--sans);
+  color: var(--faint);
+  text-wrap: pretty;
+  max-width: 58ch;
+}
+
+.noteSterk {
+  margin: 14px 0 0;
+  font: 400 12.5px/1.65 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+  max-width: 58ch;
+}
+
+/* ========================================================================== *
+ * Kalibreringsplottet (§D.3)
+ * ========================================================================== */
+
+.plottWrap {
+  position: relative;
+  margin-top: 20px;
+}
+
+.plottSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.plottOverlegg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Prikkene er HTML, ikke SVG: størrelsen skal være i px uansett hvordan
+ * viewBoxen skaleres, og en <circle> ville blitt elliptisk om plottet en dag
+ * strekkes. */
+.prikk {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 1.6px;
+  pointer-events: none;
+}
+
+.prikkModell {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.prikkMarked {
+  background: var(--paper);
+  border-color: var(--muted);
+}
+
+/* n står alltid synlig under modellprikken. */
+.nEtikett {
+  position: absolute;
+  transform: translateX(-50%);
+  margin-top: 13px;
+  font: 400 9.5px/1 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.xTick {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+}
+
+.yTick {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.aksetittel {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* --- tegnforklaring ----------------------------------------------------- */
+
+.tegnforklaring {
+  margin-top: 14px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.tegn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 11px/1 var(--mono);
+  color: var(--body);
+}
+
+.tegnFylt {
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  flex: none;
+}
+
+.tegnHul {
+  width: 10px;
+  height: 10px;
+  border: 1.6px solid var(--faint);
+  flex: none;
+}
+
+.tegnForventet {
+  width: 10px;
+  height: 10px;
+  background: var(--dash);
+  flex: none;
+}
+
+/* Whisker-glyf: to hetter (border-top/bottom) og en loddrett strek (::before). */
+.tegnWhisker {
+  width: 10px;
+  height: 12px;
+  flex: none;
+  position: relative;
+  border-top: 1px solid var(--muted);
+  border-bottom: 1px solid var(--muted);
+}
+
+.tegnWhisker::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--muted);
+}
+
+/* ========================================================================== *
+ * Tabeller
+ * ========================================================================== */
+
+.tabell {
+  margin-top: 16px;
+}
+
+.tabellHode,
+.tabellRad {
+  display: grid;
+  gap: 14px;
+  align-items: baseline;
+}
+
+.kalibreringsGrid {
+  grid-template-columns: minmax(0, 1fr) 46px 70px 70px 92px;
+}
+
+.utfallsGrid {
+  grid-template-columns: minmax(0, 1fr) 46px 70px 70px 56px 84px;
+  gap: 12px;
+}
+
+.tabellHode {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.tabellRad {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.intervall {
+  font: 400 13.5px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.hoyre {
+  text-align: right;
+}
+
+.faktisk {
+  font: 400 14px/1.3 var(--mono);
+  text-align: right;
+}
+
+.usikkerhet {
+  display: block;
+  margin-top: 3px;
+  font: 400 10px/1.3 var(--mono);
+  color: var(--faint);
+}
+
+.tabellNote {
+  margin: 10px 0 0;
+  font: 400 12px/1.6 var(--sans);
+  color: var(--faint);
+}
+
+.blokkAvstand {
+  margin-top: 34px;
+}
+
+/* ========================================================================== *
+ * Kvartilfigurene (EV og odds)
+ * ========================================================================== */
+
+.kvartiler {
+  --modell-cols: minmax(0, 1fr) minmax(0, 1fr);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.kvartilVenstre {
+  padding: 36px 44px 36px 0;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.kvartilHoyre {
+  padding: 36px 0 36px 44px;
+  min-width: 0;
+}
+
+/* Søylene er HTML, ikke SVG: tallene over dem er tekst, og da er figuren sin
+ * egen tilgjengelige representasjon. */
+.soyleRad {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.soyleBotte {
+  min-width: 0;
+}
+
+.soyleRoi {
+  display: block;
+  font: 400 14px/1.2 var(--mono);
+  text-align: center;
+}
+
+.soylePar {
+  margin-top: 10px;
+  height: 132px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.soyle {
+  display: block;
+  flex: 1 1 0;
+  max-width: 34px;
+  min-height: 1px;
+  position: relative;
+}
+
+.soyleForventet {
+  background: var(--dash);
+}
+
+.soyleFaktisk {
+  background: var(--ink);
+}
+
+.soyleTall {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  font: 400 10.5px/1 var(--mono);
+  color: var(--body);
+  white-space: nowrap;
+}
+
+.soyleFot {
+  display: block;
+  margin-top: 9px;
+  text-align: center;
+}
+
+.soyleOmrade {
+  display: block;
+  font: 400 11.5px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.soyleN {
+  display: block;
+  margin-top: 3px;
+  font: 400 9.5px/1 var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+
+/* ========================================================================== *
+ * Simulatoren
+ * ========================================================================== */
+
+.simulator {
+  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 40px;
+}
+
+.kontroller {
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.kurveRamme {
+  margin-top: 26px;
+  padding: 8px 0 0;
+}
+
+.kurveSvg {
+  width: 100%;
+  height: 300px;
+  display: block;
+  overflow: visible;
+}
+
+.kurveSpacer {
+  height: 22px;
+}
+
+.nokkeltall {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.nokkelCelle {
+  padding: 18px 24px 18px 0;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.nokkelCelle:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.nokkelVerdi {
+  display: block;
+  margin-top: 10px;
+  font: 400 24px/1 var(--mono);
+}
+
+.nokkelSub {
+  display: block;
+  margin-top: 8px;
+  font: 400 11px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+/* --- usikkerhetsstripa -------------------------------------------------- */
+
+.stripe {
+  margin-top: 34px;
+}
+
+.stripeRad {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) minmax(150px, 200px);
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-light);
+  text-align: left;
+}
+
+.stripeRad:hover .stripeNavn {
+  color: var(--ink);
+}
+
+.stripeNavn {
+  font: 400 12px/1.35 var(--sans);
+  color: var(--muted);
+  min-width: 0;
+}
+
+.stripeRadValgt .stripeNavn {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.stripeSpor {
+  position: relative;
+  height: 22px;
+  min-width: 0;
+}
+
+.stripeNull {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+}
+
+.stripeBar {
+  position: absolute;
+  top: 10px;
+  height: 2px;
+  background: var(--dash);
+}
+
+.stripeRadValgt .stripeBar {
+  background: var(--ink);
+  height: 3px;
+  top: 9.5px;
+}
+
+.stripePunkt {
+  position: absolute;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1.6px solid var(--muted);
+}
+
+.stripeRadValgt .stripePunkt {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.stripeTall {
+  font: 400 11.5px/1.3 var(--mono);
+  color: var(--faint);
+  text-align: right;
+}
+
+.stripeRadValgt .stripeTall {
+  color: var(--body);
+}
+
+.stripeAkseRad {
+  border-bottom: 0;
+  padding-top: 4px;
+}
+
+.stripeAkse {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+
+.stripeAkseVenstre {
+  position: absolute;
+  left: 0;
+}
+
+.stripeAkseNull {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--muted);
+}
+
+.stripeAkseHoyre {
+  position: absolute;
+  right: 0;
+}
+
+/* --- tegnforklaring i simulatoren --------------------------------------- */
+
+.tegnFlat {
+  width: 16px;
+  height: 0;
+  border-top: 1.4px solid var(--faint);
+  flex: none;
+}
+
+.tegnStiplet {
+  width: 16px;
+  height: 0;
+  border-top: 1.8px dashed var(--ink);
+  flex: none;
+}
+
+/* ========================================================================== *
+ * Åpne funn
+ * ========================================================================== */
+
+.funn {
+  padding-bottom: 8px;
+}
+
+.funnPunkt {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.funnPunkt:first-of-type {
+  margin-top: 12px;
+}
+
+.funnNummer {
+  font: 400 24px/0.9 var(--serif);
+  color: var(--dash);
+}
+
+.funnTittel {
+  font: 400 17px/1.3 var(--serif);
+  color: var(--ink);
+  margin: 0;
+}
+
+.funnTekst {
+  margin: 6px 0 0;
+  font: 400 13px/1.6 var(--sans);
+  color: var(--body);
+  max-width: 78ch;
+  text-wrap: pretty;
+}
+
+/* ========================================================================== *
+ * Diverse
+ * ========================================================================== */
+
+.tomPlott {
+  margin: 20px 0 0;
+  font: 400 13px/1.6 var(--sans);
+  color: var(--body);
+}
+
+.statusLinje {
+  margin-top: 28px;
+}
+
+/* ========================================================================== *
+ * Under 768px stables alt (§F.1)
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .toppTall {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tallCelle {
+    padding: 24px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .tallCelle:last-child {
+    border-bottom: 0;
+  }
+
+  .seksjon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kalibreringVenstre,
+  .kvartilVenstre {
+    padding: 28px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .kalibreringHoyre,
+  .kvartilHoyre {
+    padding: 28px 0;
+  }
+
+  .kalibreringsGrid {
+    grid-template-columns: minmax(0, 1fr) 34px 58px 58px 78px;
+    gap: 8px;
+  }
+
+  .utfallsGrid {
+    grid-template-columns: minmax(0, 1fr) 32px 52px 52px 44px 62px;
+    gap: 8px;
+  }
+
+  .soyleRad {
+    gap: 8px;
+  }
+
+  .soylePar {
+    height: 108px;
+    gap: 5px;
+  }
+
+  .nokkeltall {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .nokkelCelle {
+    padding: 16px 16px 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .nokkelCelle:nth-child(2n) {
+    border-right: 0;
+    padding-right: 0;
+  }
+
+  .stripeRad {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    min-height: 44px;
+    padding: 12px 0;
+  }
+
+  .stripeTall {
+    text-align: left;
+  }
+
+  .kurveSvg {
+    height: 220px;
+  }
+}

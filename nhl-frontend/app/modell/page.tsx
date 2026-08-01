@@ -1,17 +1,15 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { ModellSkjerm } from '@/components/modell';
 
 export const metadata: Metadata = {
     title: 'Modell',
 };
 
+/**
+ * Ruta er en serverkomponent slik at `metadata` kan eksporteres. Alt innhold
+ * ligger i `<ModellSkjerm />`, som er klientside — den leser `portfolio.json`
+ * med `usePortfolio()` og eier både OT/SO-toggelen og innsatssimulatoren.
+ */
 export default function ModellPage() {
-    return (
-        <main>
-            <SectionHeading kicker="Modellkvalitet" title="Er modellen god?" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Modell er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.6.
-            </p>
-        </main>
-    );
+    return <ModellSkjerm />;
 }
