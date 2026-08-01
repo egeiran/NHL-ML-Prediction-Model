@@ -9,7 +9,7 @@
  */
 
 import type { PillOption } from '@/components/ui';
-import { erTall } from '@/lib/spill';
+import { erTall, nyesteFørst } from '@/lib/spill';
 import type { BetEntry } from '@/types';
 
 /* -------------------------------------------------------------------------- */
@@ -98,24 +98,9 @@ export function filtrer(
 /* Sortering                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Millisekunder for radens kamptidspunkt. Datoen alene er nok når `start_time` mangler. */
-function tid(b: BetEntry): number {
-    if (b.start_time) {
-        const t = Date.parse(b.start_time);
-        if (!Number.isNaN(t)) return t;
-    }
-    const d = Date.parse(`${b.date}T00:00:00Z`);
-    return Number.isNaN(d) ? 0 : d;
-}
-
 /** Sorterings- og summeringsverdi: manglende tall er 0, ikke `null`. */
 function tall(n: number | null | undefined): number {
     return erTall(n) ? n : 0;
-}
-
-/** Nyeste først, med `event_id` som siste, deterministiske skille. */
-function nyesteFørst(a: BetEntry, b: BetEntry): number {
-    return tid(b) - tid(a) || (a.event_id < b.event_id ? -1 : a.event_id > b.event_id ? 1 : 0);
 }
 
 /** Returnerer alltid en ny array — inndata muteres ikke. */

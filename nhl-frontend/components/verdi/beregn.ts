@@ -107,8 +107,14 @@ export function finnAbbr(abbr: string | null | undefined, navn: string): string 
  * Bygger de tre utfallsradene i rekkefølgen borte · OT/SO · hjemme.
  *
  * `maxOdds` er `meta.json:max_odds` — pipelinens oddstak. Utelates den, gjelder
- * ingen grense, og skjermen kan komme til å tagge et utfall `SPILL` som
- * `bet_history.csv` aldri får. Send den alltid inn når `meta` er lastet.
+ * ingen grense, og skjermen kan komme til å tagge et utfall `SPILL` med odds
+ * over taket, som `bet_history.csv` garantert ikke får. Send den alltid inn når
+ * `meta` er lastet.
+ *
+ * Merk at taket ikke gir paritet med loggen: `_choose_best_per_day()` i
+ * `NHL/bet_tracker.py` tar høyst ett spill per dag, bare `best_value`-utfallet,
+ * og bare når alle tre oddsene finnes. Denne skjermen viser alle kvalifiserende
+ * utfall i alle kampene. Taket lukker én kilde til avvik, ikke avviket.
  */
 export function byggKamp(
     spill: ValueGame,
@@ -158,6 +164,7 @@ export function byggKamp(
         const erUavgjort = r.nøkkel === 'draw';
         const ev = evForUtfall(r.verdi, r.modell, r.odds);
         const grunn = utelattGrunn(erUavgjort, r.odds, maxOdds);
+        const merke = tagg(ev, evTerskel, grunn);
         return {
             nøkkel: r.nøkkel,
             etikett: r.etikett,
@@ -165,9 +172,11 @@ export function byggKamp(
             marked: markedAv(r.implisitt, r.odds),
             odds: r.odds,
             ev,
-            tagg: tagg(ev, evTerskel, grunn),
+            tagg: merke,
             erUavgjort,
-            utelattGrunn: grunn,
+            // Grunnen dempes og forklares i UI, så den følger taggen: et utfall
+            // som uansett faller på EV er `NEI`, ikke et dempet «over oddstaket».
+            utelattGrunn: merke === 'utelatt' ? grunn : null,
         };
     });
 

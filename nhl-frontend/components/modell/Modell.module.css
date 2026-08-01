@@ -692,8 +692,11 @@
   transition: opacity 140ms linear;
 }
 
+/* 0.6, ikke lavere: innholdet under er fortsatt interaktivt og skal fortsatt
+ * være lesbart. En demping som tar kontrasten under WCAG-grensen er sin egen
+ * tilgjengelighetsfeil, uansett hvor tydelig den signaliserer. */
 .venter {
-  opacity: 0.42;
+  opacity: 0.6;
 }
 
 @media (prefers-reduced-motion: reduce) {

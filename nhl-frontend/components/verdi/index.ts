@@ -18,4 +18,5 @@ export {
     type KampKontekst,
     type Utfall,
     type UtfallNøkkel,
+    type UtelattGrunn,
 } from './beregn';

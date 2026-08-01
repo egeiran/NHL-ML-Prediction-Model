@@ -217,7 +217,9 @@ export function byggAnalyse(
             ev,
             tagg: merke,
             erUavgjort: s.erUavgjort,
-            utelattGrunn: grunn,
+            // Grunnen dempes og forklares i UI, så den følger taggen: et utfall
+            // som uansett faller på EV er `NEI`, ikke et dempet «over oddstaket».
+            utelattGrunn: merke === 'utelatt' ? grunn : null,
             spill: merke === 'spill',
         };
     });

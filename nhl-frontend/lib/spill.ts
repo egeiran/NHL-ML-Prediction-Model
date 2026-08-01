@@ -78,9 +78,15 @@ export function markedAv(
 /**
  * Pipelinen legger bare inn spill med `odds < max_odds` (`meta.json`, i dag
  * 4,0 — se `_choose_best_per_day()` i `NHL/bet_tracker.py`, som forkaster
- * `odds >= max_odds`). Uten denne sjekken kunne UI vise et utfall med odds 4,5
- * og EV 0,30 som «SPILL» selv om `bet_history.csv` aldri får raden — nøyaktig
- * avviket DECISIONS punkt 6 sier UI skal si fra om.
+ * `odds >= max_odds`). Sjekken lukker ett konkret avvik: uten den kunne UI vise
+ * et utfall med odds 4,5 og EV 0,30 som «SPILL» der `bet_history.csv` garantert
+ * ikke får raden.
+ *
+ * Den gir **ikke** paritet med loggen. `_choose_best_per_day()` beholder høyst
+ * **ett** spill per dag, bare `best_value`-utfallet, og bare når alle tre
+ * oddsene finnes. Siten viser alle utfall som passerer EV og oddstak, per kamp —
+ * altså jevnt over flere SPILL enn loggen får. Oddstaket fjerner en av flere
+ * grunner til at de to listene spriker, ikke spriket.
  *
  * Mangler `max_odds` (meta ikke lastet), gjelder ingen grense.
  */
@@ -93,12 +99,16 @@ export function overOddstak(
 }
 
 /**
- * Hvorfor et utfall er `UTELATT` — to ulike grunner som ser like ut i taggen:
+ * Hvorfor pipelinen ikke ville tatt utfallet — to ulike grunner:
  *
  *   - `uavgjort` — OT/SO. `meta.allow_draw_bets` er `false`.
  *   - `oddstak` — odds ≥ `meta.max_odds`. Pipelinen ville forkastet spillet.
  *
  * `null` betyr at utfallet vurderes på EV som vanlig.
+ *
+ * Dette er den *faktiske* grunnen, ikke nødvendigvis den som vises: `tagg()`
+ * lar `oddstak` bli `NEI` når EV uansett er under terskelen. Kaller du begge,
+ * la den viste grunnen følge taggen, ellers demper UI en rad det står `NEI` på.
  */
 export type UtelattGrunn = 'uavgjort' | 'oddstak';
 
@@ -125,17 +135,30 @@ export function utelattTekst(grunn: UtelattGrunn | null): string | null {
 }
 
 /**
- * `SPILL` når EV er over terskelen, `UTELATT` når utfallet er utelatt av en
- * annen grunn enn EV, ellers `NEI`. Rekkefølgen er viktig: et utelatt utfall
- * skal aldri bli `SPILL`, uansett hvor god EV-en ser ut.
+ * Taggen for ett utfall. Rekkefølgen er ikke vilkårlig — den avgjør hvilken av
+ * to sanne ting taggen forteller:
+ *
+ *   1. **OT/SO er alltid `UTELATT`**, uansett EV. Vi spiller ikke utfallet i det
+ *      hele tatt, så EV-en er ikke en vurdering vi har tatt stilling til.
+ *   2. **EV under terskel gir `NEI`**, også over oddstaket. Det er den primære
+ *      grunnen: vi ville ikke tatt spillet uansett hva pipelinen tillot. For
+ *      store outsidere er odds ≥ 4,0 vanlig, og `UTELATT · oddstak` på et utfall
+ *      med EV −0,30 slår sammen «vi *kan* ikke» og «vi *ville* ikke» til noe
+ *      mindre informativt enn begge deler.
+ *   3. **`UTELATT` på oddstaket bare når utfallet ellers ville kvalifisert** —
+ *      EV ≥ terskel, men odds over taket. Da er taket faktisk det som stopper
+ *      spillet, og taggen sier noe leseren ikke kunne sett av EV-en alene.
+ *
+ * Et utelatt utfall blir aldri `SPILL`.
  */
 export function tagg(
     ev: number | null,
     evTerskel: number,
     grunn: UtelattGrunn | null,
 ): TagVariant {
-    if (grunn !== null) return 'utelatt';
-    return ev !== null && ev >= evTerskel ? 'spill' : 'nei';
+    if (grunn === 'uavgjort') return 'utelatt';
+    if (ev === null || ev < evTerskel) return 'nei';
+    return grunn === 'oddstak' ? 'utelatt' : 'spill';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -190,4 +213,32 @@ export function kampTekst(b: BetEntry): string {
     if (hjemme) return `hos ${hjemme}`;
     if (borte) return borte;
     return MANGLER;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Kronologi                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Millisekunder for radens kamptidspunkt. Datoen alene er nok når `start_time`
+ * mangler.
+ */
+export function tid(b: BetEntry): number {
+    if (b.start_time) {
+        const t = Date.parse(b.start_time);
+        if (!Number.isNaN(t)) return t;
+    }
+    const d = Date.parse(`${b.date}T00:00:00Z`);
+    return Number.isNaN(d) ? 0 : d;
+}
+
+/**
+ * Nyeste først, med `event_id` som siste, deterministiske skille.
+ *
+ * Historikk og «Siste avgjorte» på Oversikt viser de samme radene i den samme
+ * rekkefølgen. Da må rekkefølgen defineres ett sted — to kopier som driver fra
+ * hverandre ville gitt to ulike «nyeste ni».
+ */
+export function nyesteFørst(a: BetEntry, b: BetEntry): number {
+    return tid(b) - tid(a) || (a.event_id < b.event_id ? -1 : a.event_id > b.event_id ? 1 : 0);
 }

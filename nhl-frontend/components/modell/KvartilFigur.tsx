@@ -13,6 +13,7 @@
 import type { ReactNode } from 'react';
 import type { ValueBucket } from '@/lib/analysis';
 import { nf, sgn } from '@/lib/format';
+import { TANKESTREK, kvantil } from './botter';
 import styles from './Modell.module.css';
 
 export interface KvartilFigurProps {
@@ -23,20 +24,6 @@ export interface KvartilFigurProps {
     grense: (v: number) => string;
     bildetekst: ReactNode;
     className?: string;
-}
-
-/** U+2013. */
-const TANKESTREK = '–';
-
-/**
- * `K1`…`K4`. Bøttene er kvartiler, og `lo`/`hi` er bare observert min/maks i
- * bøtta — kvantilsplitten deler like verdier på posisjon, så `hi` i én bøtte og
- * `lo` i den neste kan være samme råverdi (2,70 i odds-kvartilene i dag). Da
- * kan ikke intervallet bære identiteten til bøtta uten å lese som en av-med-én.
- * K-merket bærer den; intervallet står under som observert spenn.
- */
-function kvartil(i: number): string {
-    return `K${i + 1}`;
 }
 
 export function KvartilFigur({
@@ -91,7 +78,7 @@ export function KvartilFigur({
                                 </span>
                             </div>
                             <span className={styles.soyleFot}>
-                                <span className={styles.soyleKvartil}>{kvartil(i)}</span>
+                                <span className={styles.soyleKvartil}>{kvantil(i)}</span>
                                 <span className={styles.soyleOmrade}>
                                     {grense(b.lo)}
                                     {TANKESTREK}
@@ -106,9 +93,9 @@ export function KvartilFigur({
 
             {bøtter.length === 0 ? null : (
                 <p className={styles.note}>
-                    {kvartil(0)}
+                    {kvantil(0)}
                     {TANKESTREK}
-                    {kvartil(bøtter.length - 1)} er kvartiler med like mange spill i hver. Tallene under er
+                    {kvantil(bøtter.length - 1)} er kvartiler med like mange spill i hver. Tallene under er
                     lavest og høyest observerte verdi i bøtta, og to nabobøtter kan derfor møtes på samme
                     verdi.
                 </p>
