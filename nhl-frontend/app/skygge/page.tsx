@@ -1,17 +1,15 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { SkyggeSkjerm } from '@/components/skygge';
 
 export const metadata: Metadata = {
     title: 'Skyggelogg',
 };
 
+/**
+ * Ruta er en serverkomponent slik at `metadata` kan eksporteres. Alt innhold
+ * ligger i `<SkyggeSkjerm />`, som er klientside — den leser både `shadow.json`
+ * og `portfolio.json` og velger kilde ut fra hvilken av dem som har rader.
+ */
 export default function SkyggePage() {
-    return (
-        <main>
-            <SectionHeading kicker="Skyggelogg" title="Spillene vi sluttet å ta" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Skyggelogg er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.7.
-            </p>
-        </main>
-    );
+    return <SkyggeSkjerm />;
 }
