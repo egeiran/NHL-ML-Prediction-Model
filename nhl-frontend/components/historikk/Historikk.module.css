@@ -1,0 +1,233 @@
+/*
+ * Historikk (§C.4). Tokens og typografiklasser kommer fra `app/globals.css`;
+ * her ligger bare det som er unikt for beslutningsloggen.
+ *
+ * Kolonnene i spesifikasjonen er et grid:
+ *   76px minmax(0,1.5fr) 66px 60px 72px 72px 76px 80px 92px, gap 12px
+ * Tabellen gjengir det med `table-layout: fixed` + `<colgroup>`, der gapet er
+ * cellenes høyrepadding og Kamp-kolonnen er den ene uten fast bredde. Da
+ * beholder vi ekte tabellsemantikk (`<th scope>`) uten å miste layouten.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Nøkkeltall i skjermhodet                                                    */
+/* -------------------------------------------------------------------------- */
+
+.nokkeltall {
+  display: flex;
+  gap: 34px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.nokkel {
+  display: flex;
+  flex-direction: column;
+}
+
+.nokkelVerdi {
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Filterrad                                                                   */
+/* -------------------------------------------------------------------------- */
+
+.filtre {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.note {
+  margin: 0 0 0 auto;
+  font: 400 11.5px/1.5 var(--mono);
+  color: var(--faint);
+}
+
+/* Åpne spill finnes ikke i dagens 202 rader, men typen tillater dem. Da skal
+ * det stå hvorfor de ikke er med i treffraten, ikke bare mangle. */
+.apneNote {
+  margin: 12px 0 0;
+  font: 400 11.5px/1.5 var(--mono);
+  color: var(--faint);
+}
+
+.tilstand {
+  margin-top: 28px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tabell                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/* Mellom 768px og ~900px er ni kolonner bredere enn vinduet. Da scroller
+ * tabellen sidelengs i sin egen ramme framfor å presse Kamp ned til intet. */
+.tabellRam {
+  overflow-x: auto;
+}
+
+.tabell {
+  width: 100%;
+  min-width: 840px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Breddene er spesifikasjonens kolonner + 12px gap som høyrepadding.
+ * Kamp-kolonnen har ingen bredde og tar resten (`minmax(0,1.5fr)`). */
+.kDato {
+  width: 88px;
+}
+.kSpill {
+  width: 78px;
+}
+.kOdds {
+  width: 72px;
+}
+.kModell {
+  width: 84px;
+}
+.kMarked {
+  width: 84px;
+}
+.kEv {
+  width: 88px;
+}
+.kResultat {
+  width: 92px;
+}
+.kNetto {
+  width: 92px;
+}
+
+.hoderad th {
+  padding: 12px 12px 10px 0;
+  text-align: left;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+.hoderad th:last-child {
+  padding-right: 0;
+}
+
+.rad td {
+  padding: 12px 12px;
+  padding-left: 0;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.rad td:last-child {
+  padding-right: 0;
+}
+
+.rad:hover td {
+  background: var(--tint);
+}
+
+.hoyre {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dato {
+  font: 400 11px/1.3 var(--mono);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.kamp {
+  font: 400 13.5px/1.3 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spill {
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--body);
+  white-space: nowrap;
+}
+
+.resultat {
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.netto {
+  font: 400 13px/1.3 var(--mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mobilkort (§F, under 768px)                                                 */
+/* -------------------------------------------------------------------------- */
+
+.kortliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule-strong);
+}
+
+.kort {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.kortVenstre {
+  min-width: 0;
+}
+
+.kortTittel {
+  display: block;
+  font: 400 14.5px/1.25 var(--sans);
+  color: var(--ink);
+}
+
+.kortMeta {
+  display: block;
+  margin-top: 4px;
+  font: 400 11px/1.3 var(--mono);
+  color: var(--faint);
+}
+
+.kortNetto {
+  flex: none;
+  font: 400 13px/1.3 var(--mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .nokkeltall {
+    gap: 22px;
+  }
+
+  .filtre {
+    gap: 18px;
+  }
+
+  .note {
+    margin-left: 0;
+  }
+}

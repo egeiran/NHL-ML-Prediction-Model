@@ -1,17 +1,25 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { Suspense } from 'react';
+import { HistorikkSkjerm } from '@/components/historikk';
+import { Laster } from '@/components/ui';
 
 export const metadata: Metadata = {
     title: 'Historikk',
 };
 
+/**
+ * Ruten er en tynn serverkomponent. Skjermen er en klientkomponent — den leser
+ * `portfolio.json` og holder filtertilstanden i query-parametrene.
+ *
+ * `<Suspense>` er ikke pynt: `useSearchParams()` krever en grense over seg i
+ * Next 15, ellers feiler prerenderingen av `/historikk` i byggingen.
+ */
 export default function HistorikkPage() {
     return (
         <main>
-            <SectionHeading kicker="Beslutningslogg" title="Hvert spill som er lagt inn" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Historikk er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.4.
-            </p>
+            <Suspense fallback={<Laster />}>
+                <HistorikkSkjerm />
+            </Suspense>
         </main>
     );
 }
