@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { Oversikt } from '@/components/oversikt';
+import { AnalyseLenker } from '@/components/shell';
 
 /**
  * `title.template` fra rot-layouten gjelder ikke segmentet den er definert i,
@@ -9,13 +10,17 @@ export const metadata: Metadata = {
     title: 'Blålinja · Oversikt',
 };
 
+/**
+ * Ruta er et skall: alt som trenger data og state ligger i `<Oversikt>`, som er
+ * en klientkomponent. `<AnalyseLenker>` er grunnmurens egen — Elo, Modell og
+ * Skyggelogg får ikke plass i mobilens bunnbar og nås herfra. Den er skjult over
+ * 768px, så den kan stå ubetinget.
+ */
 export default function OversiktPage() {
     return (
         <main>
-            <SectionHeading kicker="Blålinja" title="Oversikt" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Oversikt er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.1.
-            </p>
+            <Oversikt />
+            <AnalyseLenker />
         </main>
     );
 }

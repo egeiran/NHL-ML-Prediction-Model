@@ -1,0 +1,431 @@
+/*
+ * Oversikt (§C.1). Ingen border-radius, ingen box-shadow, ingen transitions.
+ * Alle mål er hentet ordrett fra designspesifikasjonen; der `.split` og
+ * globals.css allerede eier en verdi (kolonnebredder, skillelinje, sidepadding)
+ * settes den ikke om igjen her.
+ */
+
+/* ========================================================================== *
+ * Hero
+ * ========================================================================== */
+
+.hero {
+  /* --header-h er regnet av headerens boksmodell. Aldri hardkodet px her. */
+  min-height: calc(100vh - var(--header-h));
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 36px 0 0;
+}
+
+.heroTopp {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding-bottom: 30px;
+}
+
+/* Handoffens «prøvedag»-kontroll er fjernet; kicker og overskrift står alene. */
+.heroTekst {
+  max-width: 60ch;
+}
+
+/* Etterstilt `.heroTekst` slik at margen slår `.t-hero-headline { margin: 0 }`
+ * uansett hvilken rekkefølge globals.css og modulen havner i. */
+.heroTekst .heroOverskrift {
+  margin-top: 16px;
+}
+
+.heroFeil {
+  margin-bottom: 24px;
+}
+
+.heroKropp {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--rule-strong);
+}
+
+/* ========================================================================== *
+ * Venstre kolonne — Dagens spill
+ * ========================================================================== */
+
+/*
+ * `.split > :first-child` eier padding-right (44px) og skillelinja. Her settes
+ * bare topp og bunn, som longhand, slik at splitten ikke overskrives.
+ */
+.spillKolonne {
+  display: flex;
+  flex-direction: column;
+  padding-top: 22px;
+  padding-bottom: 24px;
+  min-height: 0;
+}
+
+.spillKicker {
+  flex: 0 0 auto;
+}
+
+.spillListe {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  margin-top: 6px;
+}
+
+.spillRad {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.spillTopp {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.spillTid {
+  font: 400 11px/1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+/* Display-figur i Instrument Serif — ett av de navngitte unntakene fra
+ * «hvert tall i Mono» (DECISIONS). */
+.spillEv {
+  font: 400 32px/0.9 var(--serif);
+  color: var(--teal);
+}
+
+.spillLag {
+  margin-top: 14px;
+}
+
+.spillNøkkeltall {
+  display: flex;
+  gap: 24px;
+  margin-top: 14px;
+}
+
+.spillNøkkeltall span {
+  font: 400 11px/1 var(--mono);
+  color: var(--muted);
+}
+
+/* Tomtilstanden — hovedtilstanden i sesongpausen. */
+.spillTom {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.spillTomLinje {
+  margin: 0;
+  font: 400 clamp(24px, 2.4vw, 32px) / 1.2 var(--serif);
+  max-width: 18ch;
+  color: var(--body);
+}
+
+.spillTomKnapper {
+  margin-top: 26px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ========================================================================== *
+ * Høyre kolonne — kurve og statrad
+ * ========================================================================== */
+
+.kurveKolonne {
+  display: flex;
+  flex-direction: column;
+  padding-top: 22px;
+  min-height: 0;
+}
+
+.kurveHode {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.kurveHodeVenstre {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Vindusnettoen. Vises kun når den er ≥ 0 — se Hero.tsx. */
+.vindusnetto {
+  font: 400 30px/1 var(--mono);
+  color: var(--teal);
+}
+
+.kurveflate {
+  flex: 1 1 auto;
+  min-height: 140px;
+  margin-top: 16px;
+}
+
+.heroSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.statrad {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--rule);
+  margin-top: 14px;
+}
+
+.statcelle {
+  padding: 15px 16px;
+  border-left: 1px solid var(--rule-light);
+}
+
+.statcelle:first-child {
+  padding: 15px 16px 20px 0;
+  border-left: 0;
+}
+
+.statcelle:last-child {
+  padding: 15px 0 15px 16px;
+}
+
+.statetikett,
+.statfigur {
+  display: block;
+}
+
+.statfigur {
+  margin-top: 9px;
+}
+
+/* Totalen siden start. Undertrykt under TALL_TERSKEL — se Hero.tsx. */
+.stortTall {
+  flex: 0 0 auto;
+  padding: 18px 0 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.stortSuffiks {
+  font: 400 22px/1 var(--serif);
+  color: var(--muted);
+}
+
+.roiFigur {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* ========================================================================== *
+ * Kurvelab
+ * ========================================================================== */
+
+.lab {
+  padding: 44px 0 0;
+}
+
+.labHode {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 12px;
+}
+
+.labTittel {
+  font: 400 30px/1.1 var(--serif);
+  margin: 8px 0 0;
+}
+
+.labKontroller {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.labRamme {
+  border-bottom: 1px solid var(--rule);
+}
+
+.labInnhold {
+  padding: 8px 0 0;
+}
+
+.labSvg {
+  width: 100%;
+  height: 300px;
+  display: block;
+  overflow: visible;
+}
+
+/* Plass til x-etikettene, som ligger absolutt posisjonert under plottet. */
+.labFot {
+  height: 22px;
+}
+
+.labTom {
+  padding: 28px 0 34px;
+}
+
+/* ========================================================================== *
+ * Siste avgjorte
+ * ========================================================================== */
+
+.siste {
+  padding-top: 44px;
+}
+
+/* h2 for overskriftshierarkiets skyld, kicker for øyet. Nullstill browserens
+ * marg, som ellers ville brutt avstanden til lista. */
+.seksjonsKicker {
+  margin: 0;
+}
+
+.sisteListe {
+  margin-top: 18px;
+}
+
+.sisteRad {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 56px 66px 76px;
+  gap: 14px;
+  align-items: baseline;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.sisteDato {
+  font: 400 11px/1 var(--mono);
+  color: var(--faint);
+}
+
+.sisteKamp {
+  font: 400 13.5px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.sisteSide {
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sisteOdds {
+  font: 400 12px/1 var(--mono);
+  color: var(--muted);
+  text-align: right;
+}
+
+.sisteNetto {
+  font: 400 13px/1 var(--mono);
+  text-align: right;
+}
+
+/* ========================================================================== *
+ * Under 768px (§F.1)
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  /* Heroen slipper 100vh og flyter. */
+  .hero {
+    min-height: 0;
+    padding-top: 28px;
+  }
+
+  .spillListe {
+    overflow-y: visible;
+  }
+
+  /* Kurven får fast høyde i stedet for å strekke seg etter viewporten. */
+  .kurveflate {
+    flex: 0 0 auto;
+    height: 120px;
+    min-height: 0;
+  }
+
+  /* Statraden blir stablede nøkkel/verdi-rader. */
+  .statrad {
+    grid-template-columns: minmax(0, 1fr);
+    border-top: 0;
+  }
+
+  .statcelle,
+  .statcelle:first-child,
+  .statcelle:last-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--rule-light);
+  }
+
+  /* Etterstilt `.statcelle` for å slå typografiklassenes `font`-shorthand
+   * uavhengig av hvilken rekkefølge globals.css og modulen lastes i. */
+  .statcelle .statetikett {
+    font-size: 9.5px;
+    letter-spacing: 0.13em;
+  }
+
+  .statcelle .statfigur {
+    margin-top: 0;
+    font-size: 14px;
+  }
+
+  .stortTall {
+    gap: 8px;
+  }
+
+  .stortSuffiks {
+    font-size: 17px;
+  }
+
+  .labSvg {
+    height: 220px;
+  }
+
+  /* Radgriddet holder ikke i 320px; dato + kamp øverst, tallene under. */
+  .sisteRad {
+    grid-template-columns: 62px minmax(0, 1fr) 66px;
+    row-gap: 6px;
+  }
+
+  .sisteSide {
+    grid-column: 2;
+  }
+
+  .sisteOdds {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .sisteNetto {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
