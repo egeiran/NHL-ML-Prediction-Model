@@ -75,6 +75,14 @@ function norm(s: string): string {
     return s.indexOf('-') === -1 ? s : s.replace(/-/g, MINUS);
 }
 
+/**
+ * Privat kopi av `erTall` fra `lib/spill.ts`, og den blir stående.
+ *
+ * `lib/spill.ts` importerer `MANGLER` herfra, så en import den andre veien ville
+ * gitt sykelen `format → spill → format`. Grunnmuren skal ikke avhenge av
+ * spill-logikken. Fire linjer duplisert er billigere enn den avhengigheten —
+ * dette er et bevisst valg, ikke en glemt konsolidering.
+ */
 function erTall(n: number | null | undefined): n is number {
     return typeof n === 'number' && Number.isFinite(n);
 }

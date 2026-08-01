@@ -175,8 +175,13 @@ export interface Spill {
  *
  * `maxOdds` er `meta.json:max_odds`. Pipelinen krever `odds < max_odds`
  * (`NHL/bet_tracker.py`), så uten den kunne «Dagens spill» vise et utfall med
- * odds 4,5 og EV 0,30 som `bet_history.csv` aldri får. Utelates argumentet,
- * gjelder ingen grense — send den alltid inn når `meta` er lastet.
+ * odds 4,5 og EV 0,30 som `bet_history.csv` garantert ikke får. Utelates
+ * argumentet, gjelder ingen grense — send den alltid inn når `meta` er lastet.
+ *
+ * Taket er ikke det samme som paritet med loggen. `_choose_best_per_day()` tar
+ * høyst ett spill per dag, bare `best_value`-utfallet, og bare når alle tre
+ * oddsene finnes; «Dagens spill» lister alle utfall over EV-terskelen på tvers
+ * av dagens kamper. Lista er altså fortsatt normalt lengre enn loggen blir.
  */
 export function finnSpill(
     kamper: readonly ValueGame[],

@@ -8,7 +8,7 @@
 
 import { Laster } from '@/components/ui';
 import { ds, kr, odds as fmtOdds } from '@/lib/format';
-import { kampTekst } from '@/lib/spill';
+import { kampTekst, nyesteFørst } from '@/lib/spill';
 import type { BetEntry } from '@/types';
 import styles from './Oversikt.module.css';
 
@@ -19,21 +19,6 @@ function sideEtikett(seleksjon: string): string {
     if (seleksjon === 'home') return 'Hjem';
     if (seleksjon === 'away') return 'Borte';
     return 'OT/SO';
-}
-
-/** Millisekunder for radens kamptidspunkt. Datoen alene er nok når `start_time` mangler. */
-function tid(b: BetEntry): number {
-    if (b.start_time) {
-        const t = Date.parse(b.start_time);
-        if (!Number.isNaN(t)) return t;
-    }
-    const d = Date.parse(`${b.date}T00:00:00Z`);
-    return Number.isNaN(d) ? 0 : d;
-}
-
-/** Nyeste først, med `event_id` som siste, deterministiske skille. */
-function nyesteFørst(a: BetEntry, b: BetEntry): number {
-    return tid(b) - tid(a) || (a.event_id < b.event_id ? -1 : a.event_id > b.event_id ? 1 : 0);
 }
 
 export interface SisteAvgjorteProps {

@@ -131,6 +131,8 @@ evForUtfall(value, modell, odds)      // value_* når det finnes, ellers formele
 markedAv(implisitt, odds)             overOddstak(odds, maxOdds)   // odds >= max_odds
 utelattGrunn(erUavgjort, odds, maxOdds) → 'uavgjort' | 'oddstak' | null
 utelattTekst(grunn)                   tagg(ev, evTerskel, grunn) → TagVariant
+tid(bet)                              nyesteFørst(a, b)   // kronologi, delt
+
 evKlasse(ev, evTerskel)               stolpeBredde(p)
 navnFor(abbr, fallback)               kampTekst(bet)
 ```
@@ -138,6 +140,19 @@ navnFor(abbr, fallback)               kampTekst(bet)
 `meta.json:max_odds` er en del av spill-utvelgelsen, ikke bare EV-terskelen:
 pipelinen krever `odds < max_odds` (`NHL/bet_tracker.py`). `byggKamper`,
 `byggKamp`, `byggAnalyse` og `finnSpill` tar den som siste argument.
+
+`tagg()` avgjør i denne rekkefølgen, og rekkefølgen betyr noe: OT/SO er alltid
+`utelatt`; EV under terskel er `nei`; først deretter kan oddstaket gi `utelatt`.
+Et utfall som uansett ikke kvalifiserer skal svare «nei», ikke «kunne ikke» —
+`utelatt` er reservert for utfall som ellers ville blitt spilt.
+
+Merk at `max_odds` bare lukker én kilde til avvik mot `bet_history.csv`.
+`_choose_best_per_day()` tar i tillegg høyst ett spill per dag, bare
+`best_value`-utfallet, og bare når alle tre oddsene finnes — siten viser altså
+fortsatt flere SPILL enn loggen får.
+
+`lib/utah.ts` eier Utah-datavinduet (`utahVindu`, `UTAH_VINDU_TIL`). Både Elo og
+Skyggelogg leser det; ingen av dem skal importere fra den andres mappe.
 
 `components/kamp/beregn.ts` har `evAvHåndskrevet`/`markedAvHåndskrevet` som
 bevisst avviker (odds ≤ 1 gir −1/0 fordi feltene er frie tekstfelt), og

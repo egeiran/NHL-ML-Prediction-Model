@@ -12,21 +12,21 @@
  *   2. OT/SO-toggelen styrer HELE skjermen, ikke én figur.
  *
  * `analyze()` kjører 10 000 bootstrap-trekninger per regel og 10 000
- * permutasjoner per korrelasjon — målt til et par hundre millisekunder på
- * desktop og et par sekunder på mellomklassemobil. To ting holder det ute av
- * veien for brukeren:
+ * permutasjoner per korrelasjon — målt til ~295 ms for `alle` og ~245 ms for
+ * `utenDraw` på desktop, og et par sekunder på mellomklassemobil. Kostnaden
+ * håndteres slik:
  *
- *   1. Begge utvalgene (`alle` / `utenDraw`) regnes i én `useMemo` med
- *      `[alleSpill]` som eneste nøkkel. `useMemo` har bare én cache-plass, så
- *      med `utenDraw` i nøkkelen betalte hver eneste veksling full pris på
- *      nytt — også tilbake til noe man nettopp hadde. Prisen er at første
- *      render gjør to kjøringer i stedet for én; til gjengjeld er hver
- *      veksling etterpå gratis, og det er vekslingen brukeren merker.
+ *   1. **Bare det aktive utvalget regnes.** En tidligere variant regnet begge i
+ *      én `useMemo` for å gjøre vekslinger gratis, men da betalte hver eneste
+ *      besøkende ~540 ms synkront i første render — også de som aldri rører
+ *      toggelen — og kostnaden lå der ingenting dekket den. Nå koster første
+ *      render én kjøring, og en veksling én kjøring inne i transitionen.
  *   2. `useTransition` rundt selve utvalgsbyttet. Pilla får sin egen
  *      hurtigtilstand (`valgt`) som settes synkront, mens `aktivt` — det som
  *      drar den tunge rerenderingen — kommer etter. React 19 holder forrige UI
  *      interaktivt imens, og `venter` demper seksjonen så det er synlig at noe
- *      er i ferd med å byttes ut.
+ *      er i ferd med å byttes ut. Det er nøyaktig i punkt 1s vekslingskostnad
+ *      dempingen har noe å vise.
  *
  * Antall bootstrap-trekninger røres ikke: presisjonen er poenget med skjermen.
  */
@@ -81,12 +81,6 @@ function korrelasjon(c: CorrelationResult): string {
     return `r = ${nf(c.r, 3)} (p = ${nf(c.p_value, 2)})`;
 }
 
-/** Det tunge per utvalg. Bygges én gang og gjenbrukes ved veksling. */
-interface TungtResultat {
-    resultat: AnalysisResult;
-    utfall: UtfallsRad[];
-}
-
 export function ModellSkjerm() {
     const portefølje = usePortfolio();
     /** Pilla — settes synkront, så trykket registrerer med én gang. */
@@ -121,30 +115,23 @@ export function ModellSkjerm() {
         };
     }, [alleSpill]);
 
+    const spill = utenDraw ? grunnlag.utenDraw : grunnlag.alle;
+
     /**
      * Den tunge: 7 regler × 10 000 bootstrap-trekninger + 2 × 10 000
-     * permutasjoner, per utvalg. Begge regnes her, med `[alleSpill]` som eneste
-     * nøkkel — `useMemo` har bare én cache-plass, så med `utenDraw` i nøkkelen
-     * betalte HVER veksling full pris på nytt, også tilbake til noe man nettopp
-     * hadde. Nå koster første render begge kjøringene, og alle vekslinger etterpå
-     * ingenting. Antall trekninger røres ikke: presisjonen er poenget.
+     * permutasjoner. Kun det aktive utvalget regnes. Å regne begge på forhånd
+     * ville gjort vekslingen gratis, men flyttet ~245 ms ekstra inn i første
+     * render for alle — også de som aldri veksler. Vekslingen skjer inne i
+     * `start()`, der `venter` demper og React holder forrige UI interaktivt;
+     * første render har ingen tilsvarende dekning. Antall trekninger røres ikke.
      */
-    const tungt: Record<Utvalg, TungtResultat> = useMemo(
-        () => ({
-            alle: {
-                resultat: analyze(alleSpill, { excludeDraw: false }),
-                utfall: utfallsRader(grunnlag.alle),
-            },
-            utenDraw: {
-                resultat: analyze(alleSpill, { excludeDraw: true }),
-                utfall: utfallsRader(grunnlag.utenDraw),
-            },
-        }),
-        [alleSpill, grunnlag],
+    const resultat: AnalysisResult = useMemo(
+        () => analyze(alleSpill, { excludeDraw: utenDraw }),
+        [alleSpill, utenDraw],
     );
 
-    const spill = utenDraw ? grunnlag.utenDraw : grunnlag.alle;
-    const { resultat, utfall } = tungt[aktivt];
+    /** Billig sammenlignet med `analyze`, men følger samme utvalg. */
+    const utfall: UtfallsRad[] = useMemo(() => utfallsRader(spill), [spill]);
 
     const { summary, calibration, ev_buckets, odds_buckets, ev_correlation, odds_correlation, rules } =
         resultat;

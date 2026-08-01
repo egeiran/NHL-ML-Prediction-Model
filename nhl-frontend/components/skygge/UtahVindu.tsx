@@ -8,7 +8,7 @@
  */
 
 import { dl, kr, MANGLER, nf } from '@/lib/format';
-import { UTAH_VINDU_TIL, type UtahVindu as UtahVinduTall } from './beregn';
+import { UTAH_VINDU_TIL, type UtahVindu as UtahVinduTall } from '@/lib/utah';
 import styles from './Skygge.module.css';
 
 export interface UtahVinduProps {
@@ -39,10 +39,13 @@ export function UtahVindu({ tall }: UtahVinduProps) {
                     <div>
                         <span className="t-stat-label">Netto</span>
                         {/* Fortegnet fargelegger, som alle andre nettotall i appen.
-                            Verdien er negativ i dag; den skal ikke være rød av vane. */}
+                            Verdien er negativ i dag; den skal ikke være rød av vane.
+                            Uten rader er `profit` 0, og et grønt `—` ville vært en
+                            påstand om noe vi ikke har tall for. Da står `—` i samme
+                            farge som de to andre cellene i panelet. */}
                         <span
                             className={`${styles.utahFigur} ${
-                                sammendrag.profit >= 0 ? 'c-teal' : 'c-vermillion'
+                                !harRader ? 'c-ink' : sammendrag.profit >= 0 ? 'c-teal' : 'c-vermillion'
                             }`}
                         >
                             {harRader ? kr(sammendrag.profit) : MANGLER}

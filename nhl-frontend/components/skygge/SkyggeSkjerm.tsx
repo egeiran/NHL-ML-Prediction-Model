@@ -23,10 +23,11 @@ import { useMemo, type CSSProperties } from 'react';
 import { ErrorState, Laster, SectionHeading } from '@/components/ui';
 import { kombiner, usePortfolio, useShadow } from '@/lib/use-data';
 import { krp, nf, pcRaw, sgn } from '@/lib/format';
+import { utahVindu } from '@/lib/utah';
 import type { BetEntry, ShadowEntry } from '@/types';
 import { Panel } from './Panel';
 import { UtahVindu } from './UtahVindu';
-import { stolpeBredde, stolpeNevner, utahVindu, velgUtvalg, type Kilde } from './beregn';
+import { stolpeBredde, stolpeNevner, velgUtvalg, type Kilde } from './beregn';
 import styles from './Skygge.module.css';
 
 /** Stabile referanser — ellers ser `useMemo` en ny tom liste hver render. */

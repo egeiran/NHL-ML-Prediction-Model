@@ -29,6 +29,7 @@ import {
     prikkStorrelse,
     type Punkt,
 } from './geometri';
+import { TANKESTREK, kvantil } from './botter';
 import styles from './Modell.module.css';
 
 /** En rad i «Per utfallstype». */
@@ -53,20 +54,6 @@ export interface KalibreringProps {
      * ut av `utfall`. `null` når historikken ikke har avregnede OT/SO-spill.
      */
     otSo: UtfallsRad | null;
-}
-
-/** U+2013, tankestrek i intervaller. */
-const TANKESTREK = '–';
-
-/**
- * `K1`…`Kn`. Bøttene er kvantiler, ikke faste intervaller: `lo`/`hi` er
- * observert minimum og maksimum i bøtta, og to nabobøtter kan derfor møtes på
- * samme råverdi (kvantilsplitten deler like verdier på posisjon — dokumentert
- * og bevisst i `lib/analysis.ts`). Da kan ikke intervallet bære identiteten til
- * bøtta; K-merket gjør det, og intervallet står som sekundærtekst.
- */
-function kvantil(i: number): string {
-    return `K${i + 1}`;
 }
 
 export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw, otSo }: KalibreringProps) {
@@ -303,6 +290,11 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw, otSo }: Kal
                  * eksplisitt — samme mønster som `components/elo/EloTabell.tsx`.
                  */}
                 <table className={styles.tabell} role="table">
+                    <caption className="sr-only">
+                        Per sannsynlighetsintervall — kvantilbøtter med antall spill, modellens og
+                        markedets snittsannsynlighet, og faktisk treffrate med {`95${NBSP}%`}{' '}
+                        Wilson-intervall.
+                    </caption>
                     <thead className={styles.gruppe} role="rowgroup">
                         <tr
                             className={`${styles.tabellHode} ${styles.kalibreringsGrid} t-table-header`}
@@ -412,6 +404,10 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw, otSo }: Kal
                 <div className={styles.blokkAvstand}>
                     <span className="t-kicker">Per utfallstype</span>
                     <table className={styles.tabell} role="table">
+                        <caption className="sr-only">
+                            Per utfallstype — antall spill, treff modellen og markedet forventet,
+                            faktiske treff og netto i kroner.
+                        </caption>
                         <thead className={styles.gruppe} role="rowgroup">
                             <tr
                                 className={`${styles.tabellHode} ${styles.utfallsGrid} t-table-header`}
