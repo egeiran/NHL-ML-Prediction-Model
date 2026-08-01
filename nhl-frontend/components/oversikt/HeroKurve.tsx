@@ -35,7 +35,7 @@ import {
 } from '@/components/chart';
 import { Laster, PillGroup, type PillOption } from '@/components/ui';
 import { ROI_TERSKEL, TALL_TERSKEL } from '@/lib/config';
-import { dl, kr, nf, pc, sgn, sgnRaw } from '@/lib/format';
+import { NBSP, dl, kr, nf, pc, sgn, sgnRaw } from '@/lib/format';
 import type { PortfolioPoint, PortfolioSummary } from '@/types';
 import { heroUtsnitt, herotall, vindusetikett, type HeroVindu } from './beregninger';
 import styles from './Oversikt.module.css';
@@ -74,6 +74,31 @@ export function HeroKurve({ timeseries, summary, laster }: HeroKurveProps) {
     const stort = summary !== null && Math.abs(summary.profit) >= TALL_TERSKEL ? summary.profit : null;
     const roi = summary !== null && Math.abs(summary.roi * 100) >= ROI_TERSKEL ? summary.roi : null;
 
+    /*
+     * Tekstalternativet til kurven. Tooltip og hover-prikk er `aria-hidden` og
+     * `onMouseMove`-basert, så uten dette finnes det ingen ikke-visuell vei til
+     * tallene — samme grep som `components/modell/Kalibrering.tsx`.
+     *
+     * Vindusnettoen står her selv når den er negativ. Undertrykkingsregel 3 sier
+     * at det røde TALLET ikke skrives ut fordi «formen bærer den dårlige
+     * nyheten» — og formen er nettopp det en skjermleser ikke får. Å utelate den
+     * her ville skjult den dårlige nyheten helt, ikke bare dempet den.
+     */
+    const ariaTekst = useMemo(() => {
+        const punkter = utsnitt.punkter;
+        const etikett = vindusetikett(vindu).toLowerCase();
+        if (tall === null || punkter.length === 0) {
+            return `Kumulativ nettogevinst, ${etikett}. Ingen kampdager i vinduet.`;
+        }
+        return (
+            `Kumulativ nettogevinst, ${etikett}, fra ${dl(punkter[0].date)} til ` +
+            `${dl(punkter[punkter.length - 1].date)}. Netto i vinduet ${kr(tall.vindusnetto)}. ` +
+            `Beste dag ${kr(tall.besteDag)}, svakeste dag ${kr(tall.svakesteDag)}. ` +
+            `${nf(tall.spill)} spill, treffrate ${pc(tall.treffrate)}. ` +
+            'De fire siste tallene står også i statraden under kurven.'
+        );
+    }, [tall, utsnitt, vindu]);
+
     return (
         <div className={styles.kurveKolonne}>
             <div className={styles.kurveHode}>
@@ -97,7 +122,7 @@ export function HeroKurve({ timeseries, summary, laster }: HeroKurveProps) {
                     preserveAspectRatio="none"
                     className={styles.heroSvg}
                     role="img"
-                    aria-label={`Kumulativ nettogevinst · ${vindusetikett(vindu)}`}
+                    aria-label={ariaTekst}
                 >
                     {verdier.length > 0 ? (
                         <>
@@ -153,14 +178,17 @@ export function HeroKurve({ timeseries, summary, laster }: HeroKurveProps) {
             {stort !== null || roi !== null ? (
                 <div className={styles.stortTall}>
                     {stort !== null ? (
-                        <>
+                        /* Figuren og suffikset er ett flex-element med et ekte
+                           NBSP imellom. Som to søsken med bare `gap` ble kopiert
+                           tekst «+35kr siden start». */
+                        <span className={styles.stortMed}>
                             <span
                                 className={`t-hero-figure ${stort >= 0 ? 'c-teal' : 'c-vermillion'}`}
                             >
                                 {sgnRaw(stort)}
                             </span>
-                            <span className={styles.stortSuffiks}>kr siden start</span>
-                        </>
+                            <span className={styles.stortSuffiks}>{`${NBSP}kr siden start`}</span>
+                        </span>
                     ) : null}
                     {roi !== null ? (
                         <span className={styles.roiFigur}>

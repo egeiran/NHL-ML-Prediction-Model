@@ -67,9 +67,13 @@ export function VerdiSkjerm() {
     const kortRefs = useRef(new Map<string, HTMLButtonElement>());
     const fokusEtter = useRef<string | null>(null);
 
+    // `max_odds` hører til utvelgelsen, ikke bare EV-terskelen: pipelinen krever
+    // `odds < max_odds`, så uten den kunne lista tagge SPILL på et utfall
+    // `bet_history.csv` aldri får.
+    const maxOdds = meta.data?.max_odds;
     const kamper = useMemo(
-        () => byggKamper(rapport.data ?? [], evTerskel),
-        [rapport.data, evTerskel],
+        () => byggKamper(rapport.data ?? [], evTerskel, maxOdds),
+        [rapport.data, evTerskel, maxOdds],
     );
 
     // Elo og form trengs bare når det finnes kamper å vise. I sesongpausen

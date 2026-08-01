@@ -122,6 +122,14 @@
   cursor: not-allowed;
 }
 
+/* Erstatter `min`/`step` på feltene, som ingen leste. */
+.oddsHjelp {
+  margin: 14px 0 0;
+  max-width: 44ch;
+  font: 400 11px/1.6 var(--mono);
+  color: var(--faint);
+}
+
 /* -------------------------------------------------------------------------- *
  * Tittelrad
  * -------------------------------------------------------------------------- */
@@ -241,6 +249,20 @@
 
 .tagg {
   margin-top: 14px;
+}
+
+/* Utelatt av pipelinen: OT/SO, eller odds over `meta.json:max_odds`. Dempingen
+ * er lik for begge — `.utelattNotis` sier hvilken grunn det er. Teksten kommer
+ * fra `utelattTekst()` i `lib/spill.ts`, delt med Verdi-skjermen. */
+.utfallDempet {
+  opacity: 0.5;
+}
+
+.utelattNotis {
+  display: block;
+  margin-top: 8px;
+  font: 400 10px/1.4 var(--mono);
+  color: var(--faint);
 }
 
 /* -------------------------------------------------------------------------- *

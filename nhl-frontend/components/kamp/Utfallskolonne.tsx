@@ -11,6 +11,7 @@
 
 import { Tag } from '@/components/ui';
 import { odds as fmtOdds, pc, pcTall, sgn } from '@/lib/format';
+import { utelattTekst } from '@/lib/spill';
 import { evKlasse, stolpeBredde, type Utfall } from './beregn';
 import styles from './Kamp.module.css';
 
@@ -46,8 +47,13 @@ function TallRad({
 
 export function Utfallskolonne({ utfall, evTerskel }: UtfallskolonneProps) {
     const framhevet = utfall.spill;
+    // UTELATT har to grunner som ser like ut i taggen: OT/SO og odds over
+    // pipelinens tak. Dempingen er lik, teksten er ikke.
+    const grunn = utelattTekst(utfall.utelattGrunn);
     return (
-        <div className={styles.utfall}>
+        <div
+            className={`${styles.utfall}${utfall.utelattGrunn !== null ? ` ${styles.utfallDempet}` : ''}`}
+        >
             <span className={styles.utfallEtikett}>{utfall.etikett}</span>
             <span className={`${styles.figur} ${framhevet ? 'c-teal' : 'c-ink'}`}>
                 {pcTall(utfall.modell)}
@@ -70,6 +76,7 @@ export function Utfallskolonne({ utfall, evTerskel }: UtfallskolonneProps) {
             </div>
             <div className={styles.tagg}>
                 <Tag variant={utfall.tagg} />
+                {grunn !== null ? <span className={styles.utelattNotis}>{grunn}</span> : null}
             </div>
         </div>
     );
