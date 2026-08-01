@@ -1,0 +1,202 @@
+/*
+ * Skyggelogg (§C.7). Alt her er lokalt for /skygge.
+ *
+ * Ingen border-radius, ingen box-shadow, ingen transition. Alle farger er
+ * tokens fra globals.css. To-kolonneoppsettene bruker den delte `.split`, som
+ * stabler seg selv under 768px — derfor står det bare én media query her.
+ */
+
+/* ========================================================================== *
+ * Skjermhode
+ * ========================================================================== */
+
+/* Kildelinja under ingressen. Står inne i ingress-avsnittet, derfor et
+ * blokk-span og ikke et eget <p>. */
+.kilde {
+  display: block;
+  margin-top: 12px;
+  max-width: 68ch;
+}
+
+/* `.t-axis-label` er `10px/1` — linja her brekker over flere linjer og trenger
+ * luft. Selektoren er doblet med vilje: uten det står to klasser med lik
+ * spesifisitet i hvert sitt stilark, og resultatet avhenger av lastrekkefølge. */
+.kilde.kilde {
+  line-height: 1.6;
+}
+
+.statusLinje {
+  padding: 28px 0 40px;
+}
+
+/* ========================================================================== *
+ * De to panelene
+ * ========================================================================== */
+
+.paneler {
+  border-bottom: 1px solid var(--rule);
+}
+
+.panel {
+  padding: 36px 0;
+  min-width: 0;
+}
+
+/* Skyggepanelet står på tint-grunn; linjene inne i det er --tint-rule. */
+.panelTint {
+  background: var(--tint);
+}
+
+.panelTittel {
+  display: block;
+}
+
+/* Samme grunn som `.kilde.kilde`: `.t-panel-heading` er `9.5px/1`, §C.7 vil ha 1.4. */
+.panel .panelTittel {
+  line-height: 1.4;
+}
+
+.figur {
+  display: block;
+  margin-top: 14px;
+  font: 400 clamp(48px, 5.4vw, 72px) / 0.9 var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.stolpe {
+  margin-top: 12px;
+  height: 5px;
+  background: var(--rule-light);
+}
+
+.panelTint .stolpe {
+  background: var(--tint-rule);
+}
+
+.stolpeFyll {
+  height: 5px;
+}
+
+.undertekst {
+  margin: 12px 0 0;
+  max-width: 42ch;
+}
+
+.rader {
+  margin: 22px 0 0;
+}
+
+.rad {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.panelTint .rad {
+  border-bottom-color: var(--tint-rule);
+}
+
+.rad:last-child {
+  border-bottom: 0;
+}
+
+.radNokkel {
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Farge settes med de globale `.c-*`-klassene på elementet, ikke her — to
+ * klasser med samme spesifisitet i to ulike stilark er en kappestrid ingen
+ * skal måtte lese kildeorden for å avgjøre. */
+.radVerdi {
+  margin: 0;
+  font: 400 14px/1 var(--mono);
+  text-align: right;
+}
+
+/* ========================================================================== *
+ * Forbeholdet under panelene
+ * ========================================================================== */
+
+.forbehold {
+  margin: 0;
+  padding: 18px 0 0;
+  max-width: 74ch;
+}
+
+/* ========================================================================== *
+ * Forklaring + Utah-vinduet
+ * ========================================================================== */
+
+.forklaring {
+  padding-top: 40px;
+}
+
+.forklaringTittel {
+  margin: 0;
+  font: 400 24px/1.35 var(--serif);
+  color: var(--ink);
+  max-width: 30ch;
+}
+
+.forklaringTekst {
+  margin: 14px 0 0;
+  max-width: 60ch;
+  font: 400 14px/1.7 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+.utahPanel {
+  margin-top: 14px;
+  padding: 22px 24px;
+  background: var(--tint);
+  border-left: 3px solid var(--vermillion);
+}
+
+.utahStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+}
+
+.utahFigur {
+  display: block;
+  margin-top: 6px;
+  font: 400 26px/1 var(--serif);
+}
+
+.utahNote {
+  margin: 14px 0 0;
+  font: 400 12.5px/1.7 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+/* ========================================================================== *
+ * Mobil — ett brytepunkt, som resten av appen (§F)
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .panel {
+    padding: 28px 0;
+  }
+
+  .figur {
+    font: 400 44px/0.9 var(--serif);
+    letter-spacing: -0.02em;
+  }
+
+  .forklaring {
+    padding-top: 32px;
+  }
+
+  .utahPanel {
+    padding: 20px 18px;
+  }
+}
