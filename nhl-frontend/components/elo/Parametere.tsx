@@ -113,7 +113,11 @@ export function Parametere({ config, meta }: ParametereProps) {
                     <p className={styles.forbeholdTekst}>
                         <Laster />
                     </p>
-                ) : vindu === undefined ? null : (
+                ) : vindu === undefined ? (
+                    <p className={styles.forbeholdTekst}>
+                        Omfanget kunne ikke telles — porteføljen er ikke tilgjengelig.
+                    </p>
+                ) : (
                     <p className={styles.forbeholdTekst}>
                         {nf(vindu.sammendrag.n)} spill ble lagt inn på det grunnlaget.{' '}
                         {treffSetning(vindu.sammendrag.hits)}, {kr(vindu.sammendrag.profit)} totalt.

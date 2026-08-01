@@ -180,5 +180,5 @@ jobs:
           else
             echo "::error::Eksporten feilet – site-dataen ble ikke oppdatert."
           fi
-          echo "::error::Historikken er committet, men nhl-frontend/public/data/ står på gårsdagens tall."
+          echo "::error::nhl-frontend/public/data/ står på gårsdagens tall. Alt annet dagen produserte er committet."
           exit 1
