@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { VerdiSkjerm } from '@/components/verdi';
 
 export const metadata: Metadata = {
     title: 'Verdi i dag',
 };
 
+/**
+ * Ruten er en tynn serverkomponent: metadata og `<main>`. Selve skjermen er en
+ * klientkomponent, fordi den leser data fra `public/data/*.json` og har lokal
+ * tilstand (filter, og detaljvisningen på mobil).
+ */
 export default function VerdiPage() {
     return (
         <main>
-            <SectionHeading kicker="Value-rapport" title="Verdi i dag" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Verdi i dag er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.2.
-            </p>
+            <VerdiSkjerm />
         </main>
     );
 }
