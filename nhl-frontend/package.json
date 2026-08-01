@@ -6,10 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:analysis && npm run test:format && npm run test:spill",
+    "test:analysis": "node --experimental-strip-types lib/analysis.test.mjs",
+    "test:format": "node --experimental-strip-types lib/format.test.mjs",
+    "test:spill": "node --experimental-strip-types lib/spill.test.mjs"
   },
   "dependencies": {
-    "lucide-react": "^0.555.0",
     "next": "^15.1.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"

@@ -1,0 +1,80 @@
+/*
+ * Delte grafdeler. Alt som ligger oppå SVG-en er HTML (§D.5):
+ * en <circle> blir elliptisk under preserveAspectRatio="none", og SVG-<text>
+ * arver ikke fontstacken rent.
+ */
+
+.wrap {
+  position: relative;
+}
+
+.overlegg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.prikk {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1.7px solid var(--ink);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  padding: 8px 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tooltipDato {
+  display: block;
+  font: 400 9px/1.4 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tooltip-muted);
+}
+
+.tooltipVerdi {
+  display: block;
+  margin-top: 2px;
+  font: 400 15px/1.3 var(--mono);
+}
+
+.tooltipSub {
+  display: block;
+  font: 400 10px/1.3 var(--mono);
+  color: var(--tooltip-muted);
+}
+
+/* --- akseetiketter ------------------------------------------------------ */
+
+.yEtikett {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.xAkse {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 26px;
+  pointer-events: none;
+}
+
+.xEtikett {
+  position: absolute;
+  transform: translateX(-50%);
+  letter-spacing: 0.06em;
+}

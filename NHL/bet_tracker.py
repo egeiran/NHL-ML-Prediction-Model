@@ -54,6 +54,26 @@ TEAM_ALIAS = {
 # Samme beløp som ekte spill, så tallene er direkte sammenlignbare.
 NOTIONAL_STAKE = DEFAULT_STAKE
 
+# Odds, modellsannsynlighet, implisert sannsynlighet og EV for ALLE tre utfall.
+# `odds`/`model_prob`/`implied_prob`/`value` over er fortsatt det spilte utfallet;
+# disse er hele markedsbildet på spilletidspunktet, så kalibrering og EV-analyse
+# kan gjøres på utfall vi ikke spilte. Navnene er de samme som
+# report_service.build_value_report bruker, så det finnes bare ett navnesett.
+OUTCOME_FIELDS = [
+    "odds_home",
+    "odds_draw",
+    "odds_away",
+    "model_home_win",
+    "model_draw",
+    "model_away_win",
+    "implied_home_prob",
+    "implied_draw_prob",
+    "implied_away_prob",
+    "value_home",
+    "value_draw",
+    "value_away",
+]
+
 BET_FIELDS = [
     "season",
     "date",
@@ -73,6 +93,9 @@ BET_FIELDS = [
     "actual_outcome",
     "created_at",
     "updated_at",
+    # Nye kolonner legges bakerst: gamle rader mangler dem og får tom verdi,
+    # og kolonnerekkefølgen for de historiske feltene står urørt.
+    *OUTCOME_FIELDS,
 ]
 
 
@@ -155,6 +178,10 @@ def _read_csv(path: Path) -> List[Dict[str, Any]]:
         reader = csv.DictReader(f)
         for raw in reader:
             row: Dict[str, Any] = dict(raw)
+            # Utfallsfeltene mangler på historiske rader. De skal bli None
+            # (ukjent), ikke 0.0 – 0.0 ville lest som "odds/EV var null".
+            for field in OUTCOME_FIELDS:
+                row[field] = round_optional(row.get(field), 5)
             row["stake"] = float(row.get("stake") or 0.0)
             row["odds"] = float(row.get("odds") or 0.0)
             row["model_prob"] = float(row.get("model_prob") or 0.0)
@@ -177,6 +204,9 @@ def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
             formatted = {field: row.get(field, "") for field in BET_FIELDS}
             formatted["implied_prob"] = round_optional(formatted.get("implied_prob"), 5)
             formatted["value"] = round_optional(formatted.get("value"), 5)
+            # Manglende utfallsfelt (gamle rader) blir None -> tom celle.
+            for field in OUTCOME_FIELDS:
+                formatted[field] = round_optional(formatted.get(field), 5)
             writer.writerow(formatted)
 
 
@@ -486,6 +516,19 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
         "actual_outcome": "",
         "created_at": now_iso,
         "updated_at": now_iso,
+        # Hele markedsbildet, ikke bare det spilte utfallet (PROBLEMS.md funn 02).
+        "odds_home": round_optional(odds_lookup.get("home"), 5),
+        "odds_draw": round_optional(odds_lookup.get("draw"), 5),
+        "odds_away": round_optional(odds_lookup.get("away"), 5),
+        "model_home_win": round_optional(model_lookup.get("home"), 5),
+        "model_draw": round_optional(model_lookup.get("draw"), 5),
+        "model_away_win": round_optional(model_lookup.get("away"), 5),
+        "implied_home_prob": round_optional(implied_lookup.get("home"), 5),
+        "implied_draw_prob": round_optional(implied_lookup.get("draw"), 5),
+        "implied_away_prob": round_optional(implied_lookup.get("away"), 5),
+        "value_home": round_optional(value_lookup.get("home"), 5),
+        "value_draw": round_optional(value_lookup.get("draw"), 5),
+        "value_away": round_optional(value_lookup.get("away"), 5),
     }
 
 

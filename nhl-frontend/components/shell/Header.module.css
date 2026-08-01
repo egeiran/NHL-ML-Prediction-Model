@@ -1,0 +1,127 @@
+/* Masthead + toppnav. Se §B.2. Høyden er låst til --header-h (99px). */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.masthead {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 18px var(--shell-pad) 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.merke {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  border-bottom: 0;
+}
+
+.merke:hover .ordmerke {
+  color: var(--ink);
+}
+
+.ordmerke {
+  color: var(--ink);
+}
+
+.undertittel {
+  font: 400 10px/1.5 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 3px;
+}
+
+.meta {
+  display: flex;
+  gap: 36px;
+  align-items: flex-end;
+}
+
+.metablokk {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.metaetikett {
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metaverdi {
+  font: 400 13px/1 var(--mono);
+  color: var(--ink);
+}
+
+/* --- nav --------------------------------------------------------------- */
+
+.nav {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--shell-pad);
+  display: flex;
+  gap: 26px;
+  overflow-x: auto;
+  border-top: 1px solid var(--rule);
+}
+
+.navlenke {
+  padding: 11px 0 9px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.navlenke:hover {
+  color: var(--ink);
+  border-bottom-color: transparent;
+}
+
+.aktiv {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.aktiv:hover {
+  border-bottom-color: var(--ink);
+}
+
+.skille {
+  width: 1px;
+  background: var(--rule);
+  margin: 9px 0;
+  flex: 0 0 1px;
+}
+
+@media (max-width: 767px) {
+  .masthead {
+    padding: 14px var(--shell-pad-mobil) 12px;
+    gap: 16px;
+  }
+
+  /* Metaklyngen kollapser til tidsstempelet alene. */
+  .metaskjultPåMobil {
+    display: none;
+  }
+
+  .metaetikett {
+    display: none;
+  }
+
+  .nav {
+    display: none;
+  }
+}

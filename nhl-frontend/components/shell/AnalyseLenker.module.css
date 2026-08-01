@@ -1,0 +1,58 @@
+/*
+ * Lenkeliste til analysevisningene (Elo · Modell · Skyggelogg).
+ * Under 768px er dette den eneste veien dit, siden bunnbaren bare har fire
+ * elementer. Over 768px er den skjult — toppnaven dekker det samme.
+ */
+
+.blokk {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .blokk {
+    display: block;
+    padding-top: 36px;
+  }
+
+  .liste {
+    margin-top: 14px;
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .rad {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule-light);
+    text-decoration: none;
+    color: inherit;
+    min-height: 44px;
+  }
+
+  .rad:hover {
+    background: var(--tint);
+    color: inherit;
+    border-bottom-color: var(--rule-light);
+  }
+
+  .tittel {
+    display: block;
+    font: 400 20px/1.15 var(--serif);
+    color: var(--ink);
+  }
+
+  .beskrivelse {
+    display: block;
+    margin-top: 4px;
+    font: 400 12px/1.4 var(--sans);
+    color: var(--muted);
+  }
+
+  .pil {
+    font: 400 18px/1 var(--serif);
+    color: var(--muted);
+    flex: 0 0 auto;
+  }
+}

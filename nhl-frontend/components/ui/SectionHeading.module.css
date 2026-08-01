@@ -1,0 +1,40 @@
+/* Fellesmønster for skjermhode (§C) og seksjonsoverskrifter. */
+
+.hode {
+  padding: 48px 0 14px;
+}
+
+.medLinje {
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.medSvakLinje {
+  border-bottom: 1px solid var(--rule);
+}
+
+.flex {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.venstre {
+  min-width: 0;
+}
+
+.tittel {
+  margin-top: 10px;
+}
+
+.ingress {
+  margin-top: 16px;
+  max-width: 60ch;
+}
+
+@media (max-width: 767px) {
+  .hode {
+    padding: 32px 0 12px;
+  }
+}

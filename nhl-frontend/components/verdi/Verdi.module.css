@@ -1,0 +1,526 @@
+/*
+ * Verdi i dag (§C.2). Alle tall er hentet ordrett fra designspesifikasjonen.
+ * Ingen border-radius, ingen box-shadow, ingen transition. Den eneste
+ * bevegelsen på skjermen er `rise` på kampradene (§E.7).
+ */
+
+/* ========================================================================== *
+ * Tomtilstand — hovedtilstanden mesteparten av året
+ * ========================================================================== */
+
+.tom {
+  border-bottom: 1px solid var(--rule);
+}
+
+.tomVenstre {
+  padding-top: 80px;
+  padding-bottom: 88px;
+}
+
+.tomHoyre {
+  padding-top: 80px;
+  padding-bottom: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.kjoringHode {
+  display: block;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kjoringRad {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.kjoringNokkel {
+  font: 500 9.5px/1.4 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.kjoringVerdi {
+  font: 400 13.5px/1.3 var(--mono);
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ========================================================================== *
+ * Populert — filterrad og telling
+ * ========================================================================== */
+
+.kroppLaster {
+  padding: 64px 0;
+}
+
+.feilblokk {
+  margin-top: 26px;
+}
+
+.liste {
+  padding: 26px 0 0;
+}
+
+.filterrad {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.telling {
+  font: 400 12px/1.5 var(--mono);
+  color: var(--muted);
+}
+
+.ingenTreff {
+  padding: 64px 0 72px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ingenTreffTall {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+
+.fotnote {
+  margin: 0;
+  padding: 18px 0 0;
+  max-width: 68ch;
+  font: 400 11px/1.6 var(--mono);
+  color: var(--faint);
+}
+
+/* ========================================================================== *
+ * Kamprad
+ * ========================================================================== */
+
+.kamprad {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 2fr);
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+  animation: rise 0.3s ease both;
+}
+
+.kampVenstre {
+  padding: 30px 40px 30px 0;
+  border-right: 1px solid var(--rule-light);
+  min-width: 0;
+}
+
+.kampHoyre {
+  padding: 30px 0 30px 40px;
+  min-width: 0;
+}
+
+.metalinje {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font: 400 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.prikk {
+  color: var(--dash);
+}
+
+.lagblokk {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lagnavn {
+  font: 400 18px/1.15 var(--serif);
+  color: var(--ink);
+}
+
+.nokkeltall {
+  margin-top: 20px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.nokkelVerdi {
+  display: block;
+  margin-top: 4px;
+  font: 400 14px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.formVerdi {
+  letter-spacing: 0.08em;
+}
+
+/* ========================================================================== *
+ * Utfallstabellen
+ *
+ * Ekte <table> med <th scope>, men radene er grid slik at kolonnene holder
+ * linja. `display: block/grid` fjerner de implisitte ARIA-rollene i flere
+ * nettlesere, derfor står rollene eksplisitt i JSX-en — samme mønster som
+ * Elo-tabellen.
+ * ========================================================================== */
+
+.utfallTabell {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.utfallGruppe {
+  display: block;
+}
+
+.utfallGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px 74px 82px 92px;
+  gap: 14px;
+}
+
+.utfallHode {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--rule-light);
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Nettleserens `th { text-align: center; font-weight: bold }` gjelder også når
+ * cellene er grid-elementer, så begge må settes tilbake her. */
+.utfallHodeCelle {
+  text-align: left;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.utfallRad {
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+/* Utelatt av pipelinen: OT/SO, eller odds over `meta.json:max_odds`. Dempingen
+ * er lik for begge; `.utelattNotis` sier hvilken grunn det er. */
+.utfallDempet {
+  opacity: 0.5;
+}
+
+.utfallCelle {
+  min-width: 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.utfallTopp {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Forklaringen bak UTELATT-taggen. Teksten kommer fra `utelattTekst()` i
+ * `lib/spill.ts`, så de tre skjermene sier det samme. */
+.utelattNotis {
+  display: block;
+  margin-top: 7px;
+  font: 400 10px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+.hoyre {
+  text-align: right;
+}
+
+.tallModell {
+  font: 400 14px/1 var(--mono);
+  color: var(--ink);
+  text-align: right;
+}
+
+.tallMarked {
+  font: 400 13px/1 var(--mono);
+  color: var(--muted);
+  text-align: right;
+}
+
+.tallOdds {
+  font: 400 14px/1 var(--mono);
+  color: var(--ink);
+  text-align: right;
+}
+
+.tallEv {
+  font: 400 15px/1 var(--mono);
+  text-align: right;
+}
+
+/* Tolagsstolpe: marked i --dash bak, modell i teal/ink foran. */
+.stolpe {
+  margin-top: 7px;
+  height: 3px;
+  background: var(--rule-light);
+  position: relative;
+}
+
+.stolpeMarked {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--dash);
+}
+
+.stolpeModell {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 0;
+  background: var(--ink);
+}
+
+.stolpeSpill {
+  background: var(--teal);
+}
+
+/* §F.4 — utfallsetikettene brekker under ca. 1200px. */
+@media (max-width: 1200px) {
+  .utfallGrid {
+    grid-template-columns: minmax(0, 1fr) 62px 62px 70px 78px;
+    gap: 10px;
+  }
+}
+
+/* ========================================================================== *
+ * Mobil: kampkort → detaljskjerm (§F.3)
+ * ========================================================================== */
+
+/* Kortene går kant til kant på mobil: `main` har 20px sidepadding, som
+ * nulles ut med negativ margin og legges tilbake som kortets egen padding. */
+.kort {
+  display: block;
+  width: calc(100% + 2 * var(--shell-pad-mobil));
+  text-align: left;
+  padding: 18px 20px;
+  margin: 0 calc(-1 * var(--shell-pad-mobil));
+  border-bottom: 1px solid var(--rule-light);
+  background: var(--paper);
+  animation: rise 0.3s ease both;
+}
+
+.kort:hover,
+.kort:active {
+  background: var(--tint);
+}
+
+.kortTopp {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.kortTid {
+  font: 400 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.kortTagg {
+  font: 500 8.5px/1.5 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.kortTaggSpill {
+  color: var(--teal);
+}
+
+/* Oddstaket på kortet. OT/SO-grunnen står i skjermens fotnote og gjentas ikke
+ * per kort; oddstaket gjør det ikke, og uten den ser «ingen» ut som at markedet
+ * priser kampen riktig. */
+.kortNotis {
+  display: block;
+  margin-top: 7px;
+  font: 400 10px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+.kortLag {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+}
+
+.kortLagAndre {
+  margin-top: 8px;
+}
+
+.kortNavn {
+  font: 400 16px/1.15 var(--serif);
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detaljHode {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px 0 14px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.tilbake {
+  font: 400 20px/1 var(--serif);
+  color: var(--muted);
+  padding: 0 2px 0 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-left: -2px;
+}
+
+.tilbake:hover {
+  color: var(--ink);
+}
+
+.detaljTittel {
+  margin: 0;
+  font: 400 24px/1.1 var(--serif);
+  color: var(--ink);
+}
+
+.detaljUnder {
+  margin: 5px 0 0;
+  font: 400 9.5px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.detaljStripe {
+  padding: 18px 20px;
+  margin: 0 calc(-1 * var(--shell-pad-mobil));
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.detaljUtfall {
+  padding: 16px 20px;
+  margin: 0 calc(-1 * var(--shell-pad-mobil));
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.detaljTopp {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.detaljStolpe {
+  margin-top: 10px;
+}
+
+.detaljTall {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detaljTallEtikett {
+  display: block;
+  font: 500 8.5px/1 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.detaljTallVerdi {
+  display: block;
+  margin-top: 5px;
+  font: 400 13px/1 var(--mono);
+  color: var(--ink);
+}
+
+.detaljTallVerdiFaint {
+  color: var(--faint);
+}
+
+.detaljTallVerdiEv {
+  font-size: 15px;
+  text-align: right;
+}
+
+.detaljTallHoyre {
+  text-align: right;
+}
+
+/* ========================================================================== *
+ * Under 768px
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .liste {
+    padding-top: 20px;
+  }
+
+  .filterrad {
+    gap: 16px;
+    padding-bottom: 18px;
+  }
+
+  .fotnote {
+    padding-top: 20px;
+  }
+
+  /* Under 768px vises kortlista, ikke kampradene. Reglene under gjelder bare
+   * den første framen før `matchMedia` er lest på klienten — uten dem ville
+   * 280px-kolonnen gi vannrett scroll på en telefon i det ene bildet. */
+  .kamprad {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kampVenstre {
+    padding: 20px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule-light);
+  }
+
+  .kampHoyre {
+    padding: 20px 0;
+  }
+
+  .utfallGrid {
+    grid-template-columns: minmax(0, 1fr) 52px 52px 54px 62px;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,61 @@
+/* Fellestilstander: tom, feil, lastende. Se «Fellestilstander» i §C. */
+
+/* --- tom --------------------------------------------------------------- */
+
+.tom {
+  display: block;
+}
+
+.tomOverskriftLg {
+  font: 400 clamp(46px, 5.6vw, 80px) / 0.95 var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  max-width: 16ch;
+  margin: 0;
+}
+
+.tomOverskriftMd {
+  font: 400 clamp(30px, 3.4vw, 46px) / 1.1 var(--serif);
+  color: var(--ink);
+  max-width: 22ch;
+  margin: 0;
+}
+
+.tomBrødtekst {
+  margin-top: 26px;
+  max-width: 52ch;
+}
+
+.tomBrødtekstMd {
+  margin-top: 14px;
+  max-width: 52ch;
+}
+
+.handlinger {
+  margin-top: 32px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* --- feil -------------------------------------------------------------- */
+
+.feil {
+  padding: 18px 20px;
+  background: var(--tint);
+  border-left: 3px solid var(--vermillion);
+}
+
+.feilEtikett {
+  color: var(--vermillion);
+  display: block;
+}
+
+.feilTekst {
+  margin-top: 9px;
+  max-width: 60ch;
+}
+
+.feilHandling {
+  margin-top: 14px;
+}

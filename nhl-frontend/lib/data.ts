@@ -1,160 +1,151 @@
-import {
+/**
+ * Datalasting. Statisk eksport (`output: 'export'`) betyr at det ikke finnes
+ * noe API, ingen route handlers og ingen server actions — alt leses klientside
+ * fra `public/data/*.json`.
+ *
+ * Hver fil hentes maksimalt én gang per sidelast: promiset memoiseres, slik at
+ * sju skjermer som alle spør etter `portfolio.json` deler ett nettverkskall.
+ * Et avvist promise fjernes fra cachen, så «Prøv igjen» faktisk prøver igjen.
+ */
+
+import type {
+    EloData,
     MatchupsData,
     PortfolioResponse,
     PredictionResponse,
+    ShadowEntry,
     SiteMeta,
     Team,
     ValueGame,
 } from '@/types';
 
-const API_BASE_RAW =
-    process.env.NEXT_PUBLIC_API_BASE ??
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : '');
-
-/** Tom API-base = statisk modus: all data leses fra ferdiggenerert JSON. */
-export const API_BASE = API_BASE_RAW.endsWith('/') ? API_BASE_RAW.slice(0, -1) : API_BASE_RAW;
-export const STATIC_MODE = API_BASE === '';
-
-/**
- * Porteføljen kan bare oppdateres når API-et kjører lokalt eller serverer
- * frontend selv – et statisk bygg har ingen backend å skrive til.
- */
-export const CAN_UPDATE_PORTFOLIO =
-    !STATIC_MODE &&
-    (API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1') || API_BASE.startsWith('/'));
-
+/** Settes når siten mountes under et underkatalog-prefiks. */
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-const apiUrl = (path: string) => `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-const dataUrl = (file: string) => `${BASE_PATH}/data/${file}`;
+/** Filnavnene, slik de skal vises i feiltilstanden («{filnavn} svarte ikke»). */
+export const DATA_FILER = {
+    teams: 'teams.json',
+    meta: 'meta.json',
+    valueReport: 'value-report.json',
+    portfolio: 'portfolio.json',
+    matchups: 'matchups.json',
+    elo: 'elo.json',
+    shadow: 'shadow.json',
+} as const;
 
-async function readError(res: Response): Promise<string> {
-    // Body-en kan bare leses én gang, så vi henter teksten og parser den selv.
-    let text = '';
+export type DataNøkkel = keyof typeof DATA_FILER;
+
+const dataUrl = (fil: string) => `${BASE_PATH}/data/${fil}`;
+
+/** Feil fra datalasting. Bærer filnavnet så feilpanelet kan navngi kilden. */
+export class DataFeil extends Error {
+    readonly fil: string;
+
+    constructor(fil: string, melding: string) {
+        super(melding);
+        this.name = 'DataFeil';
+        this.fil = fil;
+    }
+}
+
+async function hentJson<T>(fil: string, melding: string): Promise<T> {
+    let res: Response;
     try {
-        text = (await res.text()).trim();
+        res = await fetch(dataUrl(fil));
     } catch {
-        return '';
+        throw new DataFeil(fil, melding);
     }
-
+    if (!res.ok) throw new DataFeil(fil, melding);
     try {
-        const body = JSON.parse(text);
-        // FastAPI kan svare med detail som liste (422) – bare strenger vises.
-        if (typeof body?.detail === 'string') return body.detail;
-        if (typeof body?.message === 'string') return body.message;
-        return '';
+        return (await res.json()) as T;
     } catch {
-        // Hopp over HTML-feilsider (f.eks. 404 fra en statisk host)
-        return text.startsWith('<') || text.length > 200 ? '' : text;
+        throw new DataFeil(fil, `${fil} inneholdt ugyldig JSON`);
     }
 }
 
-async function getJson<T>(url: string, fallbackMessage: string): Promise<T> {
-    const res = await fetch(url);
-    if (!res.ok) {
-        const reason = await readError(res);
-        throw new Error(reason || fallbackMessage);
-    }
-    return (await res.json()) as T;
+/* -------------------------------------------------------------------------- */
+/* Memoisering                                                                 */
+/* -------------------------------------------------------------------------- */
+
+const cache = new Map<DataNøkkel, Promise<unknown>>();
+
+function memoisert<T>(nøkkel: DataNøkkel, melding: string): Promise<T> {
+    const eksisterende = cache.get(nøkkel) as Promise<T> | undefined;
+    if (eksisterende) return eksisterende;
+
+    const p = hentJson<T>(DATA_FILER[nøkkel], melding).catch((err: unknown) => {
+        // La neste forsøk gå på nettet igjen i stedet for å gjenbruke feilen.
+        cache.delete(nøkkel);
+        throw err;
+    });
+    cache.set(nøkkel, p);
+    return p;
 }
 
-export async function fetchTeams(): Promise<Team[]> {
-    if (STATIC_MODE) {
-        return getJson<Team[]>(dataUrl('teams.json'), 'Kunne ikke hente lag');
-    }
-    return getJson<Team[]>(apiUrl('/teams'), 'Kunne ikke hente lag');
+/** Tømmer cachen for ett datasett (eller alle). Brukes av «Prøv igjen». */
+export function invalider(nøkkel?: DataNøkkel): void {
+    if (nøkkel) cache.delete(nøkkel);
+    else cache.clear();
 }
+
+/* -------------------------------------------------------------------------- */
+/* Lastere                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export function fetchTeams(): Promise<Team[]> {
+    return memoisert<Team[]>('teams', 'Kunne ikke hente lag');
+}
+
+export function fetchMeta(): Promise<SiteMeta> {
+    return memoisert<SiteMeta>('meta', 'Kunne ikke hente metadata');
+}
+
+/** Value-rapporten. Tom array i sesongpausen — det er hovedtilstanden. */
+export function fetchValueReport(): Promise<ValueGame[]> {
+    return memoisert<ValueGame[]>('valueReport', 'Kunne ikke hente value-rapporten');
+}
+
+export function fetchPortfolio(): Promise<PortfolioResponse> {
+    return memoisert<PortfolioResponse>('portfolio', 'Kunne ikke hente porteføljen');
+}
+
+export function fetchMatchups(): Promise<MatchupsData> {
+    return memoisert<MatchupsData>('matchups', 'Kunne ikke hente forhåndsberegnede prediksjoner');
+}
+
+export function fetchElo(): Promise<EloData> {
+    return memoisert<EloData>('elo', 'Kunne ikke hente Elo-ratinger');
+}
+
+/** Skyggeloggen. `[]` i dag; Skyggelogg-skjermen faller da tilbake på portfolio. */
+export function fetchShadow(): Promise<ShadowEntry[]> {
+    return memoisert<ShadowEntry[]>('shadow', 'Kunne ikke hente skyggeloggen');
+}
+
+/* -------------------------------------------------------------------------- */
+/* Avledet                                                                     */
+/* -------------------------------------------------------------------------- */
 
 /**
- * Value-boardet. I statisk modus er horisonten allerede bakt inn i den
- * genererte fila, så `days` brukes kun mot et levende API.
+ * Slår opp en paring i `matchups.json` på `"HOME-AWAY"`.
+ *
+ * **Ingen `"AWAY-HOME"`-fallback.** Nøklene i `matchups.json` er ordnede par:
+ * fila har alle 32×31 = 992 kombinasjoner, så oppslaget bommer bare hvis fila
+ * er ufullstendig. Et omvendt oppslag ville gitt `prob_home_win` fra oppsettet
+ * der det *andre* laget hadde hjemmefordelen, og merket den med `homeTeam` —
+ * altså speilvendte priser uten varsel. Returnerer heller `null`, og kalleren
+ * bestemmer fallback (Kampanalyse bruker `{h:.33, o:.25, a:.42}` og en note om
+ * at det ikke finnes en lagret modellpris).
  */
-export async function fetchValueReport(days: number): Promise<ValueGame[]> {
-    if (STATIC_MODE) {
-        return getJson<ValueGame[]>(dataUrl('value-report.json'), 'Kunne ikke hente oddsrapport');
-    }
-
-    let res = await fetch(apiUrl(`/value-report?days=${days}`));
-    if (res.status === 404) {
-        // Backend kan kjøre uten bindestrek-ruten (fallback)
-        res = await fetch(apiUrl(`/value_report?days=${days}`));
-    }
-    if (!res.ok) {
-        const reason = await readError(res);
-        throw new Error(reason || 'Kunne ikke hente oddsrapport');
-    }
-    return (await res.json()) as ValueGame[];
-}
-
-export async function fetchPortfolio(): Promise<PortfolioResponse> {
-    if (STATIC_MODE) {
-        return getJson<PortfolioResponse>(dataUrl('portfolio.json'), 'Kunne ikke hente porteføljen');
-    }
-    return getJson<PortfolioResponse>(apiUrl('/portfolio'), 'Kunne ikke hente porteføljen');
-}
-
-export async function updatePortfolio(valueGames: ValueGame[]): Promise<PortfolioResponse> {
-    if (!CAN_UPDATE_PORTFOLIO) {
-        throw new Error('Porteføljen oppdateres automatisk og kan ikke endres herfra');
-    }
-
-    const res = await fetch(apiUrl('/portfolio/update'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            days_ahead: 1,
-            stake_per_bet: 100,
-            min_value: 0.2,
-            max_odds: 4.0,
-            value_games: valueGames, // sender allerede hentet odds/matchdata for raskere oppdatering
-        }),
-    });
-    if (!res.ok) {
-        throw new Error('Oppdatering feilet');
-    }
-    return (await res.json()) as PortfolioResponse;
-}
-
-let matchupsPromise: Promise<MatchupsData> | null = null;
-
-function loadMatchups(): Promise<MatchupsData> {
-    if (!matchupsPromise) {
-        matchupsPromise = getJson<MatchupsData>(
-            dataUrl('matchups.json'),
-            'Kunne ikke hente forhåndsberegnede prediksjoner'
-        ).catch((err) => {
-            matchupsPromise = null; // la neste forsøk prøve på nytt
-            throw err;
-        });
-    }
-    return matchupsPromise;
-}
-
-export async function fetchPrediction(
+export function slåOppParing(
+    data: MatchupsData,
     homeTeam: string,
-    awayTeam: string
-): Promise<PredictionResponse> {
-    if (!STATIC_MODE) {
-        const res = await fetch(apiUrl('/predict'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
-        });
-        if (!res.ok) {
-            const reason = await readError(res);
-            throw new Error(reason || 'Feil ved prediksjon');
-        }
-        return (await res.json()) as PredictionResponse;
-    }
-
-    const data = await loadMatchups();
+    awayTeam: string,
+): PredictionResponse | null {
     const matchup = data.matchups[`${homeTeam}-${awayTeam}`];
     const home = data.teams[homeTeam];
     const away = data.teams[awayTeam];
-
-    if (!matchup || !home || !away) {
-        throw new Error('Ingen forhåndsberegnet prediksjon for denne kombinasjonen');
-    }
+    if (!matchup || !home || !away) return null;
 
     return {
         home_team: homeTeam,
@@ -165,16 +156,4 @@ export async function fetchPrediction(
         away_stats: away.stats,
         ...matchup,
     };
-}
-
-/** Når dataen sist ble generert. Kun tilgjengelig i statisk modus. */
-export async function fetchMeta(): Promise<SiteMeta | null> {
-    if (!STATIC_MODE) {
-        return null;
-    }
-    try {
-        return await getJson<SiteMeta>(dataUrl('meta.json'), 'Kunne ikke hente metadata');
-    } catch {
-        return null;
-    }
 }

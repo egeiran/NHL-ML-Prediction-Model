@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blålinja — NHL-modell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="nhl-data.js"></script>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:#F2EDE4;color:#17150F;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:#0E4B47;text-decoration:none;border-bottom:1px solid #B6C7C3}
+  a:hover{color:#17150F;border-bottom-color:#17150F}
+  button{font-family:inherit;cursor:pointer;background:none;border:none;padding:0;color:inherit}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #0E4B47;outline-offset:2px}
+  select,input{font-family:inherit;color:inherit}
+  ::selection{background:#DCE5E2}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#D8CFBC}
+  ::-webkit-scrollbar-track{background:#EAE3D5}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F2EDE4;background-image:radial-gradient(rgba(23,21,15,.045) 1px,transparent 1px);background-size:5px 5px">
+
+  <header style="position:sticky;top:0;z-index:30;background:#F2EDE4;border-bottom:1px solid #17150F">
+    <div style="max-width:1440px;margin:0 auto;padding:18px 48px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="display:flex;align-items:flex-end;gap:16px">
+        <div style="font:400 34px/0.9 'Instrument Serif',serif;letter-spacing:-.015em">Blålinja</div>
+        <div style="font:400 10px/1.5 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7A7364;padding-bottom:3px">NHL-modell<br>Porteføljerapport</div>
+      </div>
+      <div style="display:flex;gap:36px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7A7364">Sesong</div>
+          <div style="font:400 13px/1 'IBM Plex Mono',monospace">2025/26</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7A7364">Sist oppdatert</div>
+          <div style="font:400 13px/1 'IBM Plex Mono',monospace">{{ meta.gen }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7A7364">Status</div>
+          <div style="font:400 13px/1 'IBM Plex Mono',monospace;color:#7A7364">Sesongpause</div>
+        </div>
+      </div>
+    </div>
+    <nav style="max-width:1440px;margin:0 auto;padding:0 48px;display:flex;gap:26px;overflow-x:auto;border-top:1px solid #D8CFBC">
+      <button data-k="view" data-v="oversikt" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.oversikt.c }};border-bottom-color:{{ t.view.oversikt.u }}">Oversikt</button>
+      <button data-k="view" data-v="verdi" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.verdi.c }};border-bottom-color:{{ t.view.verdi.u }}">Verdi i dag</button>
+      <button data-k="view" data-v="kamp" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.kamp.c }};border-bottom-color:{{ t.view.kamp.u }}">Kampanalyse</button>
+      <span style="width:1px;background:#D8CFBC;margin:9px 0"></span>
+      <button data-k="view" data-v="historikk" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.historikk.c }};border-bottom-color:{{ t.view.historikk.u }}">Historikk</button>
+      <button data-k="view" data-v="elo" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.elo.c }};border-bottom-color:{{ t.view.elo.u }}">Elo</button>
+      <button data-k="view" data-v="modell" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.modell.c }};border-bottom-color:{{ t.view.modell.u }}">Modell</button>
+      <button data-k="view" data-v="skygge" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;color:{{ t.view.skygge.c }};border-bottom-color:{{ t.view.skygge.u }}">Skyggelogg</button>
+      <button data-k="view" data-v="mobil" onClick="{{ pick }}" style="padding:11px 0 9px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;border-bottom:2px solid transparent;white-space:nowrap;margin-left:auto;color:{{ t.view.mobil.c }};border-bottom-color:{{ t.view.mobil.u }}">Mobil</button>
+    </nav>
+  </header>
+
+  <sc-if value="{{ v.oversikt }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Oversikt" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+
+
+    <section style="min-height:calc(100vh - 108px);display:flex;flex-direction:column;border-bottom:1px solid #17150F;padding:36px 0 0">
+
+      <div style="flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:32px;flex-wrap:wrap;padding-bottom:30px">
+        <div style="max-width:60ch">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">{{ he.dayLabel }}</div>
+          <div style="font:400 clamp(38px,4.4vw,62px)/1.05 'Instrument Serif',serif;margin-top:16px;letter-spacing:-.02em">{{ he.headline }}</div>
+        </div>
+        <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+          <button data-k="board" data-v="tom" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.11em;text-transform:uppercase;padding:9px 13px;background:{{ t.board.tom.g }};color:{{ t.board.tom.c }}">I dag</button>
+          <button data-k="board" data-v="full" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.11em;text-transform:uppercase;padding:9px 13px;background:{{ t.board.full.g }};color:{{ t.board.full.c }}">Eksempeldag</button>
+        </div>
+      </div>
+
+      <div style="flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(300px,.62fr) minmax(0,1fr);gap:0;border-top:1px solid #17150F">
+
+        <div style="display:flex;flex-direction:column;padding:22px 44px 24px 0;border-right:1px solid #D8CFBC;min-height:0">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364;flex:0 0 auto">Dagens spill</div>
+          <sc-if value="{{ he.hasBets }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1 1 auto;overflow-y:auto;min-height:0;margin-top:6px">
+              <sc-for list="{{ he.bets }}" as="b" hint-placeholder-count="2">
+                <div style="padding:20px 0;border-bottom:1px solid #E4DCCB">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px">
+                    <span style="font:400 11px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#9A9284">{{ b.time }}</span>
+                    <span style="font:400 32px/0.9 'Instrument Serif',serif;color:#0E4B47">{{ b.ev }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:13px;margin-top:14px">
+                    <span style="width:38px;height:38px;flex:0 0 38px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ b.abbr }}</span>
+                    <span style="min-width:0">
+                      <span style="display:block;font:400 22px/1.12 'Instrument Serif',serif">{{ b.team }}</span>
+                      <span style="display:block;margin-top:4px;font:400 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#9A9284">{{ b.side }} mot {{ b.vs }}</span>
+                    </span>
+                  </div>
+                  <div style="display:flex;gap:24px;margin-top:14px">
+                    <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#7A7364">modell {{ b.mp }}</span>
+                    <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#7A7364">odds {{ b.odds }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ he.noBets }}" hint-placeholder-val="{{ true }}">
+            <div style="flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;min-height:0">
+              <div style="font:400 clamp(24px,2.4vw,32px)/1.2 'Instrument Serif',serif;max-width:18ch;color:#4A453B">{{ he.emptyLine }}</div>
+              <div style="margin-top:26px;display:flex;gap:12px;flex-wrap:wrap">
+                <button data-k="view" data-v="kamp" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #0E4B47;color:#0E4B47;padding:13px 18px" style-hover="background:#0E4B47;color:#F2EDE4">Analyser en kamp</button>
+                <button data-k="view" data-v="verdi" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #C9BFA9;color:#4A453B;padding:13px 18px" style-hover="border-color:#17150F;color:#17150F">Se hele dagen</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;padding:22px 0 0 44px;min-height:0">
+          <div style="flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+              <span style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">{{ he.winLabel }}</span>
+              <sc-if value="{{ he.showWin }}" hint-placeholder-val="{{ false }}"><span style="font:400 30px/1 'IBM Plex Mono',monospace;color:{{ he.winNetC }}">{{ he.winNet }}</span></sc-if>
+            </div>
+            <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+              <button data-k="hWin" data-v="60" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin['60'].g }};color:{{ t.hWin['60'].c }}">60D</button>
+              <button data-k="hWin" data-v="90" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin['90'].g }};color:{{ t.hWin['90'].c }}">90D</button>
+              <button data-k="hWin" data-v="alt" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin.alt.g }};color:{{ t.hWin.alt.c }}">ALT</button>
+            </div>
+          </div>
+
+          <div style="flex:1 1 auto;min-height:140px;position:relative;margin-top:16px" onMouseMove="{{ onHeroMove }}" onMouseLeave="{{ onHeroLeave }}">
+            <svg viewBox="0 0 1200 200" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+              <clipPath id="eUp"><rect x="0" y="0" width="1200" height="{{ he.zero }}"></rect></clipPath>
+              <clipPath id="eDn"><rect x="0" y="{{ he.zero }}" width="1200" height="200"></rect></clipPath>
+              <path d="{{ he.area }}" fill="#0E4B47" opacity=".12" clip-path="url(#eUp)"></path>
+              <path d="{{ he.area }}" fill="#B23A1B" opacity=".12" clip-path="url(#eDn)"></path>
+              <line x1="0" x2="1200" y1="{{ he.zero }}" y2="{{ he.zero }}" stroke="#C9BFA9" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"></line>
+              <path d="{{ he.line }}" fill="none" stroke="#17150F" stroke-width="1.6" vector-effect="non-scaling-stroke"></path>
+              <path d="{{ he.cross }}" stroke="#17150F" stroke-width="1" stroke-dasharray="2 3" fill="none" opacity="{{ he.hOp }}" vector-effect="non-scaling-stroke"></path>
+            </svg>
+            <div style="position:absolute;width:9px;height:9px;border-radius:50%;background:#F2EDE4;border:1.7px solid #17150F;transform:translate(-50%,-50%);pointer-events:none;opacity:{{ he.hOp }};left:{{ he.hLeft }};top:{{ he.hTop }}"></div>
+            <div style="position:absolute;top:0;pointer-events:none;transform:translateX(-50%);background:#17150F;color:#F2EDE4;padding:8px 11px;white-space:nowrap;opacity:{{ he.hOp }};left:{{ he.hLeft }}">
+              <div style="font:400 9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#A8A091">{{ he.hDate }}</div>
+              <div style="font:400 15px/1.3 'IBM Plex Mono',monospace;margin-top:2px">{{ he.hVal }}</div>
+              <div style="font:400 10px/1.3 'IBM Plex Mono',monospace;color:#A8A091">{{ he.hSub }}</div>
+            </div>
+          </div>
+
+          <div style="flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #D8CFBC;margin-top:14px">
+            <div style="padding:15px 16px 20px 0"><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Spill i perioden</div><div style="font:400 19px/1 'IBM Plex Mono',monospace;margin-top:9px">{{ he.winBets }}</div></div>
+            <div style="padding:15px 16px;border-left:1px solid #E4DCCB"><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Treffrate</div><div style="font:400 19px/1 'IBM Plex Mono',monospace;margin-top:9px">{{ he.winWr }}</div></div>
+            <div style="padding:15px 16px;border-left:1px solid #E4DCCB"><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Beste dag</div><div style="font:400 19px/1 'IBM Plex Mono',monospace;margin-top:9px">{{ he.bestD }}</div></div>
+            <div style="padding:15px 0 15px 16px;border-left:1px solid #E4DCCB"><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Svakeste dag</div><div style="font:400 19px/1 'IBM Plex Mono',monospace;margin-top:9px">{{ he.worstD }}</div></div>
+          </div>
+
+          <sc-if value="{{ he.showBig }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:0 0 auto;padding:18px 0 22px;display:flex;align-items:baseline;gap:14px">
+              <span style="font:400 52px/0.85 'Instrument Serif',serif;letter-spacing:-.03em;color:{{ hero.netCol }}">{{ hero.net }}</span>
+              <span style="font:400 22px/1 'Instrument Serif',serif;color:#7A7364">kr siden start</span>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </section>
+
+    <section style="padding:44px 0 0">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;border-bottom:1px solid #17150F;padding-bottom:12px">
+        <div>
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Kurver</div>
+          <div style="font:400 30px/1.1 'Instrument Serif',serif;margin-top:8px">{{ ch.title }}</div>
+        </div>
+        <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">
+          <div style="display:flex;gap:18px">
+            <button data-k="chart" data-v="netto" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;padding-bottom:5px;border-bottom:2px solid transparent;color:{{ t.chart.netto.c }};border-bottom-color:{{ t.chart.netto.u }}">Verdikurve</button>
+            <button data-k="chart" data-v="dag" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;padding-bottom:5px;border-bottom:2px solid transparent;color:{{ t.chart.dag.c }};border-bottom-color:{{ t.chart.dag.u }}">Daglig P&amp;L</button>
+          </div>
+          <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+            <button data-k="range" data-v="alt" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.range.alt.g }};color:{{ t.range.alt.c }}">ALT</button>
+            <button data-k="range" data-v="60" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.range['60'].g }};color:{{ t.range['60'].c }}">60D</button>
+            <button data-k="range" data-v="20" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.range['20'].g }};color:{{ t.range['20'].c }}">20D</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-bottom:1px solid #D8CFBC">
+        <div style="padding:8px 0 0">
+          <div style="position:relative" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}">
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="width:100%;height:300px;display:block;overflow:visible">
+              <path d="{{ ch.grid }}" stroke="#E0D7C5" stroke-width="1" fill="none" vector-effect="non-scaling-stroke"></path>
+              <path d="{{ ch.zeroPath }}" stroke="#17150F" stroke-width="1" fill="none" vector-effect="non-scaling-stroke"></path>
+              <clipPath id="clipUp"><rect x="0" y="0" width="1000" height="{{ ch.zeroY }}"></rect></clipPath>
+              <clipPath id="clipDn"><rect x="0" y="{{ ch.zeroY }}" width="1000" height="300"></rect></clipPath>
+              <path d="{{ ch.area }}" fill="#0E4B47" opacity=".13" clip-path="url(#clipUp)"></path>
+              <path d="{{ ch.area }}" fill="#B23A1B" opacity=".13" clip-path="url(#clipDn)"></path>
+              <path d="{{ ch.barsPos }}" fill="#0E4B47" opacity=".85"></path>
+              <path d="{{ ch.barsNeg }}" fill="#B23A1B" opacity=".85"></path>
+              <path d="{{ ch.line }}" fill="none" stroke="#17150F" stroke-width="1.7" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
+              <path d="{{ ch.cross }}" stroke="#17150F" stroke-width="1" stroke-dasharray="2 3" fill="none" opacity="{{ ch.hOp }}" vector-effect="non-scaling-stroke"></path>
+              <circle cx="{{ ch.hcx }}" cy="{{ ch.hcy }}" r="4" fill="#F2EDE4" stroke="#17150F" stroke-width="1.7" opacity="{{ ch.hOp }}" vector-effect="non-scaling-stroke"></circle>
+            </svg>
+            <div style="position:absolute;inset:0;pointer-events:none">
+              <sc-for list="{{ ch.yLabels }}" as="yl" hint-placeholder-count="4">
+                <div style="position:absolute;left:0;transform:translateY(-50%);font:400 10px/1 'IBM Plex Mono',monospace;color:#9A9284;top:{{ yl.top }}">{{ yl.text }}</div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:-2px;height:26px;pointer-events:none">
+              <sc-for list="{{ ch.xLabels }}" as="xl" hint-placeholder-count="7">
+                <div style="position:absolute;transform:translateX(-50%);font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#9A9284;left:{{ xl.left }}">{{ xl.text }}</div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;top:0;pointer-events:none;transform:translateX(-50%);background:#17150F;color:#F2EDE4;padding:8px 11px;white-space:nowrap;opacity:{{ ch.hOp }};left:{{ ch.hLeft }}">
+              <div style="font:400 9px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#A8A091">{{ ch.hDate }}</div>
+              <div style="font:400 15px/1.3 'IBM Plex Mono',monospace;margin-top:2px">{{ ch.hVal }}</div>
+              <div style="font:400 10px/1.3 'IBM Plex Mono',monospace;color:#A8A091">{{ ch.hSub }}</div>
+            </div>
+          </div>
+          <div style="height:22px"></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding-top:44px">
+      <div>
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Siste avgjorte</div>
+        <div style="margin-top:18px">
+          <sc-for list="{{ recent }}" as="r" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:62px minmax(0,1fr) 56px 66px 76px;gap:14px;align-items:baseline;padding:11px 0;border-bottom:1px solid #E4DCCB">
+              <span style="font:400 11px/1 'IBM Plex Mono',monospace;color:#9A9284">{{ r.date }}</span>
+              <span style="font:400 13.5px/1.2 'IBM Plex Sans',sans-serif">{{ r.game }}</span>
+              <span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#7A7364">{{ r.sel }}</span>
+              <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#7A7364;text-align:right">{{ r.odds }}</span>
+              <span style="font:400 13px/1 'IBM Plex Mono',monospace;text-align:right;color:{{ r.c }}">{{ r.profit }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.verdi }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Verdi i dag" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div>
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Value-rapport · terskel EV ≥ {{ board.thresh }}</div>
+        <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">{{ board.title }}</div>
+      </div>
+      <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+        <button data-k="board" data-v="tom" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.board.tom.g }};color:{{ t.board.tom.c }}">I dag</button>
+        <button data-k="board" data-v="full" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.board.full.g }};color:{{ t.board.full.c }}">Eksempeldag</button>
+      </div>
+    </section>
+
+    <sc-if value="{{ board.empty }}" hint-placeholder-val="{{ true }}">
+      <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;border-bottom:1px solid #D8CFBC">
+        <div style="padding:80px 48px 88px 0;border-right:1px solid #D8CFBC">
+          <div style="font:400 clamp(46px,5.6vw,80px)/0.95 'Instrument Serif',serif;letter-spacing:-.02em;max-width:16ch">Ingen kamper å prise</div>
+          <div style="margin-top:26px;max-width:52ch;font:400 15px/1.7 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">Modellen kjører hver morgen, men kampprogrammet er tomt.</div>
+          <div style="margin-top:32px;display:flex;gap:14px;flex-wrap:wrap">
+            <button data-k="board" data-v="full" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #0E4B47;color:#0E4B47;padding:14px 20px" style-hover="background:#0E4B47;color:#F2EDE4">Vis en eksempeldag</button>
+            <button data-k="view" data-v="kamp" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #C9BFA9;color:#4A453B;padding:14px 20px" style-hover="border-color:#17150F;color:#17150F">Analyser en kamp selv</button>
+          </div>
+        </div>
+        <div style="padding:80px 0 88px 48px;display:flex;flex-direction:column;justify-content:center">
+          <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364;padding-bottom:16px;border-bottom:1px solid #D8CFBC">Siste kjøring</div>
+          <sc-for list="{{ board.runRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:24px;padding:13px 0;border-bottom:1px solid #E4DCCB">
+              <span style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">{{ r.k }}</span>
+              <span style="font:400 13.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ board.full }}" hint-placeholder-val="{{ false }}">
+      <section style="padding:26px 0 0">
+        <div style="display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid #D8CFBC">
+          <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+            <button data-k="filt" data-v="value" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.filt.value.g }};color:{{ t.filt.value.c }}">Bare value</button>
+            <button data-k="filt" data-v="alle" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.filt.alle.g }};color:{{ t.filt.alle.c }}">Alle kamper</button>
+          </div>
+          <div style="font:400 12px/1.5 'IBM Plex Mono',monospace;color:#7A7364">{{ board.count }}</div>
+        </div>
+        <sc-if value="{{ board.none }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:64px 0 72px;border-bottom:1px solid #D8CFBC">
+            <div style="font:400 clamp(30px,3.4vw,46px)/1.1 'Instrument Serif',serif;max-width:20ch">Ingen utfall over terskel</div>
+            <div style="margin-top:16px;max-width:48ch;font:400 14px/1.65 'IBM Plex Sans',sans-serif;color:#4A453B">Markedet priser alle fem kampene som modellen. Senk EV-terskelen eller vis alle kamper.</div>
+            <div style="margin-top:24px"><button data-k="filt" data-v="alle" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #0E4B47;color:#0E4B47;padding:13px 20px" style-hover="background:#0E4B47;color:#F2EDE4">Vis alle kamper</button></div>
+          </div>
+        </sc-if>
+        <sc-for list="{{ board.games }}" as="g" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,2fr);gap:0;border-bottom:1px solid #D8CFBC;animation:rise .3s ease both">
+            <div style="padding:30px 40px 30px 0;border-right:1px solid #E4DCCB">
+              <div style="display:flex;gap:14px;align-items:center;font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+                <span>{{ g.time }}</span>
+                <span style="color:#C9BFA9">·</span>
+                <span>{{ g.arena }}</span>
+              </div>
+              <div style="margin-top:20px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:center;gap:13px">
+                  <div style="width:38px;height:38px;flex:0 0 38px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ g.a }}</div>
+                  <div>
+                    <div style="font:400 18px/1.15 'Instrument Serif',serif">{{ g.aName }}</div>
+                    <div style="font:400 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#9A9284">Borte · Elo {{ g.aElo }}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:13px">
+                  <div style="width:38px;height:38px;flex:0 0 38px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 10px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ g.h }}</div>
+                  <div>
+                    <div style="font:400 18px/1.15 'Instrument Serif',serif">{{ g.hName }}</div>
+                    <div style="font:400 10px/1.4 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#9A9284">Hjemme · Elo {{ g.hElo }}</div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:20px;display:flex;gap:20px">
+                <div>
+                  <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Elo-diff</div>
+                  <div style="font:400 14px/1.3 'IBM Plex Mono',monospace;margin-top:4px">{{ g.eloDiff }}</div>
+                </div>
+                <div>
+                  <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Form B/H</div>
+                  <div style="font:400 14px/1.3 'IBM Plex Mono',monospace;margin-top:4px;letter-spacing:.08em">{{ g.form }}</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:30px 0 30px 40px">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 74px 74px 82px 92px;gap:14px;padding-bottom:9px;border-bottom:1px solid #E4DCCB;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+                <span>Utfall</span><span style="text-align:right">Modell</span><span style="text-align:right">Marked</span><span style="text-align:right">Odds</span><span style="text-align:right">EV</span>
+              </div>
+              <sc-for list="{{ g.rows }}" as="o" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 74px 74px 82px 92px;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid #E4DCCB;opacity:{{ o.op }}">
+                  <div>
+                    <div style="display:flex;align-items:baseline;gap:10px">
+                      <span style="font:400 14.5px/1.2 'IBM Plex Sans',sans-serif">{{ o.label }}</span>
+                      <span style="font:500 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;padding:2px 6px;color:{{ o.tagC }};border:1px solid {{ o.tagB }}">{{ o.tag }}</span>
+                    </div>
+                    <div style="margin-top:7px;height:3px;background:#E4DCCB;position:relative">
+                      <div style="position:absolute;top:0;bottom:0;left:0;background:#C9BFA9;width:{{ o.mkW }}"></div>
+                      <div style="position:absolute;top:-1px;bottom:-1px;left:0;background:{{ o.barC }};width:{{ o.mdW }}"></div>
+                    </div>
+                  </div>
+                  <span style="font:400 14px/1 'IBM Plex Mono',monospace;text-align:right">{{ o.mp }}</span>
+                  <span style="font:400 13px/1 'IBM Plex Mono',monospace;text-align:right;color:#7A7364">{{ o.ip }}</span>
+                  <span style="font:400 14px/1 'IBM Plex Mono',monospace;text-align:right">{{ o.odds }}</span>
+                  <span style="font:400 15px/1 'IBM Plex Mono',monospace;text-align:right;color:{{ o.evC }}">{{ o.ev }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.kamp }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Kampanalyse" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Kampanalyse · egendefinert oppgjør</div>
+      <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">Sett to lag mot hverandre</div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(300px,.8fr) minmax(0,1.6fr);gap:0">
+      <div style="padding:36px 44px 36px 0;border-right:1px solid #D8CFBC">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div>
+            <label style="display:block;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;margin-bottom:8px">Hjemmelag</label>
+            <select data-k="home" onChange="{{ onSel }}" value="{{ mm.home }}" style="width:100%;padding:12px 12px;background:#F2EDE4;border:1px solid #C9BFA9;font:400 15px/1.2 'IBM Plex Sans',sans-serif;border-radius:0">
+              <sc-for list="{{ mm.teams }}" as="tm" hint-placeholder-count="8">
+                <option value="{{ tm.abbr }}">{{ tm.label }}</option>
+              </sc-for>
+            </select>
+          </div>
+          <button onClick="{{ onSwap }}" style="align-self:flex-start;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;border:1px solid #D8CFBC;padding:9px 13px" style-hover="border-color:#17150F;color:#17150F">⇅ Bytt</button>
+          <div>
+            <label style="display:block;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;margin-bottom:8px">Bortelag</label>
+            <select data-k="away" onChange="{{ onSel }}" value="{{ mm.away }}" style="width:100%;padding:12px 12px;background:#F2EDE4;border:1px solid #C9BFA9;font:400 15px/1.2 'IBM Plex Sans',sans-serif;border-radius:0">
+              <sc-for list="{{ mm.teams }}" as="tm" hint-placeholder-count="8">
+                <option value="{{ tm.abbr }}">{{ tm.label }}</option>
+              </sc-for>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:34px;padding-top:22px;border-top:1px solid #D8CFBC">
+          <div style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Odds fra bookmaker</div>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #E4DCCB">
+              <span style="font:400 13.5px/1.2 'IBM Plex Sans',sans-serif">Hjemmeseier</span>
+              <input type="number" step="0.05" min="1.01" data-k="oh" value="{{ mm.oh }}" onChange="{{ onNum }}" style="width:88px;padding:8px 10px;text-align:right;background:#F2EDE4;border:1px solid #C9BFA9;font:400 14px/1 'IBM Plex Mono',monospace;border-radius:0">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #E4DCCB">
+              <span style="font:400 13.5px/1.2 'IBM Plex Sans',sans-serif">OT/SO</span>
+              <input type="number" step="0.05" min="1.01" data-k="od" value="{{ mm.od }}" onChange="{{ onNum }}" style="width:88px;padding:8px 10px;text-align:right;background:#F2EDE4;border:1px solid #C9BFA9;font:400 14px/1 'IBM Plex Mono',monospace;border-radius:0">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 0">
+              <span style="font:400 13.5px/1.2 'IBM Plex Sans',sans-serif">Borteseier</span>
+              <input type="number" step="0.05" min="1.01" data-k="oa" value="{{ mm.oa }}" onChange="{{ onNum }}" style="width:88px;padding:8px 10px;text-align:right;background:#F2EDE4;border:1px solid #C9BFA9;font:400 14px/1 'IBM Plex Mono',monospace;border-radius:0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:36px 0 36px 44px">
+        <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+          <div style="font:400 34px/1.1 'Instrument Serif',serif">{{ mm.title }}</div>
+          <div style="font:400 11px/1.4 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#7A7364">Modellens anbefaling: {{ mm.pick }}</div>
+        </div>
+
+        <div style="margin-top:30px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid #17150F">
+          <sc-for list="{{ mm.rows }}" as="o" hint-placeholder-count="3">
+            <div style="padding:24px 22px 24px 0;border-right:1px solid #E4DCCB">
+              <div style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;min-height:2.6em">{{ o.label }}</div>
+              <div style="font:400 clamp(44px,5vw,66px)/0.9 'Instrument Serif',serif;margin-top:12px;color:{{ o.c }}">{{ o.p }}</div>
+              <div style="margin-top:14px;height:4px;background:#E4DCCB;position:relative">
+                <div style="position:absolute;top:0;bottom:0;left:0;background:{{ o.c }};width:{{ o.w }}"></div>
+              </div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="font:400 10.5px/1.3 'IBM Plex Mono',monospace;color:#7A7364">Marked</span><span style="font:400 12px/1.3 'IBM Plex Mono',monospace">{{ o.ip }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="font:400 10.5px/1.3 'IBM Plex Mono',monospace;color:#7A7364">Odds</span><span style="font:400 12px/1.3 'IBM Plex Mono',monospace">{{ o.odds }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="font:400 10.5px/1.3 'IBM Plex Mono',monospace;color:#7A7364">EV</span><span style="font:400 13px/1.3 'IBM Plex Mono',monospace;color:{{ o.evC }}">{{ o.ev }}</span></div>
+              </div>
+              <div style="margin-top:14px;font:500 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;display:inline-block;padding:3px 7px;color:{{ o.tagC }};border:1px solid {{ o.tagB }}">{{ o.tag }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:36px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px">
+          <div>
+            <div style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;padding-bottom:12px;border-bottom:1px solid #D8CFBC">Elo</div>
+            <sc-for list="{{ mm.eloRows }}" as="e" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;border-bottom:1px solid #E4DCCB">
+                <span style="font:400 13px/1.3 'IBM Plex Sans',sans-serif;color:#4A453B">{{ e.k }}</span>
+                <span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ e.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div>
+            <div style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;padding-bottom:12px;border-bottom:1px solid #D8CFBC">Siste fem</div>
+            <sc-for list="{{ mm.formRows }}" as="f" hint-placeholder-count="2">
+              <div style="padding:13px 0;border-bottom:1px solid #E4DCCB">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+                  <span style="font:400 13px/1.3 'IBM Plex Sans',sans-serif">{{ f.name }}</span>
+                  <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#7A7364">{{ f.seq }}</span>
+                </div>
+                <div style="margin-top:6px;font:400 11px/1.4 'IBM Plex Mono',monospace;color:#9A9284">{{ f.scores }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.historikk }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Historikk" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div>
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Beslutningslogg</div>
+        <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">Hvert spill som er lagt inn</div>
+      </div>
+      <div style="display:flex;gap:34px;align-items:flex-end">
+        <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Utvalg</div><div style="font:400 24px/1 'IBM Plex Mono',monospace;margin-top:7px">{{ hist.n }}</div></div>
+        <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Treffrate</div><div style="font:400 24px/1 'IBM Plex Mono',monospace;margin-top:7px">{{ hist.wr }}</div></div>
+        <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Netto</div><div style="font:400 24px/1 'IBM Plex Mono',monospace;margin-top:7px;color:{{ hist.sumC }}">{{ hist.sum }}</div></div>
+      </div>
+    </section>
+
+    <section style="display:flex;gap:30px;flex-wrap:wrap;align-items:center;padding:18px 0;border-bottom:1px solid #D8CFBC">
+      <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+        <button data-k="hStatus" data-v="alle" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.alle.g }};color:{{ t.hStatus.alle.c }}">Alle</button>
+        <button data-k="hStatus" data-v="won" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.won.g }};color:{{ t.hStatus.won.c }}">Vunnet</button>
+        <button data-k="hStatus" data-v="lost" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.lost.g }};color:{{ t.hStatus.lost.c }}">Tapt</button>
+      </div>
+      <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+        <button data-k="hSel" data-v="alle" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSel.alle.g }};color:{{ t.hSel.alle.c }}">Alle utfall</button>
+        <button data-k="hSel" data-v="home" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSel.home.g }};color:{{ t.hSel.home.c }}">Hjemme</button>
+        <button data-k="hSel" data-v="away" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSel.away.g }};color:{{ t.hSel.away.c }}">Borte</button>
+        <button data-k="hSel" data-v="draw" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSel.draw.g }};color:{{ t.hSel.draw.c }}">OT/SO</button>
+      </div>
+      <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+        <button data-k="hSort" data-v="dato" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSort.dato.g }};color:{{ t.hSort.dato.c }}">Nyeste</button>
+        <button data-k="hSort" data-v="ev" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSort.ev.g }};color:{{ t.hSort.ev.c }}">Høyest EV</button>
+        <button data-k="hSort" data-v="netto" onClick="{{ pick }}" style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hSort.netto.g }};color:{{ t.hSort.netto.c }}">Beste netto</button>
+      </div>
+      <div style="font:400 11.5px/1.5 'IBM Plex Mono',monospace;color:#9A9284;margin-left:auto">Alle spill 100 kr</div>
+    </section>
+
+    <section>
+      <div style="display:grid;grid-template-columns:76px minmax(0,1.5fr) 66px 60px 72px 72px 76px 80px 92px;gap:12px;padding:12px 0 10px;border-bottom:1px solid #17150F;font:500 8.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+        <span>Dato</span><span>Kamp</span><span>Spill</span><span style="text-align:right">Odds</span><span style="text-align:right">Modell</span><span style="text-align:right">Marked</span><span style="text-align:right">EV</span><span>Resultat</span><span style="text-align:right">Netto</span>
+      </div>
+      <sc-for list="{{ hist.rows }}" as="r" hint-placeholder-count="16">
+        <div style="display:grid;grid-template-columns:76px minmax(0,1.5fr) 66px 60px 72px 72px 76px 80px 92px;gap:12px;align-items:baseline;border-bottom:1px solid #E4DCCB;padding-top:{{ r.pad }};padding-bottom:{{ r.pad }}" style-hover="background:#EAE3D5">
+          <span style="font:400 11px/1.3 'IBM Plex Mono',monospace;color:#9A9284">{{ r.date }}</span>
+          <span style="font:400 13.5px/1.3 'IBM Plex Sans',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.gameLong }}</span>
+          <span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#4A453B">{{ r.sel }}</span>
+          <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.odds }}</span>
+          <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.mp }}</span>
+          <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right;color:#9A9284">{{ r.ip }}</span>
+          <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.ev }}</span>
+          <span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ r.resC }}">{{ r.res }}</span>
+          <span style="font:400 13px/1.3 'IBM Plex Mono',monospace;text-align:right;color:{{ r.netC }}">{{ r.net }}</span>
+        </div>
+      </sc-for>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.elo }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Elo" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div>
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Elo · t.o.m. {{ elo.through }}</div>
+        <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">Styrkeforholdet modellen ser</div>
+      </div>
+      <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+        <button data-k="conf" data-v="alle" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.conf.alle.g }};color:{{ t.conf.alle.c }}">Alle</button>
+        <button data-k="conf" data-v="ost" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.conf.ost.g }};color:{{ t.conf.ost.c }}">Øst</button>
+        <button data-k="conf" data-v="vest" onClick="{{ pick }}" style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;background:{{ t.conf.vest.g }};color:{{ t.conf.vest.c }}">Vest</button>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:0">
+      <div style="padding:22px 44px 0 0;border-right:1px solid #D8CFBC">
+        <div style="display:grid;grid-template-columns:32px 42px minmax(0,1fr) 54px minmax(120px,1.1fr) 64px;gap:14px;padding-bottom:10px;border-bottom:1px solid #17150F;font:500 8.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+          <span>#</span><span></span><span>Lag</span><span>Konf.</span><span>Avvik fra 1500</span><span style="text-align:right">Rating</span>
+        </div>
+        <sc-for list="{{ elo.rows }}" as="e" hint-placeholder-count="16">
+          <div style="display:grid;grid-template-columns:32px 42px minmax(0,1fr) 54px minmax(120px,1.1fr) 64px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid #E4DCCB" style-hover="background:#EAE3D5">
+            <span style="font:400 12px/1 'IBM Plex Mono',monospace;color:#9A9284">{{ e.rank }}</span>
+            <span style="width:30px;height:30px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 9px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ e.abbr }}</span>
+            <span style="font:400 15px/1.2 'Instrument Serif',serif">{{ e.name }}</span>
+            <span style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#9A9284">{{ e.conf }}</span>
+            <span style="height:4px;background:#E4DCCB;position:relative;display:block">
+              <span style="position:absolute;top:-3px;bottom:-3px;left:50%;width:1px;background:#C9BFA9;display:block"></span>
+              <span style="position:absolute;top:0;bottom:0;display:block;background:{{ e.c }};left:{{ e.barLeft }};width:{{ e.barW }}"></span>
+            </span>
+            <span style="font:400 13.5px/1 'IBM Plex Mono',monospace;text-align:right">{{ e.rating }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:22px 0 0 36px">
+        <div style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;padding-bottom:12px;border-bottom:1px solid #D8CFBC">Parametere</div>
+        <sc-for list="{{ elo.cfg }}" as="c" hint-placeholder-count="6">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;border-bottom:1px solid #E4DCCB">
+            <span style="font:400 12.5px/1.3 'IBM Plex Sans',sans-serif;color:#4A453B">{{ c.k }}</span>
+            <span style="font:400 13.5px/1 'IBM Plex Mono',monospace">{{ c.v }}</span>
+          </div>
+        </sc-for>
+        <div style="margin-top:26px;padding:18px 20px;background:#EAE3D5;border-left:3px solid #B23A1B">
+          <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B23A1B">Kjent datavindu</div>
+          <div style="margin-top:9px;font:400 12.5px/1.65 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">Utah ligger lagret under ARI. Fram til 17. april 2026 ble formtallene lest speilvendt.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.modell }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Modell" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Modellkvalitet · 202 spill</div>
+      <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">Er modellen god?</div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-bottom:1px solid #17150F">
+      <div style="padding:38px 32px 34px 0;border-right:1px solid #D8CFBC">
+        <div style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Modellen forventet</div>
+        <div style="font:400 clamp(56px,6vw,82px)/0.9 'Instrument Serif',serif;margin-top:12px;color:#B23A1B">{{ cal.expModel }}</div>
+        <div style="margin-top:10px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B">treff</div>
+      </div>
+      <div style="padding:38px 32px 34px;border-right:1px solid #D8CFBC">
+        <div style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Markedet forventet</div>
+        <div style="font:400 clamp(56px,6vw,82px)/0.9 'Instrument Serif',serif;margin-top:12px;color:#7A7364">{{ cal.expMarket }}</div>
+        <div style="margin-top:10px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B">treff</div>
+      </div>
+      <div style="padding:38px 0 34px 32px">
+        <div style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Faktisk</div>
+        <div style="font:400 clamp(56px,6vw,82px)/0.9 'Instrument Serif',serif;margin-top:12px;color:#0E4B47">{{ cal.actual }}</div>
+        <div style="margin-top:10px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B">treff</div>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(340px,.8fr) minmax(0,1.2fr);gap:0">
+      <div style="padding:36px 44px 36px 0;border-right:1px solid #D8CFBC">
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Kalibrering</div>
+        <div style="font:400 24px/1.2 'Instrument Serif',serif;margin-top:8px">Predikert mot faktisk</div>
+        <div style="position:relative;margin-top:20px">
+          <svg viewBox="0 0 520 400" style="width:100%;height:auto;display:block">
+            <path d="{{ calc.grid }}" stroke="#E4DCCB" stroke-width="1" fill="none"></path>
+            <path d="{{ calc.diag }}" stroke="#C9BFA9" stroke-width="1" stroke-dasharray="4 4" fill="none"></path>
+            <path d="{{ calc.pk }}" stroke="#9A9284" stroke-width="1.4" fill="none"></path>
+            <path d="{{ calc.pm }}" stroke="#17150F" stroke-width="1.8" fill="none"></path>
+          </svg>
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <sc-for list="{{ calc.dots }}" as="p" hint-placeholder-count="12">
+              <div style="position:absolute;transform:translate(-50%,-50%);border-radius:50%;border:1.6px solid;left:{{ p.left }};top:{{ p.top }};width:{{ p.size }};height:{{ p.size }};background:{{ p.bg }};border-color:{{ p.br }}"></div>
+            </sc-for>
+            <sc-for list="{{ calc.xTicks }}" as="x" hint-placeholder-count="6">
+              <div style="position:absolute;bottom:2px;transform:translateX(-50%);font:400 10px/1 'IBM Plex Mono',monospace;color:#9A9284;left:{{ x.left }}">{{ x.text }}</div>
+            </sc-for>
+            <sc-for list="{{ calc.yTicks }}" as="y" hint-placeholder-count="6">
+              <div style="position:absolute;left:0;transform:translateY(-50%);font:400 10px/1 'IBM Plex Mono',monospace;color:#9A9284;top:{{ y.top }}">{{ y.text }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:20px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:8px;font:400 11px/1 'IBM Plex Mono',monospace;color:#4A453B"><span style="width:10px;height:10px;border-radius:50%;background:#17150F;display:block"></span>Modellen</span>
+          <span style="display:flex;align-items:center;gap:8px;font:400 11px/1 'IBM Plex Mono',monospace;color:#4A453B"><span style="width:10px;height:10px;border-radius:50%;border:1.6px solid #9A9284;display:block"></span>Markedet</span>
+        </div>
+        <div style="margin-top:12px;font:400 12.5px/1.65 'IBM Plex Sans',sans-serif;color:#9A9284;text-wrap:pretty">Under den stiplede linja betyr sjeldnere enn anslått.</div>
+      </div>
+
+      <div style="padding:36px 0 36px 44px">
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Per sannsynlighetsintervall</div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 54px 78px 78px 78px;gap:14px;padding-bottom:9px;border-bottom:1px solid #17150F;font:500 8.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+          <span>Modell sa</span><span style="text-align:right">N</span><span style="text-align:right">Snitt modell</span><span style="text-align:right">Snitt marked</span><span style="text-align:right">Faktisk</span>
+        </div>
+        <sc-for list="{{ calc.rows }}" as="r" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 54px 78px 78px 78px;gap:14px;align-items:baseline;padding:12px 0;border-bottom:1px solid #E4DCCB">
+            <span style="font:400 13.5px/1.3 'IBM Plex Mono',monospace">{{ r.label }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right;color:#9A9284">{{ r.n }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.am }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right;color:#9A9284">{{ r.ai }}</span>
+            <span style="font:400 14px/1.3 'IBM Plex Mono',monospace;text-align:right;color:{{ r.c }}">{{ r.hit }}</span>
+          </div>
+        </sc-for>
+
+        <div style="margin-top:34px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Per utfallstype</div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 46px 70px 70px 56px 84px;gap:12px;padding-bottom:9px;border-bottom:1px solid #17150F;font:500 8.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">
+          <span>Utfall</span><span style="text-align:right">N</span><span style="text-align:right">Modell</span><span style="text-align:right">Marked</span><span style="text-align:right">Faktisk</span><span style="text-align:right">Netto</span>
+        </div>
+        <sc-for list="{{ calc.types }}" as="r" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 46px 70px 70px 56px 84px;gap:12px;align-items:baseline;padding:12px 0;border-bottom:1px solid #E4DCCB">
+            <span style="font:400 15px/1.2 'Instrument Serif',serif">{{ r.label }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right;color:#9A9284">{{ r.n }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.em }}</span>
+            <span style="font:400 12.5px/1.3 'IBM Plex Mono',monospace;text-align:right;color:#9A9284">{{ r.ek }}</span>
+            <span style="font:400 13.5px/1.3 'IBM Plex Mono',monospace;text-align:right">{{ r.ac }}</span>
+            <span style="font:400 13px/1.3 'IBM Plex Mono',monospace;text-align:right;color:{{ r.netC }}">{{ r.net }}</span>
+          </div>
+        </sc-for>
+
+        <div style="margin-top:34px;font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Neste steg</div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:30px minmax(0,1fr);gap:16px;padding:16px 0;border-bottom:1px solid #E4DCCB">
+          <span style="font:400 24px/0.9 'Instrument Serif',serif;color:#C9BFA9">01</span>
+          <div>
+            <div style="font:400 17px/1.3 'Instrument Serif',serif">Kalibrer sannsynlighetene</div>
+            <div style="margin-top:6px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">Isotonisk eller Platt på en kronologisk holdout, før EV regnes ut.</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:30px minmax(0,1fr);gap:16px;padding:16px 0;border-bottom:1px solid #E4DCCB">
+          <span style="font:400 24px/0.9 'Instrument Serif',serif;color:#C9BFA9">02</span>
+          <div>
+            <div style="font:400 17px/1.3 'Instrument Serif',serif">Logg alle tre utfall</div>
+            <div style="margin-top:6px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">I dag lagres bare utfallet vi spilte. Det gir seleksjonsskjevhet i all etteranalyse.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.skygge }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Skyggelogg" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Skyggelogg</div>
+      <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px;max-width:26ch">Spillene vi sluttet å ta</div>
+      <div style="margin-top:16px;max-width:60ch;font:400 15px/1.7 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">OT/SO-spill legges ikke inn lenger, men føres videre med full innsats.</div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;border-bottom:1px solid #D8CFBC">
+      <div style="padding:36px 40px 36px 0;border-right:1px solid #D8CFBC">
+        <div style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#0E4B47">{{ sh.real.title }}</div>
+        <div style="font:400 clamp(48px,5.4vw,72px)/0.9 'Instrument Serif',serif;margin-top:14px;color:{{ sh.real.netC }}">{{ sh.real.net }}</div>
+        <div style="margin-top:12px;height:5px;background:#E4DCCB"><div style="height:5px;background:{{ sh.real.netC }};width:{{ sh.real.barW }}"></div></div>
+        <div style="margin-top:12px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B;max-width:42ch">{{ sh.real.sub }}</div>
+        <div style="margin-top:22px">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Spill</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ sh.real.n }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">ROI</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ sh.real.roi }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Treffrate</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ sh.real.wr }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Modellen anslo</span><span style="font:400 14px/1 'IBM Plex Mono',monospace;color:#9A9284">{{ sh.real.expWr }}</span></div>
+        </div>
+      </div>
+      <div style="padding:36px 0 36px 40px;background:#EAE3D5">
+        <div style="font:500 9.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#B23A1B">{{ sh.shade.title }}</div>
+        <div style="font:400 clamp(48px,5.4vw,72px)/0.9 'Instrument Serif',serif;margin-top:14px;color:{{ sh.shade.netC }}">{{ sh.shade.net }}</div>
+        <div style="margin-top:12px;height:5px;background:#DCD3C1"><div style="height:5px;background:{{ sh.shade.netC }};width:{{ sh.shade.barW }}"></div></div>
+        <div style="margin-top:12px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B;max-width:42ch">{{ sh.shade.sub }}</div>
+        <div style="margin-top:22px">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #DCD3C1"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Spill</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ sh.shade.n }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #DCD3C1"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">ROI</span><span style="font:400 14px/1 'IBM Plex Mono',monospace;color:{{ sh.shade.netC }}">{{ sh.shade.roi }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #DCD3C1"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Treffrate</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ sh.shade.wr }}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="font:500 9.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Modellen anslo</span><span style="font:400 14px/1 'IBM Plex Mono',monospace;color:#9A9284">{{ sh.shade.expWr }}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:0;padding-top:40px">
+      <div style="padding-right:44px;border-right:1px solid #D8CFBC">
+        <div style="font:400 24px/1.35 'Instrument Serif',serif;max-width:30ch">Feilen lå i seleksjonen, ikke i modellen</div>
+        <div style="margin-top:14px;max-width:60ch;font:400 14px/1.7 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">Modellen anslo 33 % sjanse for OT/SO på kampene den flagget. Faktisk endte 22 % slik. På backtest treffer den 22,6 % mot 20,6 % predikert — skjevheten oppstår fordi vi bare spiller når modellen sier et ekstremt tall.</div>
+      </div>
+      <div style="padding-left:44px">
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Utah-vinduet</div>
+        <div style="margin-top:14px;padding:22px 24px;background:#EAE3D5;border-left:3px solid #B23A1B">
+          <div style="display:flex;gap:26px;flex-wrap:wrap">
+            <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Spill</div><div style="font:400 26px/1 'Instrument Serif',serif;margin-top:6px">{{ sh.uta.n }}</div></div>
+            <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Treff</div><div style="font:400 26px/1 'Instrument Serif',serif;margin-top:6px">{{ sh.uta.won }}</div></div>
+            <div><div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Netto</div><div style="font:400 26px/1 'Instrument Serif',serif;margin-top:6px;color:#B23A1B">{{ sh.uta.net }}</div></div>
+          </div>
+          <div style="margin-top:14px;font:400 12.5px/1.7 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">En audit anslår at cirka −280 kr kan tilskrives feilen; resten er varians.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ v.mobil }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Mobil" style="max-width:1440px;margin:0 auto;padding:0 48px 96px">
+    <section style="padding:48px 0 14px;border-bottom:1px solid #17150F">
+      <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Mobil · 390 × 800</div>
+      <div style="font:400 38px/1.05 'Instrument Serif',serif;margin-top:10px">Samme rapport i lomma</div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:390px minmax(0,1fr);gap:56px;padding-top:40px;align-items:start">
+
+      <div style="width:390px;height:800px;border:1px solid #17150F;background:#F2EDE4;display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 8px;font:400 11px/1 'IBM Plex Mono',monospace;color:#9A9284;flex:0 0 auto"><span>09:41</span><span>29.07</span></div>
+        <div style="padding:4px 20px 12px;border-bottom:1px solid #17150F;flex:0 0 auto;display:flex;align-items:baseline;gap:12px">
+          <sc-if value="{{ mob.showBack }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ mBack }}" style="font:400 20px/1 'Instrument Serif',serif;color:#7A7364;padding:0 2px 0 0" style-hover="color:#17150F">←</button>
+          </sc-if>
+          <div>
+            <div style="font:400 24px/1.1 'Instrument Serif',serif">{{ mob.title }}</div>
+            <div style="margin-top:5px;font:400 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">{{ mob.subtitle }}</div>
+          </div>
+        </div>
+
+        <div style="flex:1 1 auto;overflow-y:auto">
+
+          <sc-if value="{{ mob.isOversikt }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:22px 20px 20px;border-bottom:1px solid #D8CFBC">
+              <div style="font:500 9px/1.5 'IBM Plex Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#7A7364">{{ he.dayLabel }}</div>
+              <div style="font:400 34px/1.1 'Instrument Serif',serif;margin-top:12px;letter-spacing:-.015em">{{ he.headline }}</div>
+              <div style="margin-top:22px;display:flex;align-items:baseline;gap:12px">
+                <span style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.15em;text-transform:uppercase;color:#7A7364">{{ he.winLabel }}</span>
+                <sc-if value="{{ he.showWin }}" hint-placeholder-val="{{ false }}"><span style="font:400 22px/1 'IBM Plex Mono',monospace;color:{{ he.winNetC }}">{{ he.winNet }}</span></sc-if>
+              </div>
+              <svg viewBox="0 0 320 84" preserveAspectRatio="none" style="width:100%;height:84px;display:block;margin-top:14px">
+                <path d="{{ mob.line }}" fill="none" stroke="#17150F" stroke-width="1.4" vector-effect="non-scaling-stroke"></path>
+                <line x1="0" x2="320" y1="{{ mob.zero }}" y2="{{ mob.zero }}" stroke="#C9BFA9" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line>
+              </svg>
+              <div style="margin-top:16px;display:flex;gap:1px;background:#D8CFBC;padding:1px;width:fit-content">
+                <button data-k="hWin" data-v="60" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin['60'].g }};color:{{ t.hWin['60'].c }}">60D</button>
+                <button data-k="hWin" data-v="90" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin['90'].g }};color:{{ t.hWin['90'].c }}">90D</button>
+                <button data-k="hWin" data-v="alt" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;padding:7px 11px;background:{{ t.hWin.alt.g }};color:{{ t.hWin.alt.c }}">ALT</button>
+              </div>
+            </div>
+            <div style="padding:4px 20px 0">
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Spill i perioden</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ he.winBets }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Treffrate</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ he.winWr }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Beste dag</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ he.bestD }}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Svakeste dag</span><span style="font:400 14px/1 'IBM Plex Mono',monospace">{{ he.worstD }}</span></div>
+            </div>
+            <sc-if value="{{ he.showBig }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:18px 20px 24px;display:flex;align-items:baseline;gap:8px">
+                <span style="font:400 44px/0.9 'Instrument Serif',serif;letter-spacing:-.03em;color:{{ hero.netCol }}">{{ hero.net }}</span>
+                <span style="font:400 17px/1 'Instrument Serif',serif;color:#7A7364">kr siden start</span>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ mob.isVerdi }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 20px;border-bottom:1px solid #D8CFBC;display:flex;gap:1px;background:#F2EDE4">
+              <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px">
+                <button data-k="board" data-v="tom" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.11em;text-transform:uppercase;padding:8px 12px;background:{{ t.board.tom.g }};color:{{ t.board.tom.c }}">I dag</button>
+                <button data-k="board" data-v="full" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.11em;text-transform:uppercase;padding:8px 12px;background:{{ t.board.full.g }};color:{{ t.board.full.c }}">Eksempeldag</button>
+              </div>
+            </div>
+            <sc-if value="{{ mob.empty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:56px 20px">
+                <div style="font:400 30px/1.1 'Instrument Serif',serif;max-width:12ch">Ingen kamper å prise</div>
+                <div style="margin-top:14px;font:400 13.5px/1.6 'IBM Plex Sans',sans-serif;color:#4A453B">Modellen kjører hver morgen, men kampprogrammet er tomt.</div>
+                <button data-k="board" data-v="full" onClick="{{ pick }}" style="margin-top:22px;font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;border:1px solid #0E4B47;color:#0E4B47;padding:13px 18px" style-hover="background:#0E4B47;color:#F2EDE4">Vis eksempeldag</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ mob.notEmpty }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ mob.games }}" as="g" hint-placeholder-count="5">
+                <button data-i="{{ g.i }}" onClick="{{ mOpen }}" style="display:block;width:100%;text-align:left;padding:18px 20px;border-bottom:1px solid #E4DCCB;background:#F2EDE4" style-hover="background:#EAE3D5">
+                  <span style="display:flex;justify-content:space-between;align-items:baseline">
+                    <span style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#9A9284">{{ g.time }}</span>
+                    <span style="font:500 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:{{ g.tagC }}">{{ g.tag }}</span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:11px;margin-top:12px">
+                    <span style="width:30px;height:30px;flex:0 0 30px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 8.5px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ g.a }}</span>
+                    <span style="font:400 16px/1.15 'Instrument Serif',serif">{{ g.aName }}</span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:11px;margin-top:8px">
+                    <span style="width:30px;height:30px;flex:0 0 30px;border:1px dashed #C9BFA9;display:grid;place-items:center;font:500 8.5px/1 'IBM Plex Mono',monospace;color:#7A7364">{{ g.h }}</span>
+                    <span style="font:400 16px/1.15 'Instrument Serif',serif">{{ g.hName }}</span>
+                  </span>
+                </button>
+              </sc-for>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ mob.isDetail }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:18px 20px;border-bottom:1px solid #D8CFBC;display:flex;gap:22px">
+              <span><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Elo-diff</span><span style="display:block;margin-top:6px;font:400 14px/1 'IBM Plex Mono',monospace">{{ mob.sel.eloDiff }}</span></span>
+              <span><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">Form B/H</span><span style="display:block;margin-top:6px;font:400 14px/1 'IBM Plex Mono',monospace;letter-spacing:.06em">{{ mob.sel.form }}</span></span>
+            </div>
+            <sc-for list="{{ mob.sel.rows }}" as="o" hint-placeholder-count="3">
+              <div style="padding:16px 20px;border-bottom:1px solid #E4DCCB;opacity:{{ o.op }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+                  <span style="font:400 14.5px/1.25 'IBM Plex Sans',sans-serif">{{ o.label }}</span>
+                  <span style="font:500 8.5px/1.5 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;padding:2px 6px;color:{{ o.tagC }};border:1px solid {{ o.tagB }};white-space:nowrap">{{ o.tag }}</span>
+                </div>
+                <div style="margin-top:10px;height:3px;background:#E4DCCB;position:relative">
+                  <div style="position:absolute;top:0;bottom:0;left:0;background:#C9BFA9;width:{{ o.mkW }}"></div>
+                  <div style="position:absolute;top:-1px;bottom:-1px;left:0;background:{{ o.barC }};width:{{ o.mdW }}"></div>
+                </div>
+                <div style="margin-top:12px;display:flex;justify-content:space-between;gap:10px">
+                  <span><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Modell</span><span style="display:block;margin-top:5px;font:400 13px/1 'IBM Plex Mono',monospace">{{ o.mp }}</span></span>
+                  <span><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Marked</span><span style="display:block;margin-top:5px;font:400 13px/1 'IBM Plex Mono',monospace;color:#9A9284">{{ o.ip }}</span></span>
+                  <span><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Odds</span><span style="display:block;margin-top:5px;font:400 13px/1 'IBM Plex Mono',monospace">{{ o.odds }}</span></span>
+                  <span style="text-align:right"><span style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">EV</span><span style="display:block;margin-top:5px;font:400 15px/1 'IBM Plex Mono',monospace;color:{{ o.evC }}">{{ o.ev }}</span></span>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ mob.isKamp }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:18px 20px;border-bottom:1px solid #D8CFBC;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <label style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;margin-bottom:7px">Hjemmelag</label>
+                <select data-k="home" onChange="{{ onSel }}" value="{{ mm.home }}" style="width:100%;padding:11px;background:#F2EDE4;border:1px solid #C9BFA9;font:400 14px/1.2 'IBM Plex Sans',sans-serif;border-radius:0">
+                  <sc-for list="{{ mm.teams }}" as="tm" hint-placeholder-count="8"><option value="{{ tm.abbr }}">{{ tm.label }}</option></sc-for>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;margin-bottom:7px">Bortelag</label>
+                <select data-k="away" onChange="{{ onSel }}" value="{{ mm.away }}" style="width:100%;padding:11px;background:#F2EDE4;border:1px solid #C9BFA9;font:400 14px/1.2 'IBM Plex Sans',sans-serif;border-radius:0">
+                  <sc-for list="{{ mm.teams }}" as="tm" hint-placeholder-count="8"><option value="{{ tm.abbr }}">{{ tm.label }}</option></sc-for>
+                </select>
+              </div>
+              <button onClick="{{ onSwap }}" style="align-self:flex-start;font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364;border:1px solid #D8CFBC;padding:9px 12px" style-hover="border-color:#17150F;color:#17150F">⇅ Bytt</button>
+            </div>
+            <sc-for list="{{ mm.rows }}" as="o" hint-placeholder-count="3">
+              <div style="padding:16px 20px;border-bottom:1px solid #E4DCCB">
+                <div style="font:500 8.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#7A7364">{{ o.label }}</div>
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px">
+                  <span style="font:400 40px/0.9 'Instrument Serif',serif;color:{{ o.c }}">{{ o.p }}</span>
+                  <span style="font:400 15px/1 'IBM Plex Mono',monospace;color:{{ o.evC }}">{{ o.ev }}</span>
+                </div>
+                <div style="margin-top:12px;height:4px;background:#E4DCCB"><div style="height:4px;background:{{ o.c }};width:{{ o.w }}"></div></div>
+                <div style="margin-top:10px;display:flex;gap:18px;font:400 10.5px/1 'IBM Plex Mono',monospace;color:#9A9284">
+                  <span>marked {{ o.ip }}</span><span>odds {{ o.odds }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ mob.isLogg }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 20px;border-bottom:1px solid #D8CFBC">
+              <div style="display:flex;gap:1px;background:#D8CFBC;padding:1px;width:fit-content">
+                <button data-k="hStatus" data-v="alle" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.alle.g }};color:{{ t.hStatus.alle.c }}">Alle</button>
+                <button data-k="hStatus" data-v="won" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.won.g }};color:{{ t.hStatus.won.c }}">Vunnet</button>
+                <button data-k="hStatus" data-v="lost" onClick="{{ pick }}" style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:8px 12px;background:{{ t.hStatus.lost.g }};color:{{ t.hStatus.lost.c }}">Tapt</button>
+              </div>
+            </div>
+            <sc-for list="{{ mob.rows }}" as="r" hint-placeholder-count="10">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid #E4DCCB">
+                <div style="min-width:0">
+                  <div style="font:400 14.5px/1.2 'IBM Plex Sans',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.game }}</div>
+                  <div style="margin-top:5px;font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#9A9284">{{ r.date }} · {{ r.sel }} · {{ r.odds }}</div>
+                </div>
+                <div style="font:400 16px/1 'IBM Plex Mono',monospace;white-space:nowrap;color:{{ r.c }}">{{ r.net }}</div>
+              </div>
+            </sc-for>
+          </sc-if>
+
+        </div>
+
+        <div style="flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #17150F">
+          <button data-k="mView" data-v="oversikt" onClick="{{ pick }}" style="padding:15px 4px;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ t.mView.oversikt.c }};box-shadow:inset 0 -2px 0 {{ t.mView.oversikt.u }}">Oversikt</button>
+          <button data-k="mView" data-v="verdi" onClick="{{ pick }}" style="padding:15px 4px;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ t.mView.verdi.c }};box-shadow:inset 0 -2px 0 {{ t.mView.verdi.u }}">Verdi</button>
+          <button data-k="mView" data-v="kamp" onClick="{{ pick }}" style="padding:15px 4px;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ t.mView.kamp.c }};box-shadow:inset 0 -2px 0 {{ t.mView.kamp.u }}">Kamp</button>
+          <button data-k="mView" data-v="logg" onClick="{{ pick }}" style="padding:15px 4px;font:500 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ t.mView.logg.c }};box-shadow:inset 0 -2px 0 {{ t.mView.logg.u }}">Logg</button>
+        </div>
+      </div>
+
+      <div style="padding-top:6px;max-width:44ch">
+        <div style="font:500 10px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;text-transform:uppercase;color:#7A7364">Prototypen</div>
+        <div style="margin-top:14px;font:400 15px/1.7 'IBM Plex Sans',sans-serif;color:#4A453B;text-wrap:pretty">Telefonen til venstre er klikkbar. Bunnraden bytter skjerm, kampene på Verdi åpner et detaljbilde med alle tre utfall, filtrene på Logg virker, og lagvelgerne på Kamp regner om EV mot odds i sanntid.</div>
+        <div style="margin-top:24px;border-top:1px solid #D8CFBC">
+          <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Skjermer</span><span style="font:400 13.5px/1 'IBM Plex Mono',monospace">4 + detalj</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #E4DCCB"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Ramme</span><span style="font:400 13.5px/1 'IBM Plex Mono',monospace">390 × 800</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 0"><span style="font:500 9.5px/1 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;color:#7A7364">Data</span><span style="font:400 13.5px/1 'IBM Plex Mono',monospace">samme som desktop</span></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+  </sc-if>
+
+  <footer style="border-top:1px solid #17150F">
+    <div style="max-width:1440px;margin:0 auto;padding:26px 48px 44px;display:flex;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="font:400 11px/1.7 'IBM Plex Mono',monospace;color:#7A7364;white-space:nowrap">Random Forest + Elo · {{ meta.nGames }} kamper · Elo t.o.m. {{ meta.eloThrough }}</div>
+      <div style="font:400 11px/1.7 'IBM Plex Mono',monospace;color:#9A9284">Blålinja · arbeidsnavn</div>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1080},&quot;evTerskel&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:20,&quot;min&quot;:5,&quot;max&quot;:45,&quot;step&quot;:1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Modell&quot;,&quot;label&quot;:&quot;EV-terskel for SPILL&quot;},&quot;tallTerskel&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1000,&quot;min&quot;:0,&quot;max&quot;:10000,&quot;step&quot;:250,&quot;unit&quot;:&quot;kr&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hero&quot;,&quot;label&quot;:&quot;Vis stort tall over&quot;},&quot;roiTerskel&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:5,&quot;min&quot;:0,&quot;max&quot;:50,&quot;step&quot;:1,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hero&quot;,&quot;label&quot;:&quot;Vis avkastning over&quot;},&quot;startVisning&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;oversikt&quot;,&quot;options&quot;:[&quot;oversikt&quot;,&quot;verdi&quot;,&quot;kamp&quot;,&quot;historikk&quot;,&quot;elo&quot;,&quot;modell&quot;,&quot;skygge&quot;,&quot;mobil&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Visning&quot;},&quot;tettTabell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Visning&quot;,&quot;label&quot;:&quot;Tett historikktabell&quot;}}">
+const MON = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+const INK='#17150F', MUT='#7A7364', TEAL='#0E4B47', VERM='#B23A1B', SAND='#E9E2D4';
+
+const SAMPLE = [
+  {time:'01:00', h:'BOS', a:'TOR', oh:2.20, od:3.90, oa:3.10, arena:'TD Garden'},
+  {time:'01:30', h:'NYR', a:'CAR', oh:2.85, od:3.95, oa:2.45, arena:'Madison Square Garden'},
+  {time:'02:00', h:'MIN', a:'STL', oh:2.35, od:3.90, oa:3.05, arena:'Xcel Energy Center'},
+  {time:'03:00', h:'COL', a:'VGK', oh:2.05, od:3.95, oa:3.45, arena:'Ball Arena'},
+  {time:'04:00', h:'EDM', a:'DAL', oh:2.50, od:3.90, oa:2.80, arena:'Rogers Place'}
+];
+
+class Component extends DCLogic {
+  state = {
+    view: this.props.startVisning || 'oversikt',
+    chart: 'dag', range: 'alt', hover: null,
+    board: 'tom', filt: 'alle',
+    hStatus: 'alle', hSel: 'alle', hSort: 'dato',
+    hero: 'e', hWin: '60', hHover: null,
+    mView: 'oversikt', mSel: null,
+    home: 'BOS', away: 'TOR', oh: 2.20, od: 3.90, oa: 3.10,
+    conf: 'alle', tick: 0
+  };
+
+  componentDidMount() {
+    if (!window.NHL) {
+      this._n = 0;
+      this._t = setInterval(() => {
+        if (window.NHL || ++this._n > 80) { clearInterval(this._t); this._t = null; this.setState({ tick: 1 }); }
+      }, 40);
+    }
+  }
+  componentWillUnmount() { if (this._t) clearInterval(this._t); }
+
+  pick = (e) => {
+    const d = e.currentTarget.dataset;
+    const s = {}; s[d.k] = d.v; if (d.k === 'chart' || d.k === 'range') s.hover = null; if (d.k === 'mView') s.mSel = null;
+    this.setState(s);
+  };
+  onSel = (e) => { const s = {}; s[e.target.dataset.k] = e.target.value; this.setState(s); };
+  onNum = (e) => { const s = {}; s[e.target.dataset.k] = parseFloat(e.target.value) || 0; this.setState(s); };
+  onSwap = () => this.setState({ home: this.state.away, away: this.state.home, oh: this.state.oa, oa: this.state.oh });
+  onMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * 1000;
+    const n = this._n_pts || 1;
+    let i = Math.round(((px - 58) / 932) * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i));
+    if (i !== this.state.hover) this.setState({ hover: i });
+  };
+  onLeave = () => this.setState({ hover: null });
+  onHeroMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const n = this._hn || 1;
+    let i = Math.round(((e.clientX - r.left) / r.width) * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i));
+    if (i !== this.state.hHover) this.setState({ hHover: i });
+  };
+  onHeroLeave = () => this.setState({ hHover: null });
+  mOpen = (e) => this.setState({ mSel: parseInt(e.currentTarget.dataset.i, 10) });
+  mBack = () => this.setState({ mSel: null });
+
+  nf(n, d) { d = d || 0; try { return new Intl.NumberFormat('nb-NO', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n).replace(/-/g, '\u2212'); } catch (e) { return String(n); } }
+  kr(n, d) { return (n < 0 ? '\u2212' : '+') + this.nf(Math.abs(n), d || 0) + ' kr'; }
+  krp(n) { return this.nf(n, 0) + ' kr'; }
+  pc(n, d) { return this.nf(n * 100, d == null ? 1 : d) + ' %'; }
+  sgn(n, d) { return (n < 0 ? '\u2212' : '+') + this.nf(Math.abs(n) * 100, d == null ? 1 : d) + ' %'; }
+  sgnRaw(n, d) { return (n < 0 ? '\u2212' : '+') + this.nf(Math.abs(n), d == null ? 0 : d); }
+  ds(iso) { const p = iso.split('-'); return parseInt(p[2], 10) + '. ' + MON[parseInt(p[1], 10) - 1]; }
+  dl(iso) { const p = iso.split('-'); return parseInt(p[2], 10) + '. ' + MON[parseInt(p[1], 10) - 1] + ' ' + p[0]; }
+  thr() { const v = this.props.evTerskel; return (v == null ? 20 : v) / 100; }
+
+  tab(group, val, active) {
+    const on = this.state[group] === val;
+    return { c: on ? INK : MUT, u: on ? INK : 'transparent', g: on ? INK : '#F2EDE4', gc: on ? '#F2EDE4' : MUT };
+  }
+  tabs(group, vals) {
+    const o = {};
+    const underline = group === 'view' || group === 'chart' || group === 'mView';
+    vals.forEach(v => { const on = this.state[group] === v; o[v] = { c: on ? (underline ? INK : '#F2EDE4') : MUT, u: on ? INK : 'transparent', g: on ? INK : '#F2EDE4' }; });
+    return o;
+  }
+
+  // ---- portfolio series -------------------------------------------------
+  slice(d) {
+    const r = this.state.range;
+    if (r === '60') return d.ts.slice(-60);
+    if (r === '20') return d.ts.slice(-20);
+    return d.ts;
+  }
+  values(d, ts) {
+    const full = d.ts, start = full.length - ts.length;
+    if (this.state.chart === 'dag') return ts.map((t, i) => t.v - (start + i - 1 >= 0 ? full[start + i - 1].v : 0));
+    return ts.map(t => t.v);
+  }
+
+  chart(d) {
+    const isPct = false;
+    const bar = this.state.chart === 'dag';
+    const ts = this.slice(d), vals = this.values(d, ts), n = vals.length;
+    this._n_pts = n;
+    const W = 1000, H = 300, PL = 58, PR = 10, PT = 18, PB = 28, pw = W - PL - PR, ph = H - PT - PB;
+    let mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals));
+    if (mn === mx) { mn -= 1; mx += 1; }
+    const pad = (mx - mn) * 0.1; mn -= pad; mx += pad;
+    const X = i => PL + (n < 2 ? pw / 2 : (i / (n - 1)) * pw);
+    const Y = v => PT + ph - ((v - mn) / (mx - mn)) * ph;
+    const zeroY = Y(0);
+
+    let grid = '', yLabels = [];
+    for (let k = 0; k <= 4; k++) {
+      const v = mn + ((mx - mn) * k) / 4, y = Y(v);
+      grid += 'M' + PL + ' ' + y.toFixed(1) + 'H' + (W - PR);
+      yLabels.push({ top: ((y / H) * 100).toFixed(2) + '%', text: isPct ? this.nf(v, 0) + '%' : this.nf(v, 0) });
+    }
+    let line = '', area = '', bp = '', bn = '';
+    if (bar) {
+      const bw = Math.max(2, (pw / Math.max(n, 1)) * 0.62);
+      vals.forEach((v, i) => {
+        const x = X(i) - bw / 2, y0 = zeroY, y1 = Y(v);
+        const top = Math.min(y0, y1), h = Math.max(Math.abs(y1 - y0), 0.8);
+        const seg = 'M' + x.toFixed(1) + ' ' + top.toFixed(1) + 'h' + bw.toFixed(1) + 'v' + h.toFixed(1) + 'h-' + bw.toFixed(1) + 'Z';
+        if (v >= 0) bp += seg; else bn += seg;
+      });
+    } else {
+      vals.forEach((v, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+      area = line + 'L' + X(n - 1).toFixed(1) + ' ' + zeroY.toFixed(1) + 'L' + X(0).toFixed(1) + ' ' + zeroY.toFixed(1) + 'Z';
+    }
+
+    const xLabels = [];
+    let lastM = -1;
+    ts.forEach((t, i) => { const m = parseInt(t.d.split('-')[1], 10); if (m !== lastM) { lastM = m; xLabels.push({ left: ((X(i) / W) * 100).toFixed(2) + '%', text: MON[m - 1] }); } });
+
+    const hi = this.state.hover;
+    const has = hi != null && hi >= 0 && hi < n;
+    const titles = { netto: 'Netto resultat over tid', dag: 'Resultat per kampdag' };
+    const notes = {
+      netto: 'Kumulativt netto resultat etter hver kampdag. Over og under null fire ganger.',
+      dag: 'Netto per kampdag. Alltid 100 kr innsats, så søylene er kvantiserte.'
+    };
+    const fmt = (x) => this.kr(x);
+
+    return {
+      title: titles[this.state.chart], note: notes[this.state.chart],
+      grid, zeroPath: 'M' + PL + ' ' + zeroY.toFixed(1) + 'H' + (W - PR), zeroY: zeroY.toFixed(1),
+      line, area, barsPos: bp, barsNeg: bn, yLabels, xLabels,
+      cross: has ? 'M' + X(hi).toFixed(1) + ' ' + PT + 'V' + (H - PB) : '',
+      hcx: has ? X(hi).toFixed(1) : -50, hcy: has ? Y(vals[hi]).toFixed(1) : -50,
+      hOp: has ? 1 : 0, hLeft: has ? ((X(hi) / W) * 100).toFixed(2) + '%' : '-100%',
+      hTop: has ? ((Y(vals[hi]) / H) * 100).toFixed(2) + '%' : '-100%',
+      emptyLine: this.state.board === 'full' ? 'Markedet priser alle fem kampene som modellen.' : 'Neste sesongstart i oktober. Elo oppdateres gjennom pausen.',
+      hDate: has ? this.dl(ts[hi].d) : '', hVal: has ? fmt(vals[hi]) : '',
+      hSub: has ? ts[hi].p + ' spill · ' + ts[hi].w + ' traff' : ''
+    };
+  }
+
+  // ---- value board -----------------------------------------------------
+  board(d) {
+    const th = this.thr(), empty = this.state.board === 'tom';
+    const meta = d.meta;
+    const runRows = [
+      { k: 'Kjørt', v: (meta.generated || '').slice(0, 16).replace('T', ' ') },
+      { k: 'Horisont', v: '3 døgn' },
+      { k: 'Kamper funnet', v: '0' },
+      { k: 'Value-spill', v: '0' },
+      { k: 'Feilede jobber', v: 'ingen' }
+    ];
+    const games = SAMPLE.map(g => {
+      const m = d.matchups[g.h + '-' + g.a] || { h: .33, o: .25, a: .42 };
+      const probs = [
+        { key: 'h', label: g.hName || (d.names[g.h] + ' vinner'), p: m.h, odds: g.oh },
+        { key: 'd', label: 'OT/SO', p: m.o, odds: g.od },
+        { key: 'a', label: d.names[g.a] + ' vinner', p: m.a, odds: g.oa }
+      ];
+      const rows = probs.map(o => {
+        const ev = o.p * o.odds - 1, ip = 1 / o.odds;
+        const isDraw = o.key === 'd';
+        const play = ev >= th && !isDraw;
+        return {
+          label: o.label, mp: this.pc(o.p, 1), ip: this.pc(ip, 1), odds: this.nf(o.odds, 2),
+          ev: this.sgn(ev), evC: ev >= th ? TEAL : (ev > 0 ? INK : MUT),
+          tag: isDraw ? 'utelatt' : (play ? 'spill' : 'nei'),
+          tagC: isDraw ? MUT : (play ? TEAL : MUT), tagB: isDraw ? '#D8CFBC' : (play ? TEAL : '#D8CFBC'),
+          op: isDraw ? 0.5 : 1,
+          mdW: (o.p * 100).toFixed(1) + '%', mkW: (ip * 100).toFixed(1) + '%',
+          barC: play ? TEAL : INK
+        };
+      });
+      const eh = d.ratings[g.h] || 1500, ea = d.ratings[g.a] || 1500;
+      const fh = (d.form[g.h] || []), fa = (d.form[g.a] || []);
+      const nPlay = rows.filter(r => r.tag === 'spill').length;
+      return {
+        time: g.time, arena: g.arena, h: g.h, a: g.a, hName: d.names[g.h], aName: d.names[g.a],
+        hElo: this.nf(eh, 0), aElo: this.nf(ea, 0),
+        eloDiff: this.sgnRaw(eh + 50 - ea, 0),
+        form: fa.map(x => x.r).join('') + ' / ' + fh.map(x => x.r).join(''),
+        rows, nPlay,
+        note: nPlay ? 'Modellen finner ' + nPlay + ' spill over terskel. Grå stolpe er markedets pris, mørk stolpe er modellens.' : 'Ingen utfall over terskel. Markedet priser kampen som modellen.'
+      };
+    });
+    this._games = games;
+    const filtered = this.state.filt === 'value' ? games.filter(g => g.nPlay > 0) : games;
+    return {
+      empty, full: !empty, thresh: this.nf(th * 100, 0) + ' %',
+      title: empty ? '29. juli 2026' : 'Eksempeldag · 14. mars 2026',
+      runRows, games: filtered,
+      count: filtered.length + ' av ' + games.length + ' kamper · ' + games.reduce((a, g) => a + g.nPlay, 0) + ' spill over terskel',
+      none: filtered.length === 0
+    };
+  }
+
+  // ---- matchup ---------------------------------------------------------
+  mm(d) {
+    const s = this.state, th = this.thr();
+    const key = s.home + '-' + s.away;
+    const m = d.matchups[key] || d.matchups[s.away + '-' + s.home] || { h: .33, o: .25, a: .42 };
+    const specs = [
+      { label: d.names[s.home] + ' vinner (hjemme)', p: m.h, odds: s.oh, draw: false },
+      { label: 'Uavgjort etter ordinær tid (OT/SO)', p: m.o, odds: s.od, draw: true },
+      { label: d.names[s.away] + ' vinner (borte)', p: m.a, odds: s.oa, draw: false }
+    ];
+    const rows = specs.map(o => {
+      const ev = o.p * o.odds - 1, ip = o.odds > 0 ? 1 / o.odds : 0;
+      const play = ev >= th && !o.draw;
+      return {
+        label: o.label, p: this.nf(o.p * 100, 1), w: (o.p * 100).toFixed(1) + '%',
+        c: play ? TEAL : INK, ip: this.pc(ip, 1), odds: this.nf(o.odds, 2),
+        ev: this.sgn(ev), evC: ev >= th ? TEAL : (ev > 0 ? INK : MUT),
+        tag: o.draw ? 'utelatt' : (play ? 'spill' : 'nei'),
+        tagC: o.draw ? MUT : (play ? TEAL : MUT), tagB: o.draw ? '#D8CFBC' : (play ? TEAL : '#D8CFBC')
+      };
+    });
+    const best = specs.map((o, i) => ({ i, p: o.p })).sort((a, b) => b.p - a.p)[0].i;
+    const eh = d.ratings[s.home] || 1500, ea = d.ratings[s.away] || 1500;
+    const teams = d.active.slice().sort((a, b) => d.names[a].localeCompare(d.names[b], 'nb')).map(a => ({ abbr: a, label: d.names[a] + ' (' + a + ')' }));
+    const fRow = (abbr) => {
+      const f = d.form[abbr] || [];
+      return { name: d.names[abbr], seq: f.map(x => x.r).join(' ') || '—', scores: f.map(x => x.v + ' ' + x.sc).join('   ') };
+    };
+    return {
+      home: s.home, away: s.away, oh: s.oh, od: s.od, oa: s.oa, teams, rows,
+      title: d.names[s.away] + ' hos ' + d.names[s.home],
+      pick: ['hjemmeseier', 'OT/SO', 'borteseier'][best],
+      eloRows: [
+        { k: d.names[s.home] + ' (hjemme)', v: this.nf(eh, 0) },
+        { k: d.names[s.away] + ' (borte)', v: this.nf(ea, 0) },
+        { k: 'Hjemmefordel', v: '+50' },
+        { k: 'Justert differanse', v: (eh + 50 - ea >= 0 ? '+' : '\u2212') + this.nf(Math.abs(eh + 50 - ea), 0) }
+      ],
+      formRows: [fRow(s.away), fRow(s.home)]
+    };
+  }
+
+  // ---- history ---------------------------------------------------------
+  hist(d) {
+    const s = this.state;
+    let rows = d.bets.slice();
+    if (s.hStatus !== 'alle') rows = rows.filter(b => b.s === s.hStatus);
+    if (s.hSel !== 'alle') rows = rows.filter(b => b.sel === s.hSel);
+    if (s.hSort === 'dato') rows.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+    if (s.hSort === 'ev') rows.sort((a, b) => b.ev - a.ev);
+    if (s.hSort === 'netto') rows.sort((a, b) => b.pr - a.pr);
+    const sum = rows.reduce((a, b) => a + b.pr, 0), st = rows.reduce((a, b) => a + b.st, 0);
+    const won = rows.filter(b => b.s === 'won').length;
+    const pad = this.props.tettTabell ? '7px' : '12px';
+    const SEL = { home: 'Hjem', away: 'Borte', draw: 'OT/SO' };
+    return {
+      n: rows.length, sum: this.kr(sum), sumC: sum >= 0 ? TEAL : VERM,
+      staked: this.nf(st, 0), roi: this.sgn(st ? sum / st : 0),
+      wr: this.pc(rows.length ? won / rows.length : 0, 1), won: won,
+      rows: rows.map(b => ({
+        date: this.ds(b.d), year: b.d.slice(0, 4),
+        game: b.a + ' \u2192 ' + b.h, gameLong: d.names[b.a] + ' hos ' + d.names[b.h],
+        sel: SEL[b.sel] || b.sel, odds: this.nf(b.o, 2),
+        mp: this.pc(b.mp, 1), ip: this.pc(b.ip, 1), ev: this.sgn(b.ev),
+        stake: this.nf(b.st, 0),
+        res: b.s === 'won' ? 'Vunnet' : b.s === 'lost' ? 'Tapt' : '\u00c5pen',
+        resC: b.s === 'won' ? TEAL : b.s === 'lost' ? VERM : MUT,
+        ac: SEL[b.ac] || '\u2014',
+        net: this.kr(b.pr), netC: b.pr >= 0 ? TEAL : VERM, pad
+      }))
+    };
+  }
+
+  // ---- elo -------------------------------------------------------------
+  eloView(d) {
+    const s = this.state;
+    let list = d.active.slice();
+    if (s.conf === 'vest') list = list.filter(a => d.west[a]);
+    if (s.conf === 'ost') list = list.filter(a => !d.west[a]);
+    list.sort((a, b) => d.ratings[b] - d.ratings[a]);
+    const rows = list.map((a, i) => {
+      const r = d.ratings[a], dv = r - 1500;
+      const w = Math.min(Math.abs(dv) / 100, 1) * 46;
+      return {
+        rank: this.nf(i + 1, 0), abbr: a, name: d.names[a], conf: d.west[a] ? 'Vest' : '\u00d8st',
+        rating: this.nf(r, 0), diff: (dv >= 0 ? '+' : '\u2212') + this.nf(Math.abs(dv), 0),
+        c: dv >= 0 ? TEAL : VERM,
+        barLeft: dv >= 0 ? '50%' : (50 - w).toFixed(1) + '%', barW: w.toFixed(1) + '%'
+      };
+    });
+    const c = d.meta.eloConfig || {};
+    return {
+      rows, n: rows.length,
+      cfg: [
+        { k: 'Grunnrating', v: this.nf(c.base_rating || 1500, 0) },
+        { k: 'K-faktor', v: this.nf(c.k_factor || 6, 0) },
+        { k: 'Hjemmefordel', v: '+' + this.nf(c.home_advantage || 50, 0) },
+        { k: 'Skala', v: this.nf(c.scale || 400, 0) },
+        { k: 'Sesongregresjon', v: this.nf(c.season_regression || 0.7, 2) },
+        { k: 'OT-seiersvekt', v: this.nf(c.ot_win_score || 0.6, 2) }
+      ],
+      through: d.meta.eloThrough, nGames: this.nf(d.meta.nGames, 0)
+    };
+  }
+
+  // ---- calibration -----------------------------------------------------
+  calView(d) {
+    const b = d.bets;
+    const bins = [[.25, .32], [.32, .37], [.37, .42], [.42, .47], [.47, .55], [.55, .80]];
+    const rows = bins.map(r => {
+      const s = b.filter(x => x.mp >= r[0] && x.mp < r[1]);
+      if (!s.length) return null;
+      return {
+        label: this.nf(r[0] * 100, 0) + '\u2013' + this.nf(r[1] * 100, 0) + ' %',
+        n: s.length, am: s.reduce((a, x) => a + x.mp, 0) / s.length,
+        ai: s.reduce((a, x) => a + x.ip, 0) / s.length,
+        hit: s.filter(x => x.s === 'won').length / s.length
+      };
+    }).filter(Boolean);
+
+    const W = 520, H = 400, PL = 46, PR = 14, PT = 14, PB = 40;
+    const lo = .15, hi = .72;
+    const X = p => PL + ((p - lo) / (hi - lo)) * (W - PL - PR);
+    const Y = p => PT + (H - PT - PB) - ((p - 0) / (hi - 0)) * (H - PT - PB);
+    let diag = 'M' + X(lo) + ' ' + Y(lo) + 'L' + X(hi) + ' ' + Y(hi);
+    let pm = '', pk = '';
+    rows.forEach((r, i) => { pm += (i ? 'L' : 'M') + X(r.am).toFixed(1) + ' ' + Y(r.hit).toFixed(1); });
+    rows.slice().sort((a, b2) => a.ai - b2.ai).forEach((r, i) => { pk += (i ? 'L' : 'M') + X(r.ai).toFixed(1) + ' ' + Y(r.hit).toFixed(1); });
+    let grid = '';
+    const axis = [.2, .3, .4, .5, .6, .7];
+    const xTicks = [], yTicks = [];
+    axis.forEach(a => {
+      grid += 'M' + X(a).toFixed(1) + ' ' + PT + 'V' + (H - PB);
+      grid += 'M' + PL + ' ' + Y(a).toFixed(1) + 'H' + (W - PR);
+      xTicks.push({ left: ((X(a) / W) * 100).toFixed(2) + '%', text: this.nf(a * 100, 0) });
+      yTicks.push({ top: ((Y(a) / H) * 100).toFixed(2) + '%', text: this.nf(a * 100, 0) });
+    });
+    const dots = [];
+    rows.forEach(r => {
+      dots.push({ left: ((X(r.am) / W) * 100).toFixed(2) + '%', top: ((Y(r.hit) / H) * 100).toFixed(2) + '%', bg: INK, br: INK, size: (7 + Math.min(r.n / 8, 9)).toFixed(0) + 'px', label: this.nf(r.n, 0) });
+      dots.push({ left: ((X(r.ai) / W) * 100).toFixed(2) + '%', top: ((Y(r.hit) / H) * 100).toFixed(2) + '%', bg: '#F2EDE4', br: MUT, size: (7 + Math.min(r.n / 8, 9)).toFixed(0) + 'px', label: '' });
+    });
+
+    const groups = [['home', 'Hjemmeseier'], ['away', 'Borteseier'], ['draw', 'OT/SO']];
+    const types = groups.map(g => {
+      const s = b.filter(x => x.sel === g[0]);
+      const em = s.reduce((a, x) => a + x.mp, 0), ek = s.reduce((a, x) => a + x.ip, 0);
+      const ac = s.filter(x => x.s === 'won').length;
+      const p = s.reduce((a, x) => a + x.pr, 0);
+      return {
+        label: g[1], n: this.nf(s.length, 0), em: this.nf(em, 1), ek: this.nf(ek, 1), ac: this.nf(ac, 0),
+        net: this.kr(p), netC: p >= 0 ? TEAL : VERM
+      };
+    });
+
+    return {
+      rows: rows.map(r => ({ label: r.label, n: this.nf(r.n, 0), am: this.pc(r.am, 1), ai: this.pc(r.ai, 1), hit: this.pc(r.hit, 1), c: r.hit >= r.am ? TEAL : VERM })),
+      diag, pm, pk, grid, xTicks, yTicks, dots, types
+    };
+  }
+
+  // ---- shadow ----------------------------------------------------------
+  shadowView(d) {
+    const b = d.bets;
+    const draws = b.filter(x => x.sel === 'draw'), rest = b.filter(x => x.sel !== 'draw');
+    const box = (s, title, sub) => {
+      const p = s.reduce((a, x) => a + x.pr, 0), st = s.reduce((a, x) => a + x.st, 0);
+      const w = s.filter(x => x.s === 'won').length;
+      const em = s.reduce((a, x) => a + x.mp, 0);
+      return {
+        title, sub, n: this.nf(s.length, 0), staked: this.nf(st, 0),
+        net: this.kr(p), netC: p >= 0 ? TEAL : VERM, roi: this.sgn(st ? p / st : 0),
+        wr: this.pc(s.length ? w / s.length : 0, 1), won: this.nf(w, 0),
+        exp: this.nf(em, 1), expWr: this.pc(s.length ? em / s.length : 0, 1),
+        raw: p
+      };
+    };
+    const real = box(rest, 'Faktisk portef\u00f8lje', 'Hjemme- og borteseier \u2014 spillene som faktisk ble lagt inn');
+    const shade = box(draws, 'Skyggelogg', 'OT/SO-spill som modellen ville tatt, f\u00f8rt med full innsats');
+    const uta = b.filter(x => x.d <= '2026-04-17' && (x.h === 'UTA' || x.a === 'UTA' || x.h === 'ARI' || x.a === 'ARI'));
+    const utaP = uta.reduce((a, x) => a + x.pr, 0);
+    const m = Math.max(Math.abs(real.raw), Math.abs(shade.raw), 1);
+    real.barW = ((Math.abs(real.raw) / m) * 100).toFixed(1) + '%';
+    shade.barW = ((Math.abs(shade.raw) / m) * 100).toFixed(1) + '%';
+    return {
+      real, shade,
+      uta: { n: this.nf(uta.length, 0), won: this.nf(uta.filter(x => x.s === 'won').length, 0), net: this.kr(utaP) }
+    };
+  }
+
+  // ---- mobile ----------------------------------------------------------
+  mob(d) {
+    const vals = d.ts.map(t => t.v);
+    const W = 320, H = 84, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    const X = i => (i / (vals.length - 1)) * W;
+    const Y = v => H - ((v - mn) / (mx - mn || 1)) * H;
+    let line = '';
+    vals.forEach((v, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+
+    const st = this.state, empty = st.board === 'tom';
+    const all = this._games || [];
+    const games = all.map((g, i) => ({
+      i: i, time: g.time, h: g.h, a: g.a, hName: g.hName, aName: g.aName,
+      nPlay: g.nPlay, rows: g.rows, eloDiff: g.eloDiff, form: g.form, arena: g.arena,
+      tag: g.nPlay ? (g.nPlay === 1 ? '1 spill' : g.nPlay + ' spill') : 'ingen',
+      tagC: g.nPlay ? TEAL : MUT,
+      best: (g.rows.filter(r => r.tag === 'spill').sort((x, y) => parseFloat(y.ev) - parseFloat(x.ev))[0] || null)
+    }));
+    const sel = st.mSel != null && games[st.mSel] ? games[st.mSel] : null;
+
+    let hr = d.bets.slice();
+    if (st.hStatus !== 'alle') hr = hr.filter(x => x.s === st.hStatus);
+    hr = hr.slice(-24).reverse();
+    const rows = hr.map(b => ({
+      date: this.ds(b.d), game: d.names[b.a] + ' hos ' + d.names[b.h],
+      sel: b.sel === 'home' ? 'Hjem' : b.sel === 'away' ? 'Borte' : 'OT/SO',
+      odds: this.nf(b.o, 2), net: this.kr(b.pr), c: b.pr >= 0 ? TEAL : VERM
+    }));
+    const hSum = hr.reduce((x, y) => x + y.pr, 0);
+
+    const titles = { oversikt: 'Blålinja', verdi: 'Verdi i dag', kamp: 'Kampanalyse', logg: 'Historikk' };
+    return {
+      line, zero: Y(0).toFixed(1),
+      title: sel ? sel.aName + ' – ' + sel.hName : titles[st.mView],
+      showBack: !!sel && st.mView === 'verdi',
+      isOversikt: st.mView === 'oversikt', isVerdi: st.mView === 'verdi' && !sel,
+      isKamp: st.mView === 'kamp', isLogg: st.mView === 'logg',
+      isDetail: st.mView === 'verdi' && !!sel,
+      empty, notEmpty: !empty, games, sel,
+      subtitle: st.mView === 'verdi' ? (empty ? 'Sesongpause' : 'Eksempeldag · 14. mars') : (st.mView === 'logg' ? this.nf(hr.length, 0) + ' spill · ' + this.kr(hSum) : ''),
+      rows, hSumC: hSum >= 0 ? TEAL : VERM
+    };
+  }
+
+  // ---- hero E ----------------------------------------------------------
+  heroE(d) {
+    const su = d.summary, th = this.thr();
+    const bigTh = this.props.tallTerskel == null ? 1000 : this.props.tallTerskel;
+    const roiTh = this.props.roiTerskel == null ? 5 : this.props.roiTerskel;
+    const showBig = Math.abs(su.profit) >= bigTh;
+    const showRoi = Math.abs(su.roi * 100) >= roiTh;
+
+    const win = this.state.hWin;
+    let ts = d.ts, startIdx = 0;
+    if (win !== 'alt') {
+      const lastD = d.ts[d.ts.length - 1].d;
+      const cut = new Date(lastD + 'T00:00:00Z');
+      cut.setUTCDate(cut.getUTCDate() - parseInt(win, 10));
+      const cs = cut.toISOString().slice(0, 10);
+      startIdx = d.ts.findIndex(t => t.d >= cs);
+      if (startIdx < 0 || d.ts.length - startIdx < 3) startIdx = Math.max(0, d.ts.length - 10);
+      ts = d.ts.slice(startIdx);
+    }
+    const vals = ts.map(t => t.v), n = vals.length;
+    this._hn = n;
+    const prev = startIdx > 0 ? d.ts[startIdx - 1].v : 0;
+    const winNet = vals[n - 1] - prev;
+    const winBets = ts.reduce((a, t) => a + t.p, 0);
+    const winWon = ts.reduce((a, t) => a + t.w, 0);
+    const deltas = ts.map((t, i) => t.v - (i ? ts[i - 1].v : prev));
+    const bestD = Math.max.apply(null, deltas), worstD = Math.min.apply(null, deltas);
+
+    const W = 1200, H = 200, PT = 12, PB = 12;
+    let mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals));
+    if (mn === mx) { mn -= 1; mx += 1; }
+    const pd = (mx - mn) * 0.12; mn -= pd; mx += pd;
+    const X = i => (n < 2 ? W / 2 : (i / (n - 1)) * W);
+    const Y = x => PT + (H - PT - PB) - ((x - mn) / (mx - mn)) * (H - PT - PB);
+    let line = '';
+    vals.forEach((x, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x).toFixed(1); });
+    const z = Y(0);
+    const area = line + 'L' + W + ' ' + z.toFixed(1) + 'L0 ' + z.toFixed(1) + 'Z';
+    const hi = this.state.hHover, has = hi != null && hi >= 0 && hi < n;
+
+    const bets = [];
+    if (this.state.board === 'full') {
+      SAMPLE.forEach(g => {
+        const m = d.matchups[g.h + '-' + g.a] || { h: .33, o: .25, a: .42 };
+        [{ k: g.h, p: m.h, o: g.oh, side: 'hjemme' }, { k: g.a, p: m.a, o: g.oa, side: 'borte' }].forEach(c => {
+          const ev = c.p * c.o - 1;
+          if (ev >= th) bets.push({
+            time: g.time, team: d.names[c.k], abbr: c.k, side: c.side,
+            vs: d.names[c.k === g.h ? g.a : g.h],
+            odds: this.nf(c.o, 2), mp: this.pc(c.p, 1), ev: this.sgn(ev), evRaw: ev
+          });
+        });
+      });
+      bets.sort((a, b) => b.evRaw - a.evRaw);
+    }
+    const top = bets.slice(0, 3);
+    const phrase = this.state.board === 'full' ? 'Ingen spill over terskel' : 'Ingen kamper i dag';
+
+    return {
+      hasBets: top.length > 0, noBets: top.length === 0, bets: top,
+      nBets: this.nf(bets.length, 0),
+      dayLabel: this.state.board === 'full' ? 'Eksempeldag · 14. mars 2026' : 'Sesongpause',
+      headline: top.length ? (bets.length === 1 ? 'Ett spill over terskel' : this.nf(bets.length, 0) + ' spill over terskel') : phrase,
+      showBig, showRoi, big: this.sgnRaw(su.profit, 0), roi: this.sgn(su.roi, 1),
+      winLabel: win === 'alt' ? 'Hele historikken' : 'Siste ' + win + ' dager',
+      winNet: this.kr(winNet), winNetC: winNet >= 0 ? TEAL : VERM, showWin: winNet >= 0,
+      winBets: this.nf(winBets, 0), winWr: this.pc(winBets ? winWon / winBets : 0, 1),
+      bestD: this.kr(bestD), worstD: this.kr(worstD),
+      line, area, zero: z.toFixed(1),
+      hOp: has ? 1 : 0, hLeft: has ? ((X(hi) / W) * 100).toFixed(2) + '%' : '-100%',
+      hTop: has ? ((Y(vals[hi]) / H) * 100).toFixed(2) + '%' : '-100%',
+      emptyLine: this.state.board === 'full' ? 'Markedet priser alle fem kampene som modellen.' : 'Neste sesongstart i oktober. Elo oppdateres gjennom pausen.',
+      hcx: has ? X(hi).toFixed(1) : -50, hcy: has ? Y(vals[hi]).toFixed(1) : -50,
+      cross: has ? 'M' + X(hi).toFixed(1) + ' 0V' + H : '',
+      hDate: has ? this.dl(ts[hi].d) : '', hVal: has ? this.kr(vals[hi]) : '',
+      hSub: has ? ts[hi].p + ' spill · ' + ts[hi].w + ' traff' : ''
+    };
+  }
+
+  renderVals() {
+    const d = window.NHL;
+    const t = {
+      view: this.tabs('view', ['oversikt', 'verdi', 'kamp', 'historikk', 'elo', 'modell', 'skygge', 'mobil']),
+      chart: this.tabs('chart', ['netto', 'dag']),
+      range: this.tabs('range', ['alt', '60', '20']),
+      board: this.tabs('board', ['tom', 'full']),
+      filt: this.tabs('filt', ['value', 'alle']),
+      hStatus: this.tabs('hStatus', ['alle', 'won', 'lost']),
+      hSel: this.tabs('hSel', ['alle', 'home', 'away', 'draw']),
+      hSort: this.tabs('hSort', ['dato', 'ev', 'netto']),
+      conf: this.tabs('conf', ['alle', 'ost', 'vest']),
+      hero: this.tabs('hero', ['e', 'a', 'b', 'c', 'd']),
+      hWin: this.tabs('hWin', ['60', '90', 'alt']),
+      mView: this.tabs('mView', ['oversikt', 'verdi', 'kamp', 'logg'])
+    };
+    const v = {};
+    ['oversikt', 'verdi', 'kamp', 'historikk', 'elo', 'modell', 'skygge', 'mobil'].forEach(k => { v[k] = this.state.view === k; });
+    const hv = { a: this.state.hero === 'a', b: this.state.hero === 'b', c: this.state.hero === 'c', d: this.state.hero === 'd', e: this.state.hero === 'e' };
+    const base = { t, v, hv, pick: this.pick, onSel: this.onSel, onNum: this.onNum, onSwap: this.onSwap, onMove: this.onMove, onLeave: this.onLeave, onHeroMove: this.onHeroMove, onHeroLeave: this.onHeroLeave, mOpen: this.mOpen, mBack: this.mBack };
+    if (!d) return base;
+
+    const su = d.summary, ts = d.ts, bets = d.bets;
+    const avgOdds = bets.reduce((a, b) => a + b.o, 0) / bets.length;
+    const expModel = bets.reduce((a, b) => a + b.mp, 0);
+    const expMarket = bets.reduce((a, b) => a + b.ip, 0);
+    const actual = bets.filter(b => b.s === 'won').length;
+
+    const recent = bets.slice(-9).reverse().map(b => ({
+      date: this.ds(b.d), game: d.names[b.a] + ' hos ' + d.names[b.h],
+      sel: b.sel === 'home' ? 'Hjem' : b.sel === 'away' ? 'Borte' : 'OT/SO',
+      odds: this.nf(b.o, 2), profit: this.kr(b.pr), c: b.pr >= 0 ? TEAL : VERM
+    }));
+
+    const groups = [['home', 'Hjemmeseier'], ['away', 'Borteseier'], ['draw', 'OT/SO']];
+    const maxAbs = Math.max.apply(null, groups.map(g => Math.abs(bets.filter(b => b.sel === g[0]).reduce((a, b) => a + b.pr, 0))));
+    const byType = groups.map(g => {
+      const s = bets.filter(b => b.sel === g[0]);
+      const p = s.reduce((a, b) => a + b.pr, 0), st = s.reduce((a, b) => a + b.st, 0);
+      const w = (maxAbs ? Math.abs(p) / maxAbs : 0) * 50;
+      return {
+        label: g[1], n: s.length, profit: this.kr(p), c: p >= 0 ? TEAL : VERM,
+        wr: this.pc(s.length ? s.filter(x => x.s === 'won').length / s.length : 0, 1),
+        roi: this.sgn(st ? p / st : 0),
+        barLeft: p >= 0 ? '50%' : (50 - w).toFixed(1) + '%', barW: w.toFixed(1) + '%'
+      };
+    });
+
+    const SW = 1200, SH = 190;
+    const sv = ts.map(x => x.v);
+    const smn = Math.min.apply(null, sv), smx = Math.max.apply(null, sv);
+    const SX = i => (i / (sv.length - 1)) * SW;
+    const SY = x => SH - ((x - smn) / (smx - smn || 1)) * SH;
+    let spark = '';
+    sv.forEach((x, i) => { spark += (i ? 'L' : 'M') + SX(i).toFixed(1) + ' ' + SY(x).toFixed(1); });
+    const sZero = SY(0);
+
+    return Object.assign(base, {
+      meta: { gen: (d.meta.generated || '').slice(0, 10), eloThrough: d.meta.eloThrough, nGames: this.nf(d.meta.nGames, 0) },
+      hero: {
+        net: this.sgnRaw(su.profit, 0), netCol: su.profit >= 0 ? TEAL : VERM,
+        roi: this.sgn(su.roi, 1), staked: this.nf(su.total_staked, 0), ret: this.nf(su.settled_return, 0),
+        wr: this.pc(su.win_rate, 1), open: su.open_bets, avgOdds: this.nf(avgOdds, 2),
+        days: this.nf(ts.length, 0), bets: this.nf(su.total_bets, 0),
+        absKr: this.nf(Math.abs(su.profit), 0),
+        verdict: su.profit >= 0 ? 'i pluss med' : 'i minus med',
+        spark: spark, sparkArea: spark + 'L' + SW + ' ' + sZero.toFixed(1) + 'L0 ' + sZero.toFixed(1) + 'Z',
+        sparkZero: sZero.toFixed(1),
+        span: this.ds(ts[0].d) + ' \u2013 ' + this.dl(ts[ts.length - 1].d)
+      },
+      cal: { expModel: this.nf(expModel, 1), expMarket: this.nf(expMarket, 1), actual: this.nf(actual, 0) },
+      ch: this.chart(d), board: this.board(d), mm: this.mm(d), recent, byType,
+      he: this.heroE(d),
+      hist: this.hist(d), elo: this.eloView(d), calc: this.calView(d), sh: this.shadowView(d), mob: this.mob(d)
+    });
+  }
+}
+
+</script>
+</body>
+</html>
