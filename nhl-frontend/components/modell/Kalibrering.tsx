@@ -16,7 +16,7 @@
 
 import type { AnalysisSummary, CalibrationBucket } from '@/lib/analysis';
 import { venstreProsent, toppProsent } from '@/components/chart';
-import { nf, pc, pcTall, krTabell, MANGLER } from '@/lib/format';
+import { nf, pc, pcTall, kr, krTabell, MANGLER, NBSP } from '@/lib/format';
 import {
     KAL_BREDDE,
     KAL_HOYDE,
@@ -47,12 +47,29 @@ export interface KalibreringProps {
     sammendrag: AnalysisSummary;
     utfall: readonly UtfallsRad[];
     utenDraw: boolean;
+    /**
+     * OT/SO-raden regnet på HELE utvalget, uavhengig av toggelen — noten under
+     * «Per utfallstype» skal kunne si hva OT/SO kostet også når OT/SO er tatt
+     * ut av `utfall`. `null` når historikken ikke har avregnede OT/SO-spill.
+     */
+    otSo: UtfallsRad | null;
 }
 
 /** U+2013, tankestrek i intervaller. */
 const TANKESTREK = '–';
 
-export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw }: KalibreringProps) {
+/**
+ * `K1`…`Kn`. Bøttene er kvantiler, ikke faste intervaller: `lo`/`hi` er
+ * observert minimum og maksimum i bøtta, og to nabobøtter kan derfor møtes på
+ * samme råverdi (kvantilsplitten deler like verdier på posisjon — dokumentert
+ * og bevisst i `lib/analysis.ts`). Da kan ikke intervallet bære identiteten til
+ * bøtta; K-merket gjør det, og intervallet står som sekundærtekst.
+ */
+function kvantil(i: number): string {
+    return `K${i + 1}`;
+}
+
+export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw, otSo }: KalibreringProps) {
     const skala = kalibreringsSkala(bøtter.length);
     const harData = bøtter.length > 0;
 
@@ -80,10 +97,10 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw }: Kalibreri
         ? `Kalibreringskurve med ${bøtter.length} kvantilbøtter. ` +
           bøtter
               .map(
-                  (b) =>
-                      `Modellen sa ${pc(b.model_mean)}, markedet ${pc(b.implied_mean)}, faktisk ${pc(
-                          b.hit_rate,
-                      )} av ${b.n} spill`,
+                  (b, i) =>
+                      `${kvantil(i)}: modellen sa ${pc(b.model_mean)}, markedet ${pc(
+                          b.implied_mean,
+                      )}, faktisk ${pc(b.hit_rate)} av ${b.n} spill`,
               )
               .join('. ') +
           '. Samme tall står i tabellen «Per sannsynlighetsintervall».'
@@ -250,7 +267,7 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw }: Kalibreri
                             </span>
                             <span className={styles.tegn}>
                                 <span className={styles.tegnWhisker} aria-hidden="true" />
-                                95 % Wilson
+                                {`95${NBSP}%`} Wilson
                             </span>
                         </div>
 
@@ -279,89 +296,219 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw }: Kalibreri
 
             <div className={styles.kalibreringHoyre}>
                 <span className="t-kicker">Per sannsynlighetsintervall</span>
-                <div className={`${styles.tabell}`}>
-                    <div className={`${styles.tabellHode} ${styles.kalibreringsGrid} t-table-header`}>
-                        <span>Modell sa</span>
-                        <span className={styles.hoyre}>N</span>
-                        <span className={styles.hoyre}>Snitt modell</span>
-                        <span className={styles.hoyre}>Snitt marked</span>
-                        <span className={styles.hoyre}>Faktisk</span>
-                    </div>
-                    {bøtter.length === 0 ? (
-                        <div className={`${styles.tabellRad} ${styles.kalibreringsGrid}`}>
-                            <span className={styles.intervall}>{MANGLER}</span>
-                            <span className={`t-table-figure ${styles.hoyre} c-faint`}>0</span>
-                            <span className={`t-table-figure ${styles.hoyre}`}>{MANGLER}</span>
-                            <span className={`t-table-figure ${styles.hoyre} c-faint`}>{MANGLER}</span>
-                            <span className={`${styles.faktisk} c-faint`}>{MANGLER}</span>
-                        </div>
-                    ) : (
-                        bøtter.map((b) => (
-                            <div
-                                key={`rad-${b.lo}-${b.hi}`}
-                                className={`${styles.tabellRad} ${styles.kalibreringsGrid}`}
+                {/*
+                 * Ekte <table> med <th scope>, men radene er CSS-grid slik at
+                 * kolonnene holder linja. `display: grid` fjerner tabellens
+                 * implisitte ARIA-roller i flere nettlesere, så rollene står
+                 * eksplisitt — samme mønster som `components/elo/EloTabell.tsx`.
+                 */}
+                <table className={styles.tabell} role="table">
+                    <thead className={styles.gruppe} role="rowgroup">
+                        <tr
+                            className={`${styles.tabellHode} ${styles.kalibreringsGrid} t-table-header`}
+                            role="row"
+                        >
+                            <th scope="col" role="columnheader" className={styles.hodeCelle}>
+                                Kvantil
+                            </th>
+                            <th
+                                scope="col"
+                                role="columnheader"
+                                className={`${styles.hodeCelle} ${styles.hoyre}`}
                             >
-                                <span className={styles.intervall}>
-                                    {pcTall(b.lo, 0)}
-                                    {TANKESTREK}
-                                    {pc(b.hi, 0)}
-                                </span>
-                                <span className={`t-table-figure ${styles.hoyre} c-faint`}>{nf(b.n)}</span>
-                                <span className={`t-table-figure ${styles.hoyre}`}>{pc(b.model_mean)}</span>
-                                <span className={`t-table-figure ${styles.hoyre} c-faint`}>
-                                    {pc(b.implied_mean)}
-                                </span>
-                                <span
-                                    className={`${styles.faktisk} ${
-                                        b.hit_rate >= b.model_mean ? 'c-teal' : 'c-vermillion'
-                                    }`}
+                                N
+                            </th>
+                            <th
+                                scope="col"
+                                role="columnheader"
+                                className={`${styles.hodeCelle} ${styles.hoyre}`}
+                            >
+                                Snitt modell
+                            </th>
+                            <th
+                                scope="col"
+                                role="columnheader"
+                                className={`${styles.hodeCelle} ${styles.hoyre}`}
+                            >
+                                Snitt marked
+                            </th>
+                            <th
+                                scope="col"
+                                role="columnheader"
+                                className={`${styles.hodeCelle} ${styles.hoyre}`}
+                            >
+                                Faktisk
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className={styles.gruppe} role="rowgroup">
+                        {bøtter.length === 0 ? (
+                            <tr className={`${styles.tabellRad} ${styles.kalibreringsGrid}`} role="row">
+                                <th scope="row" role="rowheader" className={styles.botteCelle}>
+                                    <span className={styles.botteNavn}>{MANGLER}</span>
+                                </th>
+                                <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                    0
+                                </td>
+                                <td role="cell" className={`t-table-figure ${styles.hoyre}`}>
+                                    {MANGLER}
+                                </td>
+                                <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                    {MANGLER}
+                                </td>
+                                <td role="cell" className={`${styles.faktisk} c-faint`}>
+                                    {MANGLER}
+                                </td>
+                            </tr>
+                        ) : (
+                            bøtter.map((b, i) => (
+                                <tr
+                                    key={`rad-${b.lo}-${b.hi}`}
+                                    className={`${styles.tabellRad} ${styles.kalibreringsGrid}`}
+                                    role="row"
                                 >
-                                    {pc(b.hit_rate)}
-                                    <span className={styles.usikkerhet}>
-                                        {pcTall(b.wilson.lo, 0)}
-                                        {TANKESTREK}
-                                        {pc(b.wilson.hi, 0)}
-                                    </span>
-                                </span>
-                            </div>
-                        ))
-                    )}
-                </div>
+                                    <th scope="row" role="rowheader" className={styles.botteCelle}>
+                                        <span className={styles.botteNavn}>{kvantil(i)}</span>
+                                        <span className={styles.botteGrense}>
+                                            {pcTall(b.lo, 0)}
+                                            {TANKESTREK}
+                                            {pc(b.hi, 0)}
+                                        </span>
+                                    </th>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                        {nf(b.n)}
+                                    </td>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre}`}>
+                                        {pc(b.model_mean)}
+                                    </td>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                        {pc(b.implied_mean)}
+                                    </td>
+                                    <td
+                                        role="cell"
+                                        className={`${styles.faktisk} ${
+                                            b.hit_rate >= b.model_mean ? 'c-teal' : 'c-vermillion'
+                                        }`}
+                                    >
+                                        {pc(b.hit_rate)}
+                                        <span className={styles.usikkerhet}>
+                                            {pcTall(b.wilson.lo, 0)}
+                                            {TANKESTREK}
+                                            {pc(b.wilson.hi, 0)}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
                 <p className={styles.tabellNote}>
-                    Bøttene er kvantiler, ikke faste intervaller: like mange spill i hver. Under «Faktisk» står
-                    95 % Wilson-intervallet for treffraten.
+                    Bøttene er kvantiler av modellens sannsynlighet, ikke faste intervaller: like mange spill
+                    i hver. Tallet under K-merket er lavest og høyest observerte modellsannsynlighet i bøtta,
+                    så to nabobøtter kan møtes på samme verdi. Under «Faktisk» står {`95${NBSP}%`}{' '}
+                    Wilson-intervallet for treffraten.
                 </p>
 
                 <div className={styles.blokkAvstand}>
                     <span className="t-kicker">Per utfallstype</span>
-                    <div className={styles.tabell}>
-                        <div className={`${styles.tabellHode} ${styles.utfallsGrid} t-table-header`}>
-                            <span>Utfall</span>
-                            <span className={styles.hoyre}>N</span>
-                            <span className={styles.hoyre}>Modell</span>
-                            <span className={styles.hoyre}>Marked</span>
-                            <span className={styles.hoyre}>Faktisk</span>
-                            <span className={styles.hoyre}>Netto kr</span>
-                        </div>
-                        {utfall.map((u) => (
-                            <div key={u.nokkel} className={`${styles.tabellRad} ${styles.utfallsGrid}`}>
-                                <span className="t-team-name-table">{u.navn}</span>
-                                <span className={`t-table-figure ${styles.hoyre} c-faint`}>{nf(u.n)}</span>
-                                <span className={`t-table-figure ${styles.hoyre}`}>{nf(u.modell, 1)}</span>
-                                <span className={`t-table-figure ${styles.hoyre} c-faint`}>{nf(u.marked, 1)}</span>
-                                <span className={`${styles.faktisk}`}>{nf(u.treff)}</span>
-                                <span
-                                    className={`${styles.faktisk} ${u.netto >= 0 ? 'c-teal' : 'c-vermillion'}`}
+                    <table className={styles.tabell} role="table">
+                        <thead className={styles.gruppe} role="rowgroup">
+                            <tr
+                                className={`${styles.tabellHode} ${styles.utfallsGrid} t-table-header`}
+                                role="row"
+                            >
+                                <th scope="col" role="columnheader" className={styles.hodeCelle}>
+                                    Utfall
+                                </th>
+                                <th
+                                    scope="col"
+                                    role="columnheader"
+                                    className={`${styles.hodeCelle} ${styles.hoyre}`}
                                 >
-                                    {krTabell(u.netto)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+                                    N
+                                </th>
+                                <th
+                                    scope="col"
+                                    role="columnheader"
+                                    className={`${styles.hodeCelle} ${styles.hoyre}`}
+                                >
+                                    Modell
+                                </th>
+                                <th
+                                    scope="col"
+                                    role="columnheader"
+                                    className={`${styles.hodeCelle} ${styles.hoyre}`}
+                                >
+                                    Marked
+                                </th>
+                                <th
+                                    scope="col"
+                                    role="columnheader"
+                                    className={`${styles.hodeCelle} ${styles.hoyre}`}
+                                >
+                                    Faktisk
+                                </th>
+                                <th
+                                    scope="col"
+                                    role="columnheader"
+                                    className={`${styles.hodeCelle} ${styles.hoyre}`}
+                                >
+                                    Netto kr
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className={styles.gruppe} role="rowgroup">
+                            {utfall.map((u) => (
+                                <tr
+                                    key={u.nokkel}
+                                    className={`${styles.tabellRad} ${styles.utfallsGrid}`}
+                                    role="row"
+                                >
+                                    <th
+                                        scope="row"
+                                        role="rowheader"
+                                        className={`t-team-name-table ${styles.radNavn}`}
+                                    >
+                                        {u.navn}
+                                    </th>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                        {nf(u.n)}
+                                    </td>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre}`}>
+                                        {nf(u.modell, 1)}
+                                    </td>
+                                    <td role="cell" className={`t-table-figure ${styles.hoyre} c-faint`}>
+                                        {nf(u.marked, 1)}
+                                    </td>
+                                    <td role="cell" className={styles.faktisk}>
+                                        {nf(u.treff)}
+                                    </td>
+                                    <td
+                                        role="cell"
+                                        className={`${styles.faktisk} ${
+                                            u.netto >= 0 ? 'c-teal' : 'c-vermillion'
+                                        }`}
+                                    >
+                                        {krTabell(u.netto)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {/*
+                     * Tallene i noten telles fra OT/SO-raden, ikke skrives for
+                     * hånd: pipelinen skriver om datasettet hver natt, og en
+                     * hardkodet variant ved siden av en tabell som viser det
+                     * samme ville sett mest autoritativ ut den dagen de spriker.
+                     */}
                     <p className={styles.tabellNote}>
-                        {utenDraw
-                            ? 'OT/SO er utelatt fra hele skjermen. De 26 spillene sto for −640 kr.'
-                            : 'Modell og Marked er antall treff de to forventet, ikke prosent. OT/SO legges ikke inn lenger.'}
+                        {!utenDraw
+                            ? 'Modell og Marked er antall treff de to forventet, ikke prosent. OT/SO legges ikke inn lenger.'
+                            : otSo === null
+                              ? 'OT/SO er utelatt fra hele skjermen. Historikken har ingen avregnede OT/SO-spill.'
+                              : `OT/SO er utelatt fra hele skjermen. De ${nf(otSo.n)} spillene sto for ${kr(
+                                    otSo.netto,
+                                )}.`}
                     </p>
                 </div>
             </div>
