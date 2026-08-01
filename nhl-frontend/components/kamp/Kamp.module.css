@@ -1,0 +1,363 @@
+/* ========================================================================== *
+ * Kampanalyse (§C.3). Alle tall er hentet fra designspesifikasjonen.
+ *
+ * Klassenavnene er ASCII — CSS Modules er greie med æøå, men verktøykjeden
+ * rundt dem er ikke alltid det.
+ * ========================================================================== */
+
+.oppsett {
+  align-items: start;
+}
+
+/* Venstre og høyre får bare vertikal padding: den horisontale (44px) og
+ * skillelinja kommer fra `.split`, som også stabler seg selv under 768px. */
+.venstre,
+.hoyre {
+  padding-block: 36px;
+  min-width: 0;
+}
+
+.feil {
+  padding-top: 28px;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Skjema
+ * -------------------------------------------------------------------------- */
+
+.felter {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feltEtikett {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.velger {
+  width: 100%;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--dash);
+  border-radius: 0;
+  font: 400 15px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.velger:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.bytt {
+  align-self: flex-start;
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  padding: 9px 13px;
+  background: none;
+}
+
+.bytt:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.bytt:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.oddsBolk {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--rule);
+}
+
+/* Overskriftene er `<h2>`/`<h3>`, så nullstill nettleserens margin — spacingen
+ * i §C.3 er absolutt, ikke em-basert. */
+.oddsHode {
+  margin: 0;
+}
+
+.oddsRader {
+  margin-top: 14px;
+}
+
+.oddsRad {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.oddsRad:last-child {
+  border-bottom: 0;
+}
+
+.oddsEtikett {
+  font: 400 13.5px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.oddsFelt {
+  width: 88px;
+  padding: 8px 10px;
+  text-align: right;
+  background: var(--paper);
+  border: 1px solid var(--dash);
+  border-radius: 0;
+  font: 400 14px/1 var(--mono);
+  color: var(--ink);
+}
+
+.oddsFelt:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Tittelrad
+ * -------------------------------------------------------------------------- */
+
+.tittelrad {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tittel {
+  font: 400 34px/1.1 var(--serif);
+  color: var(--ink);
+  margin: 0;
+}
+
+.anbefaling {
+  font: 400 11px/1.4 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.note {
+  margin: 10px 0 0;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Utfallskolonner
+ * -------------------------------------------------------------------------- */
+
+.utfallGrid {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--rule-strong);
+}
+
+.utfall {
+  padding: 24px 22px 24px 0;
+  border-right: 1px solid var(--rule-light);
+  min-width: 0;
+}
+
+.utfall:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+/* Egen regel framfor `.t-panel-heading`: etiketten her har line-height 1.3 og
+ * en min-høyde som holder de tre figurene på linje når ett lagnavn brekker. */
+.utfallEtikett {
+  display: block;
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-height: 2.6em;
+}
+
+.figur {
+  display: block;
+  font: 400 clamp(44px, 5vw, 66px) / 0.9 var(--serif);
+  margin-top: 12px;
+}
+
+.stolpe {
+  margin-top: 14px;
+  height: 4px;
+  background: var(--rule-light);
+  position: relative;
+}
+
+.stolpeFyll {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.fyllSpill {
+  background: var(--teal);
+}
+
+.fyllVanlig {
+  background: var(--ink);
+}
+
+.tall {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tallRad {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tallNokkel {
+  font: 400 10.5px/1.3 var(--mono);
+  color: var(--muted);
+}
+
+.tallVerdi {
+  font: 400 12px/1.3 var(--mono);
+  color: var(--ink);
+}
+
+.tallVerdiEv {
+  font: 400 13px/1.3 var(--mono);
+}
+
+.tagg {
+  margin-top: 14px;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Bunn — Elo og form
+ * -------------------------------------------------------------------------- */
+
+.bunn {
+  margin-top: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 44px;
+}
+
+.panelHode {
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.eloRad {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.eloNokkel {
+  font: 400 13px/1.3 var(--sans);
+  color: var(--body);
+}
+
+.eloVerdi {
+  font: 400 14px/1 var(--mono);
+  color: var(--ink);
+}
+
+.formRad {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.formTopp {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.formNavn {
+  font: 400 13px/1.3 var(--sans);
+  color: var(--ink);
+}
+
+.formSekvens {
+  font: 400 11px/1.3 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Kampene som en flex-rad framfor tre mellomrom i teksten: HTML kollapser
+ * mellomrom, og radene skal brekke pent når kolonnen blir smal. */
+.formResultater {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font: 400 11px/1.4 var(--mono);
+  color: var(--faint);
+}
+
+/* -------------------------------------------------------------------------- *
+ * Under 768px: alt stables, og kontrollene får 44px tap-target.
+ * -------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .venstre,
+  .hoyre {
+    padding-block: 28px;
+  }
+
+  .velger,
+  .oddsFelt,
+  .bytt {
+    min-height: 44px;
+  }
+
+  .oddsFelt {
+    width: 96px;
+  }
+
+  .oddsRad {
+    padding: 6px 0;
+  }
+
+  .utfallGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .utfall {
+    padding: 20px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule-light);
+  }
+
+  .utfall:last-child {
+    border-bottom: 0;
+  }
+
+  .utfallEtikett {
+    min-height: 0;
+  }
+
+  .bunn {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}

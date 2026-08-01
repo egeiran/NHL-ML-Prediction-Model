@@ -1,17 +1,26 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { KampSkjerm } from '@/components/kamp';
+import { Laster, SectionHeading } from '@/components/ui';
 
 export const metadata: Metadata = {
     title: 'Kampanalyse',
 };
 
+/**
+ * Ruten er en tynn serverkomponent: metadata, skjermhodet og `<main>`.
+ *
+ * Skjermen leser paringen fra query-parametrene med `useSearchParams`, og den
+ * krever en `<Suspense>`-grense i Next 15 — uten den feiler byggingen av den
+ * statiske eksporten.
+ */
 export default function KampPage() {
     return (
         <main>
             <SectionHeading kicker="Kampanalyse · egendefinert oppgjør" title="Sett to lag mot hverandre" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Kampanalyse er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.3.
-            </p>
+            <Suspense fallback={<div style={{ paddingTop: 36 }}><Laster /></div>}>
+                <KampSkjerm />
+            </Suspense>
         </main>
     );
 }
