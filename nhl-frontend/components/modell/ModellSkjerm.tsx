@@ -12,17 +12,32 @@
  *   2. OT/SO-toggelen styrer HELE skjermen, ikke én figur.
  *
  * `analyze()` kjører 10 000 bootstrap-trekninger per regel og 10 000
- * permutasjoner per korrelasjon. Den ligger i én `useMemo` med
- * `[spill, utenDraw]` som nøkkel — den skal kjøre én gang per toggling, ikke
- * per render.
+ * permutasjoner per korrelasjon — målt til et par hundre millisekunder på
+ * desktop og et par sekunder på mellomklassemobil. To ting holder det ute av
+ * veien for brukeren:
+ *
+ *   1. Begge utvalgene (`alle` / `utenDraw`) regnes i én `useMemo` med
+ *      `[alleSpill]` som eneste nøkkel. `useMemo` har bare én cache-plass, så
+ *      med `utenDraw` i nøkkelen betalte hver eneste veksling full pris på
+ *      nytt — også tilbake til noe man nettopp hadde. Prisen er at første
+ *      render gjør to kjøringer i stedet for én; til gjengjeld er hver
+ *      veksling etterpå gratis, og det er vekslingen brukeren merker.
+ *   2. `useTransition` rundt selve utvalgsbyttet. Pilla får sin egen
+ *      hurtigtilstand (`valgt`) som settes synkront, mens `aktivt` — det som
+ *      drar den tunge rerenderingen — kommer etter. React 19 holder forrige UI
+ *      interaktivt imens, og `venter` demper seksjonen så det er synlig at noe
+ *      er i ferd med å byttes ut.
+ *
+ * Antall bootstrap-trekninger røres ikke: presisjonen er poenget med skjermen.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import {
     analyze,
     profitPerKrone,
     settledBets,
     type AnalysisBet,
+    type AnalysisResult,
     type CorrelationResult,
 } from '@/lib/analysis';
 import { usePortfolio } from '@/lib/use-data';
@@ -66,10 +81,20 @@ function korrelasjon(c: CorrelationResult): string {
     return `r = ${nf(c.r, 3)} (p = ${nf(c.p_value, 2)})`;
 }
 
+/** Det tunge per utvalg. Bygges én gang og gjenbrukes ved veksling. */
+interface TungtResultat {
+    resultat: AnalysisResult;
+    utfall: UtfallsRad[];
+}
+
 export function ModellSkjerm() {
     const portefølje = usePortfolio();
-    const [utvalg, setUtvalg] = useState<Utvalg>('alle');
-    const utenDraw = utvalg === 'utenDraw';
+    /** Pilla — settes synkront, så trykket registrerer med én gang. */
+    const [valgt, setValgt] = useState<Utvalg>('alle');
+    /** Dataene — henger etter i en transition mens `analyze()` går. */
+    const [aktivt, setAktivt] = useState<Utvalg>('alle');
+    const [venter, start] = useTransition();
+    const utenDraw = aktivt === 'utenDraw';
 
     const alleSpill: readonly AnalysisBet[] =
         portefølje.data?.bets ?? INGEN_SPILL;
@@ -79,42 +104,67 @@ export function ModellSkjerm() {
         [portefølje.data],
     );
 
-    // Tellingene i toggelen skal stå fast uansett hva som er valgt.
-    const antall = useMemo(
+    /**
+     * Én sortering av historikken, ikke tre. `settledBets` sorterer, og
+     * `excludeDraw` er bare et filter oppå nøyaktig det samme resultatet — så
+     * begge utvalgene kan leses ut av ett kall. Tellingene i toggelen skal
+     * dessuten stå fast uansett hva som er valgt, og hører hjemme her.
+     */
+    const grunnlag = useMemo(() => {
+        const avregnet = settledBets(alleSpill);
+        return {
+            alle: avregnet,
+            utenDraw: avregnet.filter((b) => b.selection !== 'draw'),
+            // Draw-raden fra HELE utvalget: noten under «Per utfallstype» skal
+            // kunne si hva OT/SO kostet også når OT/SO er skrudd av.
+            otSo: utfallsRader(avregnet).find((r) => r.nokkel === 'draw') ?? null,
+        };
+    }, [alleSpill]);
+
+    /**
+     * Den tunge: 7 regler × 10 000 bootstrap-trekninger + 2 × 10 000
+     * permutasjoner, per utvalg. Begge regnes her, med `[alleSpill]` som eneste
+     * nøkkel — `useMemo` har bare én cache-plass, så med `utenDraw` i nøkkelen
+     * betalte HVER veksling full pris på nytt, også tilbake til noe man nettopp
+     * hadde. Nå koster første render begge kjøringene, og alle vekslinger etterpå
+     * ingenting. Antall trekninger røres ikke: presisjonen er poenget.
+     */
+    const tungt: Record<Utvalg, TungtResultat> = useMemo(
         () => ({
-            alle: settledBets(alleSpill).length,
-            utenDraw: settledBets(alleSpill, { excludeDraw: true }).length,
+            alle: {
+                resultat: analyze(alleSpill, { excludeDraw: false }),
+                utfall: utfallsRader(grunnlag.alle),
+            },
+            utenDraw: {
+                resultat: analyze(alleSpill, { excludeDraw: true }),
+                utfall: utfallsRader(grunnlag.utenDraw),
+            },
         }),
-        [alleSpill],
+        [alleSpill, grunnlag],
     );
 
-    const spill = useMemo(
-        () => settledBets(alleSpill, { excludeDraw: utenDraw }),
-        [alleSpill, utenDraw],
-    );
-
-    // Den tunge: 7 regler × 10 000 bootstrap-trekninger + 2 × 10 000 permutasjoner.
-    const resultat = useMemo(
-        () => analyze(alleSpill, { excludeDraw: utenDraw }),
-        [alleSpill, utenDraw],
-    );
-
-    const utfall = useMemo(() => utfallsRader(spill), [spill]);
+    const spill = utenDraw ? grunnlag.utenDraw : grunnlag.alle;
+    const { resultat, utfall } = tungt[aktivt];
 
     const { summary, calibration, ev_buckets, odds_buckets, ev_correlation, odds_correlation, rules } =
         resultat;
 
     const harData = summary.n > 0;
 
+    function velgUtvalg(u: Utvalg) {
+        setValgt(u);
+        start(() => setAktivt(u));
+    }
+
     const toggel = (
         <PillGroup
             label="Utvalg"
             size="md"
-            value={utvalg}
-            onChange={setUtvalg}
+            value={valgt}
+            onChange={velgUtvalg}
             options={[
-                { value: 'alle', label: `Alle spill (${nf(antall.alle)})` },
-                { value: 'utenDraw', label: `Uten OT/SO (${nf(antall.utenDraw)})` },
+                { value: 'alle', label: `Alle spill (${nf(grunnlag.alle.length)})` },
+                { value: 'utenDraw', label: `Uten OT/SO (${nf(grunnlag.utenDraw.length)})` },
             ]}
         />
     );
@@ -149,84 +199,95 @@ export function ModellSkjerm() {
                 right={toggel}
             />
 
-            {/* --- de tre tallene --------------------------------------- */}
-            <section className={styles.toppTall}>
-                <div className={styles.tallCelle}>
-                    <span className="t-stat-label">Modellen forventet</span>
-                    <span className={`t-calib-figure c-vermillion ${styles.tallFigur}`}>
-                        {harData ? nf(summary.expected_hits_model, 1) : MANGLER}
-                    </span>
-                    <span className={styles.tallEnhet}>treff</span>
-                </div>
-                <div className={styles.tallCelle}>
-                    <span className="t-stat-label">Markedet forventet</span>
-                    <span className={`t-calib-figure c-muted ${styles.tallFigur}`}>
-                        {harData ? nf(summary.expected_hits_market, 1) : MANGLER}
-                    </span>
-                    <span className={styles.tallEnhet}>treff</span>
-                </div>
-                <div className={styles.tallCelle}>
-                    <span className="t-stat-label">Faktisk</span>
-                    <span className={`t-calib-figure c-teal ${styles.tallFigur}`}>
-                        {harData ? nf(summary.hits) : MANGLER}
-                    </span>
-                    <span className={styles.tallEnhet}>
-                        treff · {harData ? pc(summary.hit_rate) : MANGLER} treffrate
-                    </span>
-                </div>
-            </section>
+            {/*
+             * Alt under overskriften avhenger av `analyze()`. Under en
+             * transition står forrige utvalg igjen og er fullt interaktivt —
+             * dempingen sier at det som står er i ferd med å byttes ut.
+             */}
+            <div
+                className={venter ? `${styles.innhold} ${styles.venter}` : styles.innhold}
+                aria-busy={venter}
+            >
+                {/* --- de tre tallene --------------------------------------- */}
+                <section className={styles.toppTall}>
+                    <div className={styles.tallCelle}>
+                        <span className="t-stat-label">Modellen forventet</span>
+                        <span className={`t-calib-figure c-vermillion ${styles.tallFigur}`}>
+                            {harData ? nf(summary.expected_hits_model, 1) : MANGLER}
+                        </span>
+                        <span className={styles.tallEnhet}>treff</span>
+                    </div>
+                    <div className={styles.tallCelle}>
+                        <span className="t-stat-label">Markedet forventet</span>
+                        <span className={`t-calib-figure c-muted ${styles.tallFigur}`}>
+                            {harData ? nf(summary.expected_hits_market, 1) : MANGLER}
+                        </span>
+                        <span className={styles.tallEnhet}>treff</span>
+                    </div>
+                    <div className={styles.tallCelle}>
+                        <span className="t-stat-label">Faktisk</span>
+                        <span className={`t-calib-figure c-teal ${styles.tallFigur}`}>
+                            {harData ? nf(summary.hits) : MANGLER}
+                        </span>
+                        <span className={styles.tallEnhet}>
+                            treff · {harData ? pc(summary.hit_rate) : MANGLER} treffrate
+                        </span>
+                    </div>
+                </section>
 
-            {/* --- 1. kalibrering --------------------------------------- */}
-            <Kalibrering
-                bøtter={calibration}
-                sammendrag={summary}
-                utfall={utfall}
-                utenDraw={utenDraw}
-            />
-
-            {/* --- 2 og 3. EV-bøtter og odds-bøtter --------------------- */}
-            <section className={`${styles.seksjon} ${styles.kvartiler}`}>
-                <KvartilFigur
-                    className={styles.kvartilVenstre}
-                    kicker="Per EV-kvartil"
-                    tittel="Betaler høy EV seg?"
-                    bøtter={ev_buckets}
-                    grense={(v) => pc(v, 1)}
-                    bildetekst={
-                        <>
-                            Korrelasjon EV ↔ avkastning per krone: {korrelasjon(ev_correlation)}. Ingen
-                            stigende trend — hele resultatet sitter i tredje kvartil, ikke i den høyeste. Å
-                            satse mer der modellen ser størst kant gjør bare variansen dyrere.
-                        </>
-                    }
+                {/* --- 1. kalibrering --------------------------------------- */}
+                <Kalibrering
+                    bøtter={calibration}
+                    sammendrag={summary}
+                    utfall={utfall}
+                    utenDraw={utenDraw}
+                    otSo={grunnlag.otSo}
                 />
-                <KvartilFigur
-                    className={styles.kvartilHoyre}
-                    kicker="Per odds-kvartil"
-                    tittel="Er det oddsnivået som avgjør?"
-                    bøtter={odds_buckets}
-                    grense={(v) => fmtOdds(v)}
-                    bildetekst={
-                        <>
-                            Korrelasjon odds ↔ avkastning per krone: {korrelasjon(odds_correlation)}
-                            {odds_correlation.p_value >= 0.05 ? ', altså ikke signifikant' : ''}. Mønsteret over
-                            oddskvartilene er mer systematisk enn over EV-kvartilene, og det er lett å lese som
-                            et etablert funn. Det er det ikke — det er en hypotese å teste videre, vår egen
-                            versjon av favourite-longshot bias.
-                        </>
-                    }
-                />
-            </section>
 
-            <p className={`${styles.note} ${styles.statusLinje}`}>
-                p-verdiene er permutasjonstester med 10 000 trekninger og vakler i andre desimal mellom
-                kjøringer. Begge korrelasjonene er langt fra enhver rimelig signifikansgrense uansett.
-            </p>
+                {/* --- 2 og 3. EV-bøtter og odds-bøtter --------------------- */}
+                <section className={`${styles.seksjon} ${styles.kvartiler}`}>
+                    <KvartilFigur
+                        className={styles.kvartilVenstre}
+                        kicker="Per EV-kvartil"
+                        tittel="Betaler høy EV seg?"
+                        bøtter={ev_buckets}
+                        grense={(v) => pc(v, 1)}
+                        bildetekst={
+                            <>
+                                Korrelasjon EV ↔ avkastning per krone: {korrelasjon(ev_correlation)}. Ingen
+                                stigende trend — hele resultatet sitter i tredje kvartil, ikke i den høyeste. Å
+                                satse mer der modellen ser størst kant gjør bare variansen dyrere.
+                            </>
+                        }
+                    />
+                    <KvartilFigur
+                        className={styles.kvartilHoyre}
+                        kicker="Per odds-kvartil"
+                        tittel="Er det oddsnivået som avgjør?"
+                        bøtter={odds_buckets}
+                        grense={(v) => fmtOdds(v)}
+                        bildetekst={
+                            <>
+                                Korrelasjon odds ↔ avkastning per krone: {korrelasjon(odds_correlation)}
+                                {odds_correlation.p_value >= 0.05 ? ', altså ikke signifikant' : ''}. Mønsteret over
+                                oddskvartilene er mer systematisk enn over EV-kvartilene, og det er lett å lese som
+                                et etablert funn. Det er det ikke — det er en hypotese å teste videre, vår egen
+                                versjon av favourite-longshot bias.
+                            </>
+                        }
+                    />
+                </section>
 
-            {/* --- 4. simulator ----------------------------------------- */}
-            <Simulator spill={spill} regler={rules} datoer={datoer} />
+                <p className={`${styles.note} ${styles.statusLinje}`}>
+                    p-verdiene er permutasjonstester med 10 000 trekninger og vakler i andre desimal mellom
+                    kjøringer. Begge korrelasjonene er langt fra enhver rimelig signifikansgrense uansett.
+                </p>
 
-            {/* --- åpne funn -------------------------------------------- */}
+                {/* --- 4. simulator ----------------------------------------- */}
+                <Simulator spill={spill} regler={rules} datoer={datoer} />
+            </div>
+
+            {/* --- åpne funn — redaksjonelt, uavhengig av utvalget -------- */}
             <Funn />
         </main>
     );

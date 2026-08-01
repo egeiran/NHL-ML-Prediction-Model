@@ -38,7 +38,13 @@ export function UtahVindu({ tall }: UtahVinduProps) {
                     </div>
                     <div>
                         <span className="t-stat-label">Netto</span>
-                        <span className={`${styles.utahFigur} c-vermillion`}>
+                        {/* Fortegnet fargelegger, som alle andre nettotall i appen.
+                            Verdien er negativ i dag; den skal ikke være rød av vane. */}
+                        <span
+                            className={`${styles.utahFigur} ${
+                                sammendrag.profit >= 0 ? 'c-teal' : 'c-vermillion'
+                            }`}
+                        >
                             {harRader ? kr(sammendrag.profit) : MANGLER}
                         </span>
                     </div>

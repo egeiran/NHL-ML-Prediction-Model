@@ -41,7 +41,7 @@ import {
     type AnalysisBet,
     type StakeRuleRow,
 } from '@/lib/analysis';
-import { MANGLER, dl, kr, krp, krTabell, nf, pc, sgn } from '@/lib/format';
+import { MANGLER, NBSP, dl, kr, krp, krTabell, nf, pc, sgn } from '@/lib/format';
 import { PillGroup } from '@/components/ui';
 import { andelProsent } from './geometri';
 import styles from './Modell.module.css';
@@ -61,7 +61,7 @@ const VISNING: Record<string, RegelVisning> = {
     flat: {
         pille: 'Flat',
         navn: 'Flat innsats',
-        forklaring: '100 kr på hvert spill. Dagens regel, og referansen alt måles mot.',
+        forklaring: `100${NBSP}kr på hvert spill. Dagens regel, og referansen alt måles mot.`,
     },
     linear_ev: {
         pille: 'Lineær i EV',
@@ -328,7 +328,7 @@ export function Simulator({ spill, regler, datoer }: SimulatorProps) {
                     </span>
                 </div>
                 <div className={styles.nokkelCelle}>
-                    <span className="t-stat-label">Bootstrap 95 %</span>
+                    <span className="t-stat-label">{`Bootstrap 95${NBSP}%`}</span>
                     <span className={`${styles.nokkelVerdi} c-muted`}>
                         {erFlat
                             ? MANGLER
@@ -366,10 +366,10 @@ export function Simulator({ spill, regler, datoer }: SimulatorProps) {
 
             {/* --- usikkerhetsstripa ------------------------------------- */}
             <div className={styles.stripe}>
-                <span className="t-kicker">Bootstrap-differanse mot flat · 95 %</span>
+                <span className="t-kicker">{`Bootstrap-differanse mot flat · 95${NBSP}%`}</span>
                 <h3 className={styles.panelTittelLiten}>Regler som ser vidt forskjellige ut i kroner</h3>
                 <p className={styles.note}>
-                    Hver stripe er 95 %-intervallet for differansen mot flat innsats over 10 000 trekninger med
+                    Hver stripe er {`95${NBSP}%`}-intervallet for differansen mot flat innsats over 10 000 trekninger med
                     tilbakelegging. Prikken er det observerte resultatet. Klikk en rad for å bytte regel.{' '}
                     {antallSomOverlapperNull === regler.length - 1
                         ? 'Alle intervallene inneholder null, og de overlapper hverandre fullstendig.'
