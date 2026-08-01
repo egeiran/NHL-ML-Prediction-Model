@@ -1,17 +1,15 @@
 import type { Metadata } from 'next';
-import { SectionHeading } from '@/components/ui';
+import { EloSkjerm } from '@/components/elo';
 
 export const metadata: Metadata = {
     title: 'Elo',
 };
 
+/**
+ * Ruta er en serverkomponent slik at `metadata` kan eksporteres. Alt innhold
+ * ligger i `<EloSkjerm />`, som er klientside — den leser `elo.json` med
+ * `useElo()` og eier konferansefilteret.
+ */
 export default function EloPage() {
-    return (
-        <main>
-            <SectionHeading kicker="Elo" title="Styrkeforholdet modellen ser" />
-            <p className="t-body-small c-vermillion" style={{ marginTop: 28 }}>
-                TODO: Elo er ikke bygget ennå. Se docs/blalinja/design-spec.md §C.5.
-            </p>
-        </main>
-    );
+    return <EloSkjerm />;
 }

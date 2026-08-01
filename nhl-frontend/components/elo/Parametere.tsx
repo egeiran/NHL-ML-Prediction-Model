@@ -1,0 +1,80 @@
+/**
+ * Parameterpanelet på Elo-skjermen (§C.5).
+ *
+ * De seks parameterne kommer fra `elo.json:config` — ingenting er hardkodet,
+ * så panelet følger pipelinen når den endres. Under står datagrunnlaget
+ * (`meta.n_games`, `meta.through`) og Utah-forbeholdet.
+ */
+
+import { dl, kr, nf, sgnRaw } from '@/lib/format';
+import type { EloConfig, EloMeta } from '@/types';
+import styles from './Elo.module.css';
+
+/**
+ * Rekkefølgen er designets, ikke `config`-objektets alfabetiske. Etikettene er
+ * norske; nøklene står ikke i UI-et.
+ */
+function parameterRader(config: EloConfig): readonly { nøkkel: string; verdi: string }[] {
+    return [
+        { nøkkel: 'Grunnrating', verdi: nf(config.base_rating) },
+        { nøkkel: 'K-faktor', verdi: nf(config.k_factor) },
+        // Hjemmefordelen er et påslag, ikke et nivå — derfor eksplisitt fortegn.
+        { nøkkel: 'Hjemmefordel', verdi: sgnRaw(config.home_advantage) },
+        { nøkkel: 'Skala', verdi: nf(config.scale) },
+        { nøkkel: 'Sesongregresjon', verdi: nf(config.season_regression, 2) },
+        { nøkkel: 'OT-seiersvekt', verdi: nf(config.ot_win_score, 2) },
+    ];
+}
+
+export interface ParametereProps {
+    config: EloConfig;
+    meta: EloMeta;
+}
+
+export function Parametere({ config, meta }: ParametereProps) {
+    return (
+        <>
+            <section aria-labelledby="elo-parametere">
+                <h2 id="elo-parametere" className={`t-panel-heading ${styles.panelHeading}`}>
+                    Parametere
+                </h2>
+                <dl className={styles.parameterListe}>
+                    {parameterRader(config).map((p) => (
+                        <div key={p.nøkkel} className={styles.parameterRad}>
+                            <dt className={styles.parameterNokkel}>{p.nøkkel}</dt>
+                            <dd className={styles.parameterVerdi}>{p.verdi}</dd>
+                        </div>
+                    ))}
+                </dl>
+                <p className={styles.grunnlag}>
+                    Ratingene hviler på {nf(meta.n_games)} kamper, til og med {dl(meta.through)}.
+                </p>
+            </section>
+
+            {/*
+             * Forbeholdet handler ikke om nøkkelnavnet i denne filen — `elo.json`
+             * skrives med visningsforkortelser, så Utah står under UTA her.
+             * Det handler om perioden da formberegningen leste laget feil.
+             * Ordlyden følger PROBLEMS.md; tallene er auditens, ikke avrundet i
+             * vår favør.
+             */}
+            <section className={styles.forbehold} aria-labelledby="elo-forbehold">
+                <h2 id="elo-forbehold" className={styles.forbeholdEtikett}>
+                    Kjent datavindu
+                </h2>
+                <p className={styles.forbeholdTekst}>
+                    Fram til {dl('2026-04-17')} leste formberegningen Utahs hjemmekamper som
+                    bortekamper, med målene byttet om: kampene fra NHL-APIet er merket UTA, mens
+                    formberegningen fikk den kanoniske forkortelsen ARI, så hjemme/borte-sjekken
+                    aldri traff.
+                </p>
+                <p className={styles.forbeholdTekst}>
+                    14 spill ble lagt inn på det grunnlaget. Ett traff, {kr(-1165)} totalt. Auditen
+                    konkluderte med at rundt {kr(-280)} kan tilskrives feilen, og at resten er
+                    varians. Feilen er rettet i live/live_feature_builder.py og låst av en test. Den
+                    lå i formberegningen, ikke i Elo — ratingene i tabellen er ikke berørt.
+                </p>
+            </section>
+        </>
+    );
+}

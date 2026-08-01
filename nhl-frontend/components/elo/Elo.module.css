@@ -1,0 +1,319 @@
+/*
+ * Elo (§C.5). Alt her er lokalt for /elo.
+ *
+ * Ingen border-radius, ingen box-shadow. Alle farger er tokens fra globals.css.
+ * Tabellen er en ekte <table> der rader er grid; derfor står ARIA-rollene
+ * eksplisitt i JSX-en — `display: block/grid` fjerner de implisitte.
+ */
+
+/* ========================================================================== *
+ * Oppsett: tabell + parameterpanel
+ * ========================================================================== */
+
+.oppsett {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 0;
+}
+
+.venstre {
+  padding: 22px 44px 0 0;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.hoyre {
+  padding: 22px 0 0 36px;
+  min-width: 0;
+}
+
+/* ========================================================================== *
+ * Den rangerte tabellen
+ * ========================================================================== */
+
+.tabell {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gruppe {
+  display: block;
+}
+
+.hodeRad,
+.rad {
+  display: grid;
+  grid-template-columns: 32px 42px minmax(0, 1fr) 54px minmax(120px, 1.1fr) 64px;
+  gap: 14px;
+  align-items: center;
+}
+
+.hodeRad {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.rad {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.rad:hover {
+  background: var(--tint);
+}
+
+.hodeCelle {
+  text-align: left;
+  min-width: 0;
+}
+
+.hodeHoyre {
+  text-align: right;
+}
+
+/* Celler */
+
+.rang {
+  font: 400 12px/1 var(--mono);
+  color: var(--faint);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.navn {
+  font-weight: 400;
+  text-align: left;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.konf {
+  font: 400 10px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  min-width: 0;
+}
+
+.bjelkeCelle {
+  min-width: 0;
+}
+
+.rating {
+  font: 400 13.5px/1 var(--mono);
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================== *
+ * Divergerende avviksbjelke rundt 1500
+ * ========================================================================== */
+
+.spor {
+  display: block;
+  height: 4px;
+  background: var(--rule-light);
+  position: relative;
+}
+
+.midtlinje {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 1px;
+  background: var(--dash);
+  display: block;
+}
+
+.fyll {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: block;
+}
+
+.fyllOver {
+  background: var(--teal);
+}
+
+.fyllUnder {
+  background: var(--vermillion);
+}
+
+/* ========================================================================== *
+ * Tomtilstand i tabellen
+ * ========================================================================== */
+
+.tabellTom {
+  padding: 26px 0;
+}
+
+.laster {
+  display: block;
+  padding: 26px 0;
+}
+
+/* ========================================================================== *
+ * Parameterpanelet
+ * ========================================================================== */
+
+.panelHeading {
+  display: block;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+  margin: 0;
+}
+
+.parameterListe {
+  margin: 0;
+}
+
+.parameterRad {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.parameterNokkel {
+  font: 400 12.5px/1.3 var(--sans);
+  color: var(--body);
+  margin: 0;
+  min-width: 0;
+}
+
+.parameterVerdi {
+  font: 400 13.5px/1 var(--mono);
+  color: var(--ink);
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.grunnlag {
+  margin: 14px 0 0;
+  font: 400 12px/1.6 var(--sans);
+  color: var(--faint);
+  text-wrap: pretty;
+}
+
+/* ========================================================================== *
+ * Utah-forbeholdet
+ * ========================================================================== */
+
+.forbehold {
+  margin-top: 26px;
+  padding: 18px 20px;
+  background: var(--tint);
+  border-left: 3px solid var(--vermillion);
+}
+
+.forbeholdEtikett {
+  display: block;
+  font: 500 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vermillion);
+}
+
+.forbeholdTekst {
+  margin: 9px 0 0;
+  font: 400 12.5px/1.65 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+.forbeholdTekst + .forbeholdTekst {
+  margin-top: 9px;
+}
+
+/* ========================================================================== *
+ * Under 768px: kolonnene stables, panelet havner under tabellen
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .oppsett {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .venstre {
+    padding: 18px 0 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .hoyre {
+    padding: 28px 0 0;
+  }
+
+  /*
+   * Bjelken flytter til sin egen linje under lagnavnet. Rangen og logoen
+   * spenner over begge linjene, så raden fortsatt leses som én enhet.
+   */
+  .hodeRad,
+  .rad {
+    grid-template-columns: 26px 32px minmax(0, 1fr) 40px 54px;
+    gap: 8px;
+  }
+
+  .rad {
+    grid-template-areas:
+      'rang logo navn konf rating'
+      'rang logo bjelke bjelke bjelke';
+    row-gap: 7px;
+    padding: 11px 0;
+    min-height: 44px;
+  }
+
+  .rang {
+    grid-area: rang;
+  }
+
+  .logo {
+    grid-area: logo;
+  }
+
+  .navn {
+    grid-area: navn;
+  }
+
+  .konf {
+    grid-area: konf;
+  }
+
+  .bjelkeCelle {
+    grid-area: bjelke;
+  }
+
+  .rating {
+    grid-area: rating;
+  }
+
+  /*
+   * Kolonneoverskriften for bjelken tas ut av grid-flyten, men blir stående i
+   * tilgjengelighetstreet — kolonnen finnes fortsatt, den har bare ingen egen
+   * plass i hodet på smal skjerm.
+   */
+  .hodeBjelke {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
