@@ -27,9 +27,15 @@ export interface AnalysisBet {
   stake: number;
   status: string;
   profit: number;
-  /** Kun brukt til stabil sortering, slik Python-skriptet gjør. Valgfri. */
-  home_abbr?: string;
-  away_abbr?: string;
+  /**
+   * Kun brukt til stabil sortering, slik Python-skriptet gjør. Valgfri.
+   *
+   * `null` er tillatt fordi `BetEntry` i `types/index.ts` bruker det for
+   * manglende forkortelse, og hele poenget er at en rad derfra kan sendes rett
+   * inn uten en konverteringsrunde hos hver kaller.
+   */
+  home_abbr?: string | null;
+  away_abbr?: string | null;
 }
 
 export interface SettleOptions {

@@ -28,7 +28,7 @@ import {
 } from './filter';
 import { MobilKort } from './MobilKort';
 import { Tabell } from './Tabell';
-import { useErMobil } from './useErMobil';
+import { useErMobil } from '@/lib/use-er-mobil';
 import { useHistorikkFilter } from './useHistorikkFilter';
 import styles from './Historikk.module.css';
 

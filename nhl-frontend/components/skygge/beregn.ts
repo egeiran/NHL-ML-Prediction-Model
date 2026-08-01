@@ -38,21 +38,6 @@ export interface Utvalg {
 }
 
 /**
- * `BetEntry.home_abbr` er `string | null | undefined`, `AnalysisBet.home_abbr`
- * er `string | undefined`. Feltene brukes bare til stabil sortering
- * (`compareBets` leser dem med `?? ''`), så konverteringen er atferdsnøytral.
- * Den hører hjemme i `types/index.ts` eller `lib/analysis.ts`, men begge ligger
- * utenfor denne skjermens filsone.
- */
-export function tilAnalyse(rader: readonly BetEntry[]): AnalysisBet[] {
-    return rader.map((b) => ({
-        ...b,
-        home_abbr: b.home_abbr ?? undefined,
-        away_abbr: b.away_abbr ?? undefined,
-    }));
-}
-
-/**
  * Velger skyggekilde og lager sammendraget for begge panelene.
  *
  * Rekkefølgen er fast: `shadow.json` vinner så snart den har én avregnet rad.
@@ -62,9 +47,9 @@ export function velgUtvalg(
     porteføljeRader: readonly BetEntry[],
     skyggeRader: readonly ShadowEntry[],
 ): Utvalg {
-    const alle = tilAnalyse(porteføljeRader);
+    const alle: readonly AnalysisBet[] = porteføljeRader;
     const faktisk = settledBets(alle, { excludeDraw: true });
-    const fraShadow = settledBets(tilAnalyse(skyggeRader));
+    const fraShadow = settledBets(skyggeRader);
     const fraDraw = settledBets(alle).filter((b) => b.selection === 'draw');
 
     const skygge = fraShadow.length > 0 ? fraShadow : fraDraw;
@@ -126,7 +111,7 @@ export interface UtahVindu {
 
 export function utahVindu(porteføljeRader: readonly BetEntry[]): UtahVindu {
     const iVindu = porteføljeRader.filter((b) => erUtah(b) && b.date <= UTAH_VINDU_TIL);
-    const avregnet = settledBets(tilAnalyse(iVindu));
+    const avregnet = settledBets(iVindu);
     const otso = avregnet.filter((b) => b.selection === 'draw');
     return {
         sammendrag: summarize(avregnet),

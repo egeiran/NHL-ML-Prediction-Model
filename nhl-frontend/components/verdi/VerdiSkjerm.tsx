@@ -33,7 +33,7 @@ import { KampDetalj } from './KampDetalj';
 import { KampRad } from './KampRad';
 import { MobilKort } from './MobilKort';
 import { TomTilstand } from './TomTilstand';
-import { useErMobil } from './useErMobil';
+import { useErMobil } from '@/lib/use-er-mobil';
 import styles from './Verdi.module.css';
 
 type Filter = 'value' | 'alle';

@@ -133,15 +133,27 @@ export function nullinjePath(s: Skala): string {
     return `M${s.PL} ${s.zeroY.toFixed(1)}H${s.PL + s.pw}`;
 }
 
-/** Vannrett rutenett i `antall` nivåer (kurvelabben bruker 5: k = 0..4). */
-export function rutenettPaths(s: Skala, antall = 5): string[] {
+/**
+ * Verdiene rutenettlinjene ligger på, nedenfra og opp.
+ *
+ * Y-aksens etiketter må merke nøyaktig de nivåene `rutenettPaths` tegner. Regner
+ * kalleren dem ut på egen hånd, kan etikett og linje drive fra hverandre uten at
+ * noe feiler — derfor kommer begge herfra.
+ */
+export function rutenettNivåer(s: Skala, antall = 5): number[] {
     const trinn = Math.max(antall - 1, 1);
-    const ut: string[] = [];
+    const ut: number[] = [];
     for (let k = 0; k < antall; k += 1) {
-        const y = s.Y(s.mn + (s.mx - s.mn) * (k / trinn));
-        ut.push(`M${s.PL} ${y.toFixed(1)}H${s.PL + s.pw}`);
+        ut.push(s.mn + (s.mx - s.mn) * (k / trinn));
     }
     return ut;
+}
+
+/** Vannrett rutenett i `antall` nivåer (kurvelabben bruker 5: k = 0..4). */
+export function rutenettPaths(s: Skala, antall = 5): string[] {
+    return rutenettNivåer(s, antall).map(
+        (v) => `M${s.PL} ${s.Y(v).toFixed(1)}H${s.PL + s.pw}`,
+    );
 }
 
 /** Crosshair gjennom punkt `i`. `full` = hele viewBox-høyden (hero). */

@@ -4,7 +4,6 @@ export { UtahVindu, type UtahVinduProps } from './UtahVindu';
 export {
     stolpeBredde,
     stolpeNevner,
-    tilAnalyse,
     utahVindu,
     velgUtvalg,
     UTAH_VINDU_TIL,
