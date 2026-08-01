@@ -37,7 +37,7 @@ useTeams() useMeta() useValueReport() usePortfolio() useMatchups() useElo() useS
   → { data: T | null, loading: boolean, error: DataFeil | null, retry: () => void }
 
 kombiner(...tilstander) → { loading, error, retry }
-slåOppParing(matchups, home, away)   // HOME-AWAY med AWAY-HOME-fallback
+slåOppParing(matchups, home, away)   // kun HOME-AWAY; null ellers
 ```
 
 Lasterne i `lib/data.ts` memoiserer per fil, så sju skjermer deler ett kall per
@@ -56,7 +56,8 @@ ds(iso)            dl(iso)            dISO(iso)        klokke(iso)
 sistOppdatert(iso)
 ```
 
-Konstanter: `MANGLER` (—) · `NBSP` (U+00A0) · `MINUS` (U+2212)
+Konstanter: `MANGLER` (—) · `NBSP` (U+00A0) · `MINUS` (U+2212) ·
+`MND` (`jan`…`des`, delt med akseetikettene i `components/chart/geometry.ts`)
 
 **Mellomrommet foran `%` og `kr` er U+00A0, ikke vanlig mellomrom.** Ikke
 `.split(' ')` på formaterte strenger. Negative tall bruker U+2212.
@@ -110,7 +111,7 @@ Hover-prikken er HTML overalt — en SVG-sirkel blir elliptisk under
 ## Innstillinger — `lib/config.ts`
 
 ```
-useEvTerskel() → { evTerskel, setEvTerskel, pipelineTerskel, avviker, tilbakestill, klar }
+useEvTerskel() → { evTerskel, setEvTerskel, pipelineTerskel, avviker, tilbakestill }
 ```
 
 **Dette er eneste lovlige kilde til EV-terskelen.** Provideren står i
@@ -119,6 +120,29 @@ hverandre, og det er en bug.
 
 Samme fil: `TALL_TERSKEL` (1000) · `ROI_TERSKEL` (5) · `FLAT_INNSATS` ·
 `avvikerFraPipeline()`
+
+## Spill-logikk — `lib/spill.ts`
+
+Delt av Oversikt, Verdi og Kampanalyse. Skriv ikke egne kopier.
+
+```
+erTall(n)                             evAv(modell, odds)
+evForUtfall(value, modell, odds)      // value_* når det finnes, ellers formelen
+markedAv(implisitt, odds)             overOddstak(odds, maxOdds)   // odds >= max_odds
+utelattGrunn(erUavgjort, odds, maxOdds) → 'uavgjort' | 'oddstak' | null
+utelattTekst(grunn)                   tagg(ev, evTerskel, grunn) → TagVariant
+evKlasse(ev, evTerskel)               stolpeBredde(p)
+navnFor(abbr, fallback)               kampTekst(bet)
+```
+
+`meta.json:max_odds` er en del av spill-utvelgelsen, ikke bare EV-terskelen:
+pipelinen krever `odds < max_odds` (`NHL/bet_tracker.py`). `byggKamper`,
+`byggKamp`, `byggAnalyse` og `finnSpill` tar den som siste argument.
+
+`components/kamp/beregn.ts` har `evAvHåndskrevet`/`markedAvHåndskrevet` som
+bevisst avviker (odds ≤ 1 gir −1/0 fordi feltene er frie tekstfelt), og
+`components/skygge/beregn.ts` har en `stolpeBredde` med annen semantikk (felles
+nevner mellom to paneler). Begge skal stå.
 
 ## Lag — `lib/teams.ts`
 

@@ -9,6 +9,7 @@
  */
 
 import type { PillOption } from '@/components/ui';
+import { erTall } from '@/lib/spill';
 import type { BetEntry } from '@/types';
 
 /* -------------------------------------------------------------------------- */
@@ -107,8 +108,9 @@ function tid(b: BetEntry): number {
     return Number.isNaN(d) ? 0 : d;
 }
 
+/** Sorterings- og summeringsverdi: manglende tall er 0, ikke `null`. */
 function tall(n: number | null | undefined): number {
-    return typeof n === 'number' && Number.isFinite(n) ? n : 0;
+    return erTall(n) ? n : 0;
 }
 
 /** Nyeste først, med `event_id` som siste, deterministiske skille. */
@@ -172,7 +174,7 @@ export function nøkkeltall(bets: readonly BetEntry[]): Nøkkeltall {
 export type Fortegn = 'positiv' | 'negativ' | 'null';
 
 export function fortegn(n: number | null | undefined): Fortegn {
-    if (typeof n !== 'number' || !Number.isFinite(n) || n === 0) return 'null';
+    if (!erTall(n) || n === 0) return 'null';
     return n > 0 ? 'positiv' : 'negativ';
 }
 

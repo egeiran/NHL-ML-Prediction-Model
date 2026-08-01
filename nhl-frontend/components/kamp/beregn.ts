@@ -21,8 +21,19 @@
 
 import type { TagVariant } from '@/components/ui';
 import { slåOppParing } from '@/lib/data';
+import {
+    erTall,
+    evKlasse,
+    stolpeBredde,
+    tagg,
+    utelattGrunn,
+    type UtelattGrunn,
+} from '@/lib/spill';
 import { lagNavn } from '@/lib/teams';
 import type { EloData, GameInfo, MatchupsData } from '@/types';
+
+/** Videresendt fra `lib/spill.ts` — samme funksjoner som Verdi bruker. */
+export { evKlasse, stolpeBredde, type UtelattGrunn };
 
 export type UtfallNøkkel = 'home' | 'draw' | 'away';
 
@@ -47,7 +58,13 @@ export interface Utfall {
     tagg: TagVariant;
     /** OT/SO — alltid `UTELATT`: `meta.json:allow_draw_bets` er `false`. */
     erUavgjort: boolean;
-    /** EV over terskel og ikke OT/SO. Styrer teal på figur og stolpe. */
+    /**
+     * Hvorfor utfallet er `UTELATT`: `uavgjort` (OT/SO) eller `oddstak`
+     * (odds ≥ `meta.max_odds` — pipelinen ville forkastet spillet). `null` når
+     * utfallet vurderes på EV.
+     */
+    utelattGrunn: UtelattGrunn | null;
+    /** EV over terskel og ikke utelatt. Styrer teal på figur og stolpe. */
     spill: boolean;
 }
 
@@ -90,10 +107,6 @@ export interface Valg {
     oa: string;
 }
 
-function erTall(n: number | null | undefined): n is number {
-    return typeof n === 'number' && Number.isFinite(n);
-}
-
 /**
  * Tolker et oddsfelt. Tomt felt, bokstaver og `Infinity` gir `null`; komma
  * godtas som desimalskille fordi det er det norske tastaturet skriver.
@@ -105,34 +118,26 @@ export function tolkOdds(rå: string): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Håndskrevne odds — bevisst avvik fra `lib/spill.ts`                          */
+/*                                                                             */
+/* De to funksjonene under gjør noe annet enn `markedAv`/`evAv` i `lib/spill`,  */
+/* og navnene sier hvorfor: oddsen kommer fra tre frie tekstfelt, ikke fra      */
+/* pipelinen. En pris på 0,8 er ikke en manglende verdi — den er en pris som    */
+/* aldri kan gi gevinst, og §C.3 krever at skjermen sier nettopp det (marked 0, */
+/* EV −1) i stedet for å vise `—`. Ikke slå dem sammen med lib-variantene.      */
+/* -------------------------------------------------------------------------- */
+
 /** `1 / odds`. Odds `<= 1` er ikke en pris — markedet settes til 0 (§C.3). */
-export function markedAv(odds: number | null): number | null {
+export function markedAvHåndskrevet(odds: number | null): number | null {
     if (!erTall(odds)) return null;
     return odds > 1 ? 1 / odds : 0;
 }
 
 /** `model_prob * odds − 1`. Odds `<= 1` gir −1, altså `−100,0 %` (§C.3). */
-export function evAv(modell: number, odds: number | null): number | null {
+export function evAvHåndskrevet(modell: number, odds: number | null): number | null {
     if (!erTall(odds)) return null;
     return odds > 1 ? modell * odds - 1 : -1;
-}
-
-function tagg(ev: number | null, evTerskel: number, erUavgjort: boolean): TagVariant {
-    if (erUavgjort) return 'utelatt';
-    return ev !== null && ev >= evTerskel ? 'spill' : 'nei';
-}
-
-/** Bredden på sannsynlighetsstolpen, klemt inn i [0, 1]. */
-export function stolpeBredde(p: number): string {
-    if (!erTall(p)) return '0%';
-    return `${Math.min(Math.max(p, 0), 1) * 100}%`;
-}
-
-/** EV-farge: over terskel → teal, positiv → ink, ellers muted. */
-export function evKlasse(ev: number | null, evTerskel: number): string {
-    if (ev === null) return 'c-muted';
-    if (ev >= evTerskel) return 'c-teal';
-    return ev > 0 ? 'c-ink' : 'c-muted';
 }
 
 function ratingFor(elo: EloData | null, abbr: string): number | null {
@@ -154,11 +159,14 @@ export function byggAnalyse(
     elo: EloData | null,
     valg: Valg,
     evTerskel: number,
+    maxOdds?: number | null,
 ): Analyse {
     const hjemmeNavn = lagNavn(valg.home);
     const borteNavn = lagNavn(valg.away);
 
-    // `slåOppParing` prøver «HOME-AWAY» og deretter «AWAY-HOME».
+    // `slåOppParing` slår opp «HOME-AWAY» og bare den: et omvendt oppslag ville
+    // gitt prisene fra oppsettet der det andre laget hadde hjemmefordelen.
+    // Bommer det, faller vi tilbake på `FALLBACK_PRIS` og `harPris: false`.
     const paring = matchups ? slåOppParing(matchups, valg.home, valg.away) : null;
     const pris = paring
         ? { home: paring.prob_home_win, draw: paring.prob_ot, away: paring.prob_away_win }
@@ -197,17 +205,19 @@ export function byggAnalyse(
     const utfall: Utfall[] = spesifikasjoner.map((s) => {
         const modell = erTall(s.modell) ? s.modell : 0;
         const odds = tolkOdds(s.rå);
-        const ev = evAv(modell, odds);
-        const merke = tagg(ev, evTerskel, s.erUavgjort);
+        const ev = evAvHåndskrevet(modell, odds);
+        const grunn = utelattGrunn(s.erUavgjort, odds, maxOdds);
+        const merke = tagg(ev, evTerskel, grunn);
         return {
             nøkkel: s.nøkkel,
             etikett: s.etikett,
             modell,
-            marked: markedAv(odds),
+            marked: markedAvHåndskrevet(odds),
             odds,
             ev,
             tagg: merke,
             erUavgjort: s.erUavgjort,
+            utelattGrunn: grunn,
             spill: merke === 'spill',
         };
     });
