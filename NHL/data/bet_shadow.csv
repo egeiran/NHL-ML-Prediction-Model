@@ -1,1 +1,1 @@
-season,date,event_id,start_time,home_abbr,away_abbr,selection,odds,model_prob,implied_prob,value,stake,status,payout,profit,actual_outcome,created_at,updated_at
+season,date,event_id,start_time,home_abbr,away_abbr,selection,odds,model_prob,implied_prob,value,stake,status,payout,profit,actual_outcome,created_at,updated_at,odds_home,odds_draw,odds_away,model_home_win,model_draw,model_away_win,implied_home_prob,implied_draw_prob,implied_away_prob,value_home,value_draw,value_away
