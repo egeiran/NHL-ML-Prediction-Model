@@ -1,3 +1,5 @@
+import time
+
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
@@ -9,7 +11,37 @@ NT_BASE_ALL = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
 NT_BASE_RANGE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"  # bruke HKY + params, daterange feiler uten /HKY
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEAM_CSV_PATH = BASE_DIR / "data" / "team_info.csv"
-HTTP_TIMEOUT = 5
+HTTP_TIMEOUT = 10
+RETRY_PAUSE = 0.5
+MAX_RETRIES = 4
+# 429 og 5xx er forbigående på samme måte som et brutt TCP-kall.
+RETRY_STATUS = {429, 500, 502, 503, 504}
+
+
+def _get(url, params=None):
+    """
+    GET mot NT med retry og økende pause.
+
+    NT lukker sporadisk forbindelsen midt i TLS-handshaket (Errno 104). Uten
+    retry velter ett slikt blaff hele den daglige kjøringen, slik det skjedde
+    03.08.2026. Siste forsøk boblar opp som før, så en reell nedetid fortsatt
+    gjør jobben rød.
+    """
+    last_exc = None
+    for attempt in range(MAX_RETRIES):
+        is_last = attempt == MAX_RETRIES - 1
+        try:
+            r = requests.get(url, params=params, timeout=HTTP_TIMEOUT)
+        except requests.RequestException as exc:
+            if is_last:
+                raise
+            last_exc = exc
+        else:
+            if is_last or r.status_code not in RETRY_STATUS:
+                return r
+        time.sleep(RETRY_PAUSE * (attempt + 1))
+
+    raise last_exc  # ikke nåbart: siste forsøk returnerer eller kaster over
 
 
 def _normalize(name: str) -> str:
@@ -94,7 +126,7 @@ def _fetch_events_range(days: int):
         "fromDateTime": f"{today:%Y-%m-%d}T0000",
         "toDateTime": f"{end_date:%Y-%m-%d}T2359",
     }
-    r = requests.get(NT_BASE_RANGE, params=params, timeout=HTTP_TIMEOUT)
+    r = _get(NT_BASE_RANGE, params=params)
     if r.status_code != 200:
         raise RuntimeError(f"NT range API error: {r.status_code} {r.text}")
     return r.json().get("eventList", [])
@@ -110,7 +142,7 @@ def get_hockey_events(days: int):
         return events
 
     # Fallback til gamle all-in-one endepunkt
-    r = requests.get(NT_BASE_ALL, timeout=HTTP_TIMEOUT)
+    r = _get(NT_BASE_ALL)
     if r.status_code != 200:
         raise RuntimeError(f"NT API error (fallback): {r.status_code}")
     return r.json().get("eventList", [])

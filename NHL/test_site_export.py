@@ -18,6 +18,7 @@ særlig feilmodusene som avgjør hva som havner på den statiske sida:
   - shadow.json takler en tom skyggelogg
   - meta.json bærer pipelinens EV-/odds-terskler
   - alle tre utfall logges, og gamle rader uten kolonnene overlever
+  - et brutt odds-kall retries, men reell nedetid boblar fortsatt opp
 
 Kjøres direkte: `cd NHL && python test_site_export.py`
 """
@@ -760,6 +761,72 @@ def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
     assert bt.build_portfolio_payload(reread, all_seasons=True)["summary"]["total_bets"] == len(rows)
 
 
+def test_nt_odds_retries_a_dropped_connection():
+    """Ett brutt kall mot NT skal ikke velte den daglige kjøringen."""
+    import requests
+
+    from live import nt_odds
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"eventList": [{"eventId": 1}]}
+
+    calls = []
+
+    def flaky_get(url, params=None, timeout=None):
+        calls.append(url)
+        if len(calls) == 1:
+            raise requests.exceptions.ConnectionError(
+                "('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+            )
+        return FakeResponse()
+
+    original_get = requests.get
+    original_pause = nt_odds.RETRY_PAUSE
+    requests.get = flaky_get
+    nt_odds.RETRY_PAUSE = 0  # ingen grunn til å sove i testen
+    try:
+        events = nt_odds._fetch_events_range(3)
+    finally:
+        requests.get = original_get
+        nt_odds.RETRY_PAUSE = original_pause
+
+    assert len(calls) == 2, calls
+    assert events == [{"eventId": 1}], events
+
+
+def test_nt_odds_gives_up_after_the_last_retry():
+    """Er NT faktisk nede, skal feilen fortsatt boble opp og gjøre jobben rød."""
+    import requests
+
+    from live import nt_odds
+
+    calls = []
+
+    def dead_get(url, params=None, timeout=None):
+        calls.append(url)
+        raise requests.exceptions.ConnectionError("Connection reset by peer")
+
+    original_get = requests.get
+    original_pause = nt_odds.RETRY_PAUSE
+    requests.get = dead_get
+    nt_odds.RETRY_PAUSE = 0
+    try:
+        raised = False
+        try:
+            nt_odds._fetch_events_range(3)
+        except requests.exceptions.ConnectionError:
+            raised = True
+    finally:
+        requests.get = original_get
+        nt_odds.RETRY_PAUSE = original_pause
+
+    assert raised, "forventet at siste forsøk kaster videre"
+    assert len(calls) == nt_odds.MAX_RETRIES, calls
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -772,6 +839,8 @@ def main() -> int:
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
+            ("nt_retry_recovers", test_nt_odds_retries_a_dropped_connection, False),
+            ("nt_retry_gives_up", test_nt_odds_gives_up_after_the_last_retry, False),
             ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, True),
             ("three_outcome_fields", test_bet_entry_logs_all_three_outcomes, True),
             ("legacy_round_trip", test_legacy_rows_survive_a_read_write_round_trip, True),
