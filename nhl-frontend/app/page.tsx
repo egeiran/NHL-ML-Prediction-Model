@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 
+import CalibrationSection from '@/components/CalibrationSection';
 import PortfolioSection from '@/components/PortfolioSection';
 import PredictionPanel from '@/components/PredictionPanel';
 import ValueBoardSection from '@/components/ValueBoardSection';
@@ -162,6 +163,8 @@ export default function Home() {
           onRetry={fetchPortfolio}
           showRefresh={CAN_UPDATE_PORTFOLIO}
         />
+
+        <CalibrationSection bets={portfolio?.bets ?? []} />
 
         <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
           <ValueBoardSection

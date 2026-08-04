@@ -4,38 +4,71 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import { formatCurrency, formatDateLabel, formatShortDate } from '@/lib/format';
 import { PortfolioPoint } from '@/types';
 
-type ValueOverTimeChartProps = {
-  points: PortfolioPoint[];
+/** Ekstra serie tegnet oppå hovedkurven. `values` må ligge indeks-for-indeks på `points`. */
+export type ChartOverlay = {
+  label: string;
+  color: string;
+  values: number[];
 };
 
-export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) {
+type ValueOverTimeChartProps = {
+  points: PortfolioPoint[];
+  overlay?: ChartOverlay | null;
+  /** Skru av innsats-serien når den bare er støy (f.eks. i innsatssimulatoren). */
+  showInvested?: boolean;
+  /** Navn på hovedserien i forklaringen. */
+  valueLabel?: string;
+  /**
+   * Klipp bort et siste, uavregnet datapunkt. Riktig for porteføljegrafen, men
+   * feil når kurven er bygget fra kun avregnede spill – da finnes det ingen
+   * ufullstendig dag å fjerne, og trimmingen ville bare forskjøvet overlegget.
+   */
+  trimIncomplete?: boolean;
+};
+
+export default function ValueOverTimeChart({
+  points,
+  overlay = null,
+  showInvested = true,
+  valueLabel = 'Verdi (totalt)',
+  trimIncomplete = true,
+}: ValueOverTimeChartProps) {
   // Fjern siste datapunkt hvis det er dagens dato og ingen kamper er avregnet ennå
   // (value er lik forrige dag, invested er dagens innsats)
-  const filteredPoints = useMemo(() => {
-    if (points.length < 2) return points;
-    
+  const trimmed = useMemo(() => {
+    if (!trimIncomplete || points.length < 2) return false;
+
     const last = points[points.length - 1];
     const secondLast = points[points.length - 2];
-    
-    // Hvis siste punkt har samme value som nest siste (ingen avregninger), 
+
+    // Hvis siste punkt har samme value som nest siste (ingen avregninger),
     // og har invested > 0 (nye bets), fjern det
-    if (last.value === secondLast.value && last.invested > 0) {
-      return points.slice(0, -1);
-    }
-    
-    return points;
-  }, [points]);
-  
+    return last.value === secondLast.value && last.invested > 0;
+  }, [points, trimIncomplete]);
+
+  const filteredPoints = useMemo(
+    () => (trimmed ? points.slice(0, -1) : points),
+    [points, trimmed],
+  );
+
+  // Overlegget må klippes likt, ellers glir seriene fra hverandre.
+  const overlayValues = useMemo(() => {
+    if (!overlay) return null;
+    const values = trimmed ? overlay.values.slice(0, -1) : overlay.values;
+    return values.length === filteredPoints.length ? values : null;
+  }, [overlay, trimmed, filteredPoints.length]);
+
   const hasPoints = filteredPoints.length > 0;
   const width = 480;
   const height = 200;
   const pad = 24;
 
-  const { valueCoords, stakeCoords, xStep, min, max } = useMemo(() => {
+  const { valueCoords, stakeCoords, overlayCoords, xStep, min, max } = useMemo(() => {
     if (!hasPoints) {
       return {
         valueCoords: [],
         stakeCoords: [],
+        overlayCoords: null,
         xStep: 1,
         min: 0,
         max: 1,
@@ -44,8 +77,9 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
 
     const values = filteredPoints.map((p) => p.value);
     const invested = filteredPoints.map((p) => p.invested);
-    const minVal = Math.min(0, ...values, ...invested); // start alltid fra 0 eller lavere
-    const maxVal = Math.max(...values, ...invested);
+    const extra = overlayValues ?? [];
+    const minVal = Math.min(0, ...values, ...invested, ...extra); // start alltid fra 0 eller lavere
+    const maxVal = Math.max(...values, ...invested, ...extra);
     const range = maxVal - minVal || 1;
     const xGap = (width - pad * 2) / Math.max(filteredPoints.length - 1, 1);
 
@@ -59,11 +93,12 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
     return {
       valueCoords: toCoords(values),
       stakeCoords: toCoords(invested),
+      overlayCoords: overlayValues ? toCoords(overlayValues) : null,
       xStep: xGap,
       min: minVal,
       max: maxVal,
     };
-  }, [hasPoints, filteredPoints]);
+  }, [hasPoints, filteredPoints, overlayValues]);
 
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
@@ -107,8 +142,17 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-xs text-white/70">
-        <LegendSwatch color="#34d399" label="Verdi (totalt)" value={formatCurrency(activePoint.value)} />
-        <LegendSwatch color="#38bdf8" label="Dagens innsats" value={formatCurrency(activePoint.invested)} />
+        <LegendSwatch color="#34d399" label={valueLabel} value={formatCurrency(activePoint.value)} />
+        {showInvested && (
+          <LegendSwatch color="#38bdf8" label="Dagens innsats" value={formatCurrency(activePoint.invested)} />
+        )}
+        {overlay && overlayValues && (
+          <LegendSwatch
+            color={overlay.color}
+            label={overlay.label}
+            value={formatCurrency(overlayValues[activeIndex])}
+          />
+        )}
         <span className="text-white/50">
           {formatDateLabel(startPoint.date)} – {formatDateLabel(endPoint.date)}
         </span>
@@ -191,15 +235,29 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
             strokeLinecap="round"
             points={valueCoords.map((c) => `${c.x},${c.y}`).join(' ')}
           />
-          <polyline
-            fill="none"
-            stroke="#38bdf8"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            strokeDasharray="6 4"
-            points={stakeCoords.map((c) => `${c.x},${c.y}`).join(' ')}
-          />
+          {showInvested && (
+            <polyline
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              strokeDasharray="6 4"
+              points={stakeCoords.map((c) => `${c.x},${c.y}`).join(' ')}
+            />
+          )}
+
+          {overlayCoords && (
+            <polyline
+              fill="none"
+              stroke={overlay?.color ?? '#f472b6'}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              strokeDasharray="7 4"
+              points={overlayCoords.map((c) => `${c.x},${c.y}`).join(' ')}
+            />
+          )}
 
           {hoverIndex !== null && (
             <>
@@ -216,7 +274,19 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
           )}
 
           <circle cx={valueX} cy={valueY} r="5" fill="#34d399" stroke="#0f172a" strokeWidth="2" />
-          <circle cx={stakeX} cy={stakeY} r="4.5" fill="#38bdf8" stroke="#0f172a" strokeWidth="2" />
+          {showInvested && (
+            <circle cx={stakeX} cy={stakeY} r="4.5" fill="#38bdf8" stroke="#0f172a" strokeWidth="2" />
+          )}
+          {overlayCoords && (
+            <circle
+              cx={overlayCoords[activeIndex].x}
+              cy={overlayCoords[activeIndex].y}
+              r="4.5"
+              fill={overlay?.color ?? '#f472b6'}
+              stroke="#0f172a"
+              strokeWidth="2"
+            />
+          )}
         </svg>
 
         {hoverIndex !== null && (
@@ -231,7 +301,14 @@ export default function ValueOverTimeChart({ points }: ValueOverTimeChartProps) 
             <div className="font-semibold text-white">{formatDateLabel(activePoint.date)}</div>
             <div className="mt-1 text-white/80">Resultat den dagen: <span className={`font-semibold ${dayResult >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(dayResult)}</span></div>
             <div className="text-white/80">Verdi: <span className="font-semibold text-white">{formatCurrency(activePoint.value)}</span></div>
-            <div className="text-white/80">Innsats den dagen: <span className="font-semibold text-white">{formatCurrency(activePoint.invested)}</span></div>
+            {showInvested && (
+              <div className="text-white/80">Innsats den dagen: <span className="font-semibold text-white">{formatCurrency(activePoint.invested)}</span></div>
+            )}
+            {overlay && overlayValues && (
+              <div className="text-white/80">
+                {overlay.label}: <span className="font-semibold" style={{ color: overlay.color }}>{formatCurrency(overlayValues[activeIndex])}</span>
+              </div>
+            )}
             {(activePoint.bets_won !== undefined && activePoint.bets_settled !== undefined) ? (
               <div className="text-white/80">Vunnet den dagen: <span className="font-semibold text-white">{activePoint.bets_won} / {activePoint.bets_settled}</span></div>
             ) : (
