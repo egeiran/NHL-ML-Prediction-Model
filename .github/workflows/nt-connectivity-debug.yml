@@ -1,0 +1,195 @@
+name: NT Connectivity Debug
+
+# Diagnose for at Daily Bet Update feiler med ConnectionResetError(104) under
+# TLS-handshaket mot Norsk Tipping (03.08 og 04.08.2026). Feilen kan ikke
+# reproduseres lokalt, så denne kjøres på en GitHub-runner — samme nettverk som
+# den feilende jobben.
+#
+# Skiller mellom hypotesene:
+#   - IP-/geoblokkering  -> TCP kobler ikke, eller RST med én gang
+#   - TLS-fingerprint    -> TCP kobler, openssl-handshake resettes
+#   - UA-filtrering      -> curl med browser-UA går gjennom, python-requests ikke
+#   - forbigående blaff  -> alt går gjennom, og retry er riktig medisin
+#
+# Kjøres manuelt: Actions -> NT Connectivity Debug -> Run workflow.
+# Ingen steg feiler jobben; vi vil ha alle datapunktene i én kjøring.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Uten dette kjører GitHub `bash -e` UTEN pipefail, og exit-koden fra en
+    # pipeline blir siste ledd sitt. Da kan `openssl ... | head || echo feilet`
+    # aldri rapportere feil — nøyaktig det steget vi trenger signal fra.
+    shell: bash --noprofile --norc -eo pipefail {0}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      NT_HOST: api.norsk-tipping.no
+      NT_PATH: /OddsenGameInfo/v1/api/events/HKY
+      # bet_tracker.py kaller update_daily_bets(), som har days_ahead=3.
+      # Proben må bruke samme intervall som det feilende kallet.
+      NT_DAYS: "3"
+      # Må se ut som en samtidig nettleser. En åpenbart utdatert Chrome-versjon
+      # er i seg selv et WAF-signal, og ville gjort UA-testen verdiløs.
+      BROWSER_UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Samme interpreter og samme pinnede avhengigheter som Daily Bet Update.
+      # TLS-fingerprintet et WAF filtrerer på følger av OpenSSL-bygget og
+      # urllib3-versjonen, så en probe på ambient Python ville testet en annen
+      # ClientHello enn den som faktisk blir avvist.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r NHL/requirements-api.txt
+
+      - name: Vis versjoner
+        continue-on-error: true
+        run: |
+          python -VV
+          python -c "import ssl, requests, urllib3; print('requests', requests.__version__, '| urllib3', urllib3.__version__, '|', ssl.OPENSSL_VERSION)"
+      - name: Hvor kjører vi fra
+        continue-on-error: true
+        run: |
+          echo "### Runner" >> "$GITHUB_STEP_SUMMARY"
+          # Utgående IP og geografi avgjør geoblokkeringshypotesen.
+          ip=$(curl -sS --max-time 20 https://api.ipify.org || echo "ukjent")
+          echo "Utgående IP: $ip"
+          echo "- Utgående IP: \`$ip\`" >> "$GITHUB_STEP_SUMMARY"
+          curl -sS --max-time 20 "https://ipinfo.io/${ip}/json" || true
+
+      - name: DNS
+        continue-on-error: true
+        run: |
+          getent hosts "$NT_HOST" || echo "DNS-oppslag feilet"
+
+      - name: TCP 443
+        continue-on-error: true
+        run: |
+          # Kobler TCP i det hele tatt? Nei => blokkering på nettverksnivå.
+          if timeout 20 bash -c "cat < /dev/null > /dev/tcp/${NT_HOST}/443"; then
+            echo "TCP 443: OK"
+          else
+            echo "TCP 443: FEILET"
+          fi
+
+      - name: TLS-handshake (openssl)
+        continue-on-error: true
+        run: |
+          # Kobler TCP men handshaket resettes => fingerprint-/WAF-blokkering.
+          # Exit-koden fanges eksplisitt: med pipefail ville `| head` ellers
+          # avbrutt steget før vi rakk å skrive konklusjonen.
+          set +e
+          out=$(timeout 30 openssl s_client -connect "${NT_HOST}:443" \
+            -servername "$NT_HOST" -brief </dev/null 2>&1)
+          rc=$?
+          set -e
+          echo "$out" | head -30
+          if [ "$rc" -eq 0 ]; then
+            echo "openssl-handshake: OK"
+          else
+            echo "openssl-handshake: FEILET (exit $rc)"
+          fi
+
+      - name: curl med standard-UA
+        continue-on-error: true
+        run: |
+          from=$(date -u +%Y-%m-%d)
+          to=$(date -u -d "+${NT_DAYS} days" +%Y-%m-%d)
+          url="https://${NT_HOST}${NT_PATH}?eventType=HKY&fromDateTime=${from}T0000&toDateTime=${to}T2359"
+          curl -sS -o /tmp/default.json -w 'HTTP %{http_code}, %{size_download} bytes, %{time_total}s\n' \
+            --max-time 30 "$url" || echo "curl (standard-UA) feilet: exit $?"
+          head -c 300 /tmp/default.json 2>/dev/null || true
+
+      - name: curl med browser-UA
+        continue-on-error: true
+        run: |
+          from=$(date -u +%Y-%m-%d)
+          to=$(date -u -d "+${NT_DAYS} days" +%Y-%m-%d)
+          url="https://${NT_HOST}${NT_PATH}?eventType=HKY&fromDateTime=${from}T0000&toDateTime=${to}T2359"
+          curl -sS -o /tmp/ua.json -w 'HTTP %{http_code}, %{size_download} bytes, %{time_total}s\n' \
+            --max-time 30 \
+            -H "User-Agent: ${BROWSER_UA}" \
+            -H 'Accept: application/json' \
+            -H 'Accept-Language: nb-NO,nb;q=0.9,en;q=0.8' \
+            "$url" || echo "curl (browser-UA) feilet: exit $?"
+          head -c 300 /tmp/ua.json 2>/dev/null || true
+
+      - name: python-requests, 5 forsøk
+        continue-on-error: true
+        working-directory: NHL
+        run: |
+          python - <<'PY'
+          import datetime, os, requests
+
+          # URL og params hentes fra produksjonskoden, ikke en kopi som kan
+          # råtne når nt_odds.py endres.
+          from live.nt_odds import NT_BASE_RANGE
+
+          days = int(os.environ.get("NT_DAYS", "3"))
+          today = datetime.datetime.now(datetime.timezone.utc).date()
+          params = {
+              "eventType": "HKY",
+              "fromDateTime": f"{today:%Y-%m-%d}T0000",
+              "toDateTime": f"{today + datetime.timedelta(days=days):%Y-%m-%d}T2359",
+          }
+          browser = {
+              "User-Agent": os.environ.get("BROWSER_UA", ""),
+              "Accept": "application/json",
+          }
+
+          print(f"URL:    {NT_BASE_RANGE}")
+          print(f"params: {params}")
+
+          # Er feilen sporadisk eller konsekvent? Fem forsøk pr. variant skiller
+          # et blaff fra en vegg.
+          for label, headers in (("standard-UA", {}), ("browser-UA", browser)):
+              for attempt in range(1, 6):
+                  try:
+                      r = requests.get(NT_BASE_RANGE, params=params, headers=headers, timeout=15)
+                      events = len((r.json() or {}).get("eventList", []))
+                      print(f"{label} forsok {attempt}: HTTP {r.status_code}, {events} events")
+                  except Exception as exc:
+                      print(f"{label} forsok {attempt}: {type(exc).__name__}: {str(exc)[:150]}")
+          PY
+
+      - name: Ekte kallsti (samme som Daily Bet Update)
+        continue-on-error: true
+        working-directory: NHL
+        run: |
+          # Siste sjekk: gjør produksjonskoden selv jobben sin, retry og alt.
+          python - <<'PY' || echo "produksjonskallet feilet: exit $?"
+          import os
+
+          from live.nt_odds import get_nhl_matches_range
+
+          days = int(os.environ.get("NT_DAYS", "3"))
+          games = get_nhl_matches_range(days)
+          print(f"get_nhl_matches_range({days}) -> {len(games)} NHL-kamper")
+          PY
+
+      - name: Oppsummer
+        if: always()
+        run: |
+          {
+            echo ""
+            echo "### Slik leses resultatet"
+            echo "- TCP feiler -> IP-/geoblokkering, GitHub-runnere kan ikke nå NT"
+            echo "- TCP OK men TLS resettes -> fingerprint-/WAF-blokkering"
+            echo "- browser-UA virker, standard-UA ikke -> sett User-Agent i nt_odds.py"
+            echo "- alt virker -> forbigående, og retry er riktig fiks"
+          } >> "$GITHUB_STEP_SUMMARY"

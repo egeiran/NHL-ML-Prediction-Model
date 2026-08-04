@@ -18,6 +18,7 @@ særlig feilmodusene som avgjør hva som havner på den statiske sida:
   - shadow.json takler en tom skyggelogg
   - meta.json bærer pipelinens EV-/odds-terskler
   - alle tre utfall logges, og gamle rader uten kolonnene overlever
+  - et brutt odds-kall retries, men reell nedetid boblar fortsatt opp
 
 Kjøres direkte: `cd NHL && python test_site_export.py`
 """
@@ -760,6 +761,149 @@ def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
     assert bt.build_portfolio_payload(reread, all_seasons=True)["summary"]["total_bets"] == len(rows)
 
 
+class _RequestsShim:
+    """
+    Ekte requests-modul med vår egen `get`.
+
+    Vi bytter `nt_odds.requests`, ikke `requests.get`, slik at stubben aldri
+    lekker til andre moduler (live/nhl_api.py kaller også requests.get).
+    Alt annet — RequestException m.m. — slås opp på den ekte modulen.
+    """
+
+    def __init__(self, get):
+        self.get = get
+
+    def __getattr__(self, name):
+        import requests
+
+        return getattr(requests, name)
+
+
+class _FakeResponse:
+    def __init__(self, status_code=200, events=(({"eventId": 1}),)):
+        self.status_code = status_code
+        self._events = list(events)
+        # _fetch_events_range tar med body-en i RuntimeError-meldingen.
+        self.text = f"fake body (status {status_code})"
+
+    def json(self):
+        return {"eventList": self._events}
+
+
+def _with_stubbed_nt(get_func, call):
+    """Kjører `call` med NT-kallene stubbet og uten ventetid."""
+    from live import nt_odds
+
+    original_requests = nt_odds.requests
+    original_pause = nt_odds.RETRY_PAUSE
+    nt_odds.requests = _RequestsShim(get_func)
+    nt_odds.RETRY_PAUSE = 0  # ingen grunn til å sove i testen
+    try:
+        return call(nt_odds)
+    finally:
+        nt_odds.requests = original_requests
+        nt_odds.RETRY_PAUSE = original_pause
+
+
+def test_nt_odds_retries_a_dropped_connection():
+    """Ett brutt kall mot NT skal ikke velte den daglige kjøringen."""
+    import requests
+
+    calls = []
+
+    def flaky_get(url, params=None, timeout=None):
+        calls.append(url)
+        if len(calls) == 1:
+            raise requests.exceptions.ConnectionError(
+                "('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+            )
+        return _FakeResponse()
+
+    events = _with_stubbed_nt(flaky_get, lambda nt: nt._fetch_events_range(3))
+
+    assert len(calls) == 2, calls
+    assert events == [{"eventId": 1}], events
+
+
+def test_nt_odds_retries_a_transient_server_error():
+    """503 skal retries på samme måte som et brutt kall."""
+    calls = []
+
+    def flaky_get(url, params=None, timeout=None):
+        calls.append(url)
+        return _FakeResponse(status_code=503 if len(calls) == 1 else 200)
+
+    events = _with_stubbed_nt(flaky_get, lambda nt: nt._fetch_events_range(3))
+
+    assert len(calls) == 2, calls
+    assert events == [{"eventId": 1}], events
+
+
+def test_nt_odds_surfaces_a_persistent_server_error():
+    """Svarer NT 503 hele veien, skal siste status bli en RuntimeError."""
+
+    def dead_get(url, params=None, timeout=None):
+        return _FakeResponse(status_code=503, events=[])
+
+    def run(nt):
+        try:
+            nt._fetch_events_range(3)
+        except RuntimeError as exc:
+            return str(exc)
+        return None
+
+    message = _with_stubbed_nt(dead_get, run)
+    assert message and "503" in message, message
+
+
+def test_nt_odds_gives_up_after_the_last_retry():
+    """Er NT faktisk nede, skal feilen fortsatt boble opp og gjøre jobben rød."""
+    import requests
+
+    calls = []
+
+    def dead_get(url, params=None, timeout=None):
+        calls.append(url)
+        raise requests.exceptions.ConnectionError("Connection reset by peer")
+
+    def run(nt):
+        try:
+            nt._fetch_events_range(3)
+        except requests.exceptions.ConnectionError:
+            return True
+        return False
+
+    raised = _with_stubbed_nt(dead_get, run)
+
+    assert raised, "forventet at siste forsøk kaster videre"
+
+    from live import nt_odds
+
+    assert len(calls) == nt_odds.MAX_RETRIES, calls
+
+
+def test_nt_odds_stub_does_not_leak_to_other_modules():
+    """Stubben skal ikke påvirke live/nhl_api.py, som også kaller requests.get."""
+    import requests
+
+    from live import nhl_api
+
+    before = requests.get
+
+    def stub_get(url, params=None, timeout=None):
+        return _FakeResponse()
+
+    def run(nt):
+        # Midt i stubbingen skal den globale requests.get være urørt.
+        assert requests.get is before
+        assert nhl_api.requests.get is before
+        return nt._fetch_events_range(3)
+
+    _with_stubbed_nt(stub_get, run)
+
+    assert requests.get is before
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -772,6 +916,11 @@ def main() -> int:
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
             ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
+            ("nt_retry_recovers", test_nt_odds_retries_a_dropped_connection, False),
+            ("nt_retry_on_503", test_nt_odds_retries_a_transient_server_error, False),
+            ("nt_persistent_503", test_nt_odds_surfaces_a_persistent_server_error, False),
+            ("nt_retry_gives_up", test_nt_odds_gives_up_after_the_last_retry, False),
+            ("nt_stub_no_leak", test_nt_odds_stub_does_not_leak_to_other_modules, False),
             ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, True),
             ("three_outcome_fields", test_bet_entry_logs_all_three_outcomes, True),
             ("legacy_round_trip", test_legacy_rows_survive_a_read_write_round_trip, True),
