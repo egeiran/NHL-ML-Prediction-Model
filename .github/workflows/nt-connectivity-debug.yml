@@ -20,13 +20,48 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # Uten dette kjører GitHub `bash -e` UTEN pipefail, og exit-koden fra en
+    # pipeline blir siste ledd sitt. Da kan `openssl ... | head || echo feilet`
+    # aldri rapportere feil — nøyaktig det steget vi trenger signal fra.
+    shell: bash --noprofile --norc -eo pipefail {0}
+
 jobs:
   probe:
     runs-on: ubuntu-latest
     env:
       NT_HOST: api.norsk-tipping.no
       NT_PATH: /OddsenGameInfo/v1/api/events/HKY
+      # bet_tracker.py kaller update_daily_bets(), som har days_ahead=3.
+      # Proben må bruke samme intervall som det feilende kallet.
+      NT_DAYS: "3"
+      # Må se ut som en samtidig nettleser. En åpenbart utdatert Chrome-versjon
+      # er i seg selv et WAF-signal, og ville gjort UA-testen verdiløs.
+      BROWSER_UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Samme interpreter og samme pinnede avhengigheter som Daily Bet Update.
+      # TLS-fingerprintet et WAF filtrerer på følger av OpenSSL-bygget og
+      # urllib3-versjonen, så en probe på ambient Python ville testet en annen
+      # ClientHello enn den som faktisk blir avvist.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r NHL/requirements-api.txt
+
+      - name: Vis versjoner
+        continue-on-error: true
+        run: |
+          python -VV
+          python -c "import ssl, requests, urllib3; print('requests', requests.__version__, '| urllib3', urllib3.__version__, '|', ssl.OPENSSL_VERSION)"
       - name: Hvor kjører vi fra
         continue-on-error: true
         run: |
@@ -56,15 +91,25 @@ jobs:
         continue-on-error: true
         run: |
           # Kobler TCP men handshaket resettes => fingerprint-/WAF-blokkering.
-          timeout 30 openssl s_client -connect "${NT_HOST}:443" \
-            -servername "$NT_HOST" -brief </dev/null 2>&1 | head -30 \
-            || echo "openssl-handshake feilet"
+          # Exit-koden fanges eksplisitt: med pipefail ville `| head` ellers
+          # avbrutt steget før vi rakk å skrive konklusjonen.
+          set +e
+          out=$(timeout 30 openssl s_client -connect "${NT_HOST}:443" \
+            -servername "$NT_HOST" -brief </dev/null 2>&1)
+          rc=$?
+          set -e
+          echo "$out" | head -30
+          if [ "$rc" -eq 0 ]; then
+            echo "openssl-handshake: OK"
+          else
+            echo "openssl-handshake: FEILET (exit $rc)"
+          fi
 
       - name: curl med standard-UA
         continue-on-error: true
         run: |
           from=$(date -u +%Y-%m-%d)
-          to=$(date -u -d "+3 days" +%Y-%m-%d)
+          to=$(date -u -d "+${NT_DAYS} days" +%Y-%m-%d)
           url="https://${NT_HOST}${NT_PATH}?eventType=HKY&fromDateTime=${from}T0000&toDateTime=${to}T2359"
           curl -sS -o /tmp/default.json -w 'HTTP %{http_code}, %{size_download} bytes, %{time_total}s\n' \
             --max-time 30 "$url" || echo "curl (standard-UA) feilet: exit $?"
@@ -74,11 +119,11 @@ jobs:
         continue-on-error: true
         run: |
           from=$(date -u +%Y-%m-%d)
-          to=$(date -u -d "+3 days" +%Y-%m-%d)
+          to=$(date -u -d "+${NT_DAYS} days" +%Y-%m-%d)
           url="https://${NT_HOST}${NT_PATH}?eventType=HKY&fromDateTime=${from}T0000&toDateTime=${to}T2359"
           curl -sS -o /tmp/ua.json -w 'HTTP %{http_code}, %{size_download} bytes, %{time_total}s\n' \
             --max-time 30 \
-            -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' \
+            -H "User-Agent: ${BROWSER_UA}" \
             -H 'Accept: application/json' \
             -H 'Accept-Language: nb-NO,nb;q=0.9,en;q=0.8' \
             "$url" || echo "curl (browser-UA) feilet: exit $?"
@@ -86,36 +131,55 @@ jobs:
 
       - name: python-requests, 5 forsøk
         continue-on-error: true
+        working-directory: NHL
         run: |
-          pip install --quiet requests
           python - <<'PY'
-          import datetime, requests
+          import datetime, os, requests
 
-          HOST = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
-          today = datetime.datetime.utcnow().date()
+          # URL og params hentes fra produksjonskoden, ikke en kopi som kan
+          # råtne når nt_odds.py endres.
+          from live.nt_odds import NT_BASE_RANGE
+
+          days = int(os.environ.get("NT_DAYS", "3"))
+          today = datetime.datetime.now(datetime.timezone.utc).date()
           params = {
               "eventType": "HKY",
               "fromDateTime": f"{today:%Y-%m-%d}T0000",
-              "toDateTime": f"{today + datetime.timedelta(days=3):%Y-%m-%d}T2359",
+              "toDateTime": f"{today + datetime.timedelta(days=days):%Y-%m-%d}T2359",
           }
           browser = {
-              "User-Agent": (
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-              ),
+              "User-Agent": os.environ.get("BROWSER_UA", ""),
               "Accept": "application/json",
           }
+
+          print(f"URL:    {NT_BASE_RANGE}")
+          print(f"params: {params}")
 
           # Er feilen sporadisk eller konsekvent? Fem forsøk pr. variant skiller
           # et blaff fra en vegg.
           for label, headers in (("standard-UA", {}), ("browser-UA", browser)):
               for attempt in range(1, 6):
                   try:
-                      r = requests.get(HOST, params=params, headers=headers, timeout=15)
+                      r = requests.get(NT_BASE_RANGE, params=params, headers=headers, timeout=15)
                       events = len((r.json() or {}).get("eventList", []))
                       print(f"{label} forsok {attempt}: HTTP {r.status_code}, {events} events")
                   except Exception as exc:
                       print(f"{label} forsok {attempt}: {type(exc).__name__}: {str(exc)[:150]}")
+          PY
+
+      - name: Ekte kallsti (samme som Daily Bet Update)
+        continue-on-error: true
+        working-directory: NHL
+        run: |
+          # Siste sjekk: gjør produksjonskoden selv jobben sin, retry og alt.
+          python - <<'PY' || echo "produksjonskallet feilet: exit $?"
+          import os
+
+          from live.nt_odds import get_nhl_matches_range
+
+          days = int(os.environ.get("NT_DAYS", "3"))
+          games = get_nhl_matches_range(days)
+          print(f"get_nhl_matches_range({days}) -> {len(games)} NHL-kamper")
           PY
 
       - name: Oppsummer

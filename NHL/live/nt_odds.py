@@ -11,9 +11,12 @@ NT_BASE_ALL = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"
 NT_BASE_RANGE = "https://api.norsk-tipping.no/OddsenGameInfo/v1/api/events/HKY"  # bruke HKY + params, daterange feiler uten /HKY
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEAM_CSV_PATH = BASE_DIR / "data" / "team_info.csv"
-HTTP_TIMEOUT = 10
-RETRY_PAUSE = 0.5
-MAX_RETRIES = 4
+# Samme verdier som live/nhl_api.py bruker mot NHL-APIet. Holdes bevisst i sync;
+# to sett med like navn og ulike tall er en felle. På sikt bør de to hjelperne
+# slås sammen til én delt http-modul.
+HTTP_TIMEOUT = 5
+RETRY_PAUSE = 0.4
+MAX_RETRIES = 3
 # 429 og 5xx er forbigående på samme måte som et brutt TCP-kall.
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -26,22 +29,27 @@ def _get(url, params=None):
     retry velter ett slikt blaff hele den daglige kjøringen, slik det skjedde
     03.08.2026. Siste forsøk boblar opp som før, så en reell nedetid fortsatt
     gjør jobben rød.
+
+    Merk: retry hjelper bare mot forbigående feil. Blokkerer NT oss på IP eller
+    TLS-fingerprint, feiler alle forsøkene like raskt — se
+    .github/workflows/nt-connectivity-debug.yml.
     """
-    last_exc = None
     for attempt in range(MAX_RETRIES):
         is_last = attempt == MAX_RETRIES - 1
         try:
             r = requests.get(url, params=params, timeout=HTTP_TIMEOUT)
-        except requests.RequestException as exc:
+        except requests.RequestException:
             if is_last:
                 raise
-            last_exc = exc
         else:
             if is_last or r.status_code not in RETRY_STATUS:
                 return r
         time.sleep(RETRY_PAUSE * (attempt + 1))
 
-    raise last_exc  # ikke nåbart: siste forsøk returnerer eller kaster over
+    # Siste forsøk returnerer eller kaster alltid, så vi kommer aldri hit med
+    # MAX_RETRIES >= 1. Med 0 ville en naken `raise` gitt en forvirrende
+    # TypeError i stedet for å peke på feilkonfigurasjonen.
+    raise AssertionError(f"_get nådde slutten med MAX_RETRIES={MAX_RETRIES}")
 
 
 def _normalize(name: str) -> str:
@@ -135,7 +143,10 @@ def _fetch_events_range(days: int):
 def get_hockey_events(days: int):
     """
     Returnerer hockey-events for intervallet [i dag, i dag + days].
-    Faller tilbake til gamle /events/HKY hvis daterange feiler.
+
+    Faller tilbake til det udaterte kallet bare når daterange svarer OK med tom
+    eventList — feiler selve kallet, bobler det opp. (Fallbacken treffer samme
+    URL uten params, som gir alle hockey-events uten datofilter.)
     """
     events = _fetch_events_range(days)
     if events:
