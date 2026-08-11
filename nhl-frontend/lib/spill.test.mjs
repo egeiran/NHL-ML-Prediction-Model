@@ -44,6 +44,7 @@ const {
     evForUtfall,
     markedAv,
     overOddstak,
+    evTerskelFor,
     utelattGrunn,
     utelattTekst,
     tagg,
@@ -122,10 +123,23 @@ sjekk('uten maxOdds gjelder ingen grense', overOddstak(9.9, null), false);
 sjekk('maxOdds 0 er ikke en grense', overOddstak(9.9, 0), false);
 
 seksjon('utelattGrunn — den faktiske grunnen, uavhengig av EV');
-sjekk('OT/SO', utelattGrunn(true, 2.5, 4), 'uavgjort');
-sjekk('OT/SO vinner over oddstak', utelattGrunn(true, 9, 4), 'uavgjort');
+// OT/SO er bare `uavgjort` når de er skrudd AV. Er de på, vurderes de på EV
+// som alle andre – mot sin egen, høyere terskel.
+sjekk('OT/SO avskrudd', utelattGrunn(true, 2.5, 4, false), 'uavgjort');
+sjekk('OT/SO avskrudd vinner over oddstak', utelattGrunn(true, 9, 4, false), 'uavgjort');
+sjekk('OT/SO påskrudd vurderes på EV', utelattGrunn(true, 2.5, 4, true), null);
+sjekk('OT/SO påskrudd fanges av oddstak', utelattGrunn(true, 9, 4, true), 'oddstak');
+sjekk('OT/SO uten meta spilles', utelattGrunn(true, 2.5, 4), null);
 sjekk('oddstak', utelattGrunn(false, 4.5, 4), 'oddstak');
 sjekk('under taket', utelattGrunn(false, 2.5, 4), null);
+
+seksjon('evTerskelFor — OT/SO har en høyere terskel');
+sjekk('hjemme bruker den vanlige', evTerskelFor(false, 0.15, 0.3), 0.15);
+sjekk('OT/SO bruker sin egen', evTerskelFor(true, 0.15, 0.3), 0.3);
+sjekk('slideren kan skjerpe', evTerskelFor(true, 0.4, 0.3), 0.4);
+sjekk('slideren kan ikke slakke', evTerskelFor(true, 0.05, 0.3), 0.3);
+sjekk('uten draw-terskel gjelder den vanlige', evTerskelFor(true, 0.15, null), 0.15);
+sjekk('hjemme rører ikke draw-terskelen', evTerskelFor(false, 0.15, null), 0.15);
 
 sjekk('tekst for uavgjort', utelattTekst('uavgjort'), 'OT/SO spilles ikke');
 sjekk('tekst for oddstak', utelattTekst('oddstak'), 'Over pipelinens oddstak');
@@ -133,9 +147,12 @@ sjekk('ingen tekst uten grunn', utelattTekst(null), null);
 
 seksjon('tagg — rekkefølgen er hele poenget');
 const T = 0.15;
-// 1. OT/SO er alltid UTELATT, uansett hvor god EV-en er.
-sjekk('OT/SO med høy EV', tagg(0.4, T, 'uavgjort'), 'utelatt');
-sjekk('OT/SO med negativ EV', tagg(-0.3, T, 'uavgjort'), 'utelatt');
+// 1. `uavgjort` som grunn er alltid UTELATT — den settes bare når OT/SO er av.
+sjekk('OT/SO avskrudd med høy EV', tagg(0.4, T, 'uavgjort'), 'utelatt');
+sjekk('OT/SO avskrudd med negativ EV', tagg(-0.3, T, 'uavgjort'), 'utelatt');
+// Er OT/SO på, kommer de hit uten grunn, men mot sin egen terskel (0,30).
+sjekk('OT/SO påskrudd, EV 0,20', tagg(0.2, evTerskelFor(true, T, 0.3), null), 'nei');
+sjekk('OT/SO påskrudd, EV 0,35', tagg(0.35, evTerskelFor(true, T, 0.3), null), 'spill');
 // 2. EV under terskel gir NEI — også over oddstaket. «Ville ikke» slår
 //    «kan ikke», fordi det er det informative svaret for en stor outsider.
 sjekk('EV under terskel, under taket', tagg(0.05, T, null), 'nei');

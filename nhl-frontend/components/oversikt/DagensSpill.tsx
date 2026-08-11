@@ -45,7 +45,11 @@ export function DagensSpill({ spill, tomLinje, laster }: DagensSpillProps) {
                                 className={styles.spillLag}
                                 abbr={s.abbr}
                                 navn={s.navn}
-                                under={`${s.side} mot ${s.motstander}`}
+                                under={
+                                    s.side === 'uavgjort'
+                                        ? `OT/SO mot ${s.motstander}`
+                                        : `${s.side} mot ${s.motstander}`
+                                }
                             />
                             <div className={styles.spillNøkkeltall}>
                                 <span>modell {sannsynlighet(s.modellProb)}</span>

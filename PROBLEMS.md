@@ -58,46 +58,61 @@
   faste uavgjort-odds rundt 3,90 ligger terskelen langt ute i halen, og støy fra
   feilen løfter kryssingsraten 1,5–5x. Det forklarer −98 kr.
 
-- [x] **OT/SO-spill hadde ingen edge.** Modellen anslo i snitt 33 % sjanse for
-  OT/SO på de kampene den flagget som value; faktisk endte 22 % slik. Det er
-  ikke en generell skjevhet i modellen – på en kronologisk backtest treffer den
-  22,6 % faktisk mot 20,6 % predikert i snitt, altså litt for lavt. Feilen
-  ligger i *seleksjonen*: vi spiller kun når modellen sier et ekstremt tall, og
-  nettopp der er den minst pålitelig.
+- [x] **Sluttspillkamper ble spilt uten ferske Elo-ratings.** `update_elo_ratings.py`
+  henter med `include_playoffs=False`, så ratingene fryser på siste
+  grunnseriekamp og blir mer utdaterte for hver runde. Modellen predikerte
+  likevel videre, uten å vite at featurene sto stille. I sluttspillet 2026 ga
+  det −525 kr på 20 spill (−26 % ROI) mot +3,1 % i grunnserien.
+
+  De 20 radene er fjernet fra `bet_history.csv`, og `bet_tracker` slår nå opp
+  NHLs `gameType` og spiller bare grunnserie (2). Preseason (1) er ute av samme
+  grunn: Elo oppdateres ikke der heller. `NHL_ALLOW_ALL_GAME_TYPES=1` skrur
+  filteret av.
+
+
+## Åpne funn (ikke fikset)
+- [ ] **OT/SO-spill har ingen påvist edge, men spilles igjen.** Modellen anslo i
+  snitt 33 % sjanse for OT/SO på kampene den flagget som value; faktisk endte
+  22 % slik. Det er ikke en generell skjevhet i modellen – på en kronologisk
+  backtest treffer den 22,6 % faktisk mot 20,6 % predikert. Feilen ligger i
+  *seleksjonen*: vi spiller kun når modellen sier et ekstremt tall, og nettopp
+  der er den minst pålitelig.
 
   `calibrate_draw.py` viser at ingen skalering av draw-proben redder dette. Ved
   den best kalibrerte multiplikatoren (1.15) passerer 291 av 4 436 testkamper
   EV-terskelen med 23,0 % treff – ROI −10 %. Ved dagens 0.95 passerer 60 kamper
-  med 16,7 % treff – ROI −35 %. Å skru opp multiplikatoren gjør altså bare at vi
+  med 16,7 % treff – ROI −35 %. Å skru opp multiplikatoren gjør bare at vi
   spiller mer av noe som taper.
 
-  OT/SO-spill legges derfor ikke inn lenger (`NHL_ALLOW_DRAW_BETS=1` skrur dem
-  på igjen). I `bet_history.csv` sto de for 26 spill og −640 kr, mens resten av
-  porteføljen er +675 kr.
+  Spillene var slått av en periode, men er skrudd på igjen med **egen terskel på
+  EV > 0,30** (`NHL_DRAW_VALUE_MIN`). Begrunnelsen er strukturell, ikke
+  statistisk: permutasjonstesten på de 26 spillene gir p = 0,151, altså ikke
+  signifikant. Men Norsk Tipping holder OT/SO-oddsen praktisk talt fast – alle
+  26 lå mellom 3,80 og 3,95, median 3,90 – mens hjemme- og borteoddsen beveger
+  seg med markedet. Samme EV-terskel måler derfor to ulike ting. Med odds 3,90
+  krever EV > 0,15 at modellen sier p > 29,5 % mot en basisrate på ~22 %; det
+  er en påstand den ikke har vist evne til å innfri (19,2 % treff, 33,4 %
+  predikert). EV > 0,30 tilsvarer p > 33,6 %.
 
-  De forsvinner ikke ut av datagrunnlaget: hvert OT/SO-spill vi *ville* tatt
-  føres i `data/bet_shadow.csv` med full innsats og avregnes med samme logikk
-  som ekte spill. Da måler vi løpende om beslutningen var riktig i stedet for å
-  anta det. Value-rapporten viser OT/SO-odds og EV som før.
-
-
-## Åpne funn (ikke fikset)
-- [ ] **Modellen er globalt overkonfident.** På de 202 spillene i historikken
-  forventet modellen 85,5 treff, markedet forventet 66,4, og 68 skjedde.
-  Markedet er godt kalibrert på denne porteføljen; modellen ligger cirka 26 %
+  Funnet står som åpent fordi tallene over ikke er motbevist – vi har hevet
+  lista og måler videre i stedet for å slå dem av. `NHL_ALLOW_DRAW_BETS=0` tar
+  dem helt ut.
+- [ ] **Modellen er globalt overkonfident.** På de 182 spillene i historikken
+  forventet modellen 76,7 treff, markedet forventet 59,5, og 63 skjedde.
+  Markedet er godt kalibrert på denne porteføljen; modellen ligger cirka 22 %
   for høyt. Det gjelder *hvert* spill vi legger inn, ikke bare OT/SO, og er
   dermed et større problem enn både Utah-feilen og uavgjort-seleksjonen.
   Sannsynlig retning: kalibrer sannsynlighetene (isotonisk eller Platt) på en
   kronologisk holdout før EV regnes ut, i stedet for å bruke Random Forest-ens
   rå `predict_proba`.
 - [ ] **EV er ikke informativ nok til å skalere innsatsen etter.** Undersøkt i
-  `NHL/analyze_stake_sizing.py` (teoretisk omregning av de 202 avregnede spillene
+  `NHL/analyze_stake_sizing.py` (teoretisk omregning av de 182 avregnede spillene
   – ingen logger endres). Korrelasjonen mellom EV og realisert avkastning per
-  krone er r = −0,03 (permutasjonstest p = 0,74): sammenhengen finnes ikke i
-  dataen. Delt i EV-kvartiler ligger ROI på −1 %, −13 %, +32 %, −17 % – hele
+  krone er r = −0,02 (permutasjonstest p = 0,81): sammenhengen finnes ikke i
+  dataen. Delt i EV-kvartiler ligger ROI på −5 %, −3 %, +32 %, −11 % – hele
   resultatet sitter i tredje kvartil, ikke i den høyeste. Å satse mer på høy EV
-  gjør derfor bare varians dyrere: lineær skalering gir −311 kr mot flat innsats,
-  kvadratisk −1 004 kr, ved lik omsetning. Ingen av regimene har et
+  gjør derfor bare varians dyrere: lineær skalering gir −209 kr mot flat innsats,
+  kvadratisk −880 kr, ved lik omsetning. Ingen av regimene har et
   bootstrap-intervall som utelukker null.
 
   To ting er verdt å merke seg videre:
@@ -105,14 +120,14 @@
     Siden `implied_prob = 1/odds` gir λ·(1/o) + (1−λ)·p at p·o − 1 skaleres med
     (1−λ), så «kalibrering mot markedet» *er* fraksjonell Kelly. Skal kalibrering
     flytte på hvilke spill som prioriteres, må den være ikke-lineær (Platt).
-  - Kelly slår flat innsats med +448 kr, men gevinsten kommer fra odds-leddet,
+  - Kelly slår flat innsats med +606 kr, men gevinsten kommer fra odds-leddet,
     ikke EV-leddet: en regel som satser 1/(odds−1) og **ignorerer EV helt** gir
-    +634 kr. Odds-kvartilene peker samme vei (+39 %, −10 %, −19 %, −9 %), men
-    korrelasjonen odds ↔ avkastning er heller ikke signifikant (p = 0,24), så
+    +795 kr. Odds-kvartilene peker samme vei (+49 %, −12 %, −25 %, +1 %), men
+    korrelasjonen odds ↔ avkastning er heller ikke signifikant (p = 0,20), så
     dette er en hypotese å teste videre – ikke et etablert funn.
 
   Ekte Kelly med sammensatt bankrull er direkte farlig med dagens overkonfidens:
-  full Kelly ender på −93 %, halv Kelly −51 %, kvart Kelly −6 %, mot flat +0,2 %.
+  full Kelly ender på −73 %, halv Kelly −12 %, kvart Kelly +23 %, mot flat +2,8 %.
   Konklusjon: behold flat innsats til sannsynlighetene er kalibrert.
 
 - [ ] **Loggene lagrer bare det valgte utfallet.** `model_prob` og

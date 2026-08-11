@@ -174,6 +174,8 @@ class PortfolioUpdateRequest(BaseModel):
     stake_per_bet: float = 100.0
     min_value: float = DEFAULT_MIN_VALUE
     max_odds: Optional[float] = DEFAULT_MAX_ODDS
+    # Uavgjort har egen, høyere terskel; None = bruk pipelinens default.
+    draw_min_value: Optional[float] = None
     value_games: Optional[List[ValueGameResponse]] = None
 
 
@@ -271,6 +273,7 @@ def trigger_portfolio_update(req: PortfolioUpdateRequest):
         stake_per_bet=req.stake_per_bet,
         min_value=req.min_value,
         max_odds=req.max_odds,
+        draw_min_value=req.draw_min_value,
         # All rapportbygging skjer på serveren for å unngå manipulert input
         prefetched_report=None,
         # Ta alle dagens kamper over min_value, ikke bare én per dag

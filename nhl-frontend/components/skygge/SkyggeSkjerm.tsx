@@ -3,26 +3,20 @@
 /**
  * Skyggelogg (§C.7) — hele skjermen.
  *
- * Vi sluttet å legge inn OT/SO-spill. Skjermen stiller den faktiske porteføljen
- * mot skyggeloggen over spillene vi ikke lenger tar, slik at beslutningen kan
- * måles løpende i stedet for antas.
+ * To terskler avgjør hva som blir et spill: EV må over sin egen grense – 0,15
+ * for hjemme og borte, 0,30 for uavgjort – og oddsen under 4,00. Kampene som
+ * ryker på en av dem havner i `shadow.json` med samme innsats og samme
+ * avregning som ekte spill. Skjermen stiller de to loggene mot hverandre, slik
+ * at plasseringen av tersklene kan måles i stedet for antas.
  *
- * To kilder, og skjermen sier hvilken den bruker:
- *   1. `shadow.json` — den ekte skyggeloggen. Tom i dag (`bet_shadow.csv` har 0
- *      rader), fordi ingen sesong har kjørt siden OT/SO-spillene ble tatt ut.
- *   2. `selection === 'draw'`-radene i `portfolio.json` — de gamle OT/SO-spillene
- *      som fortsatt ligger i historikken.
- * Byttet skjer av seg selv den dagen `shadow.json` får sin første avregnede rad;
- * se `velgUtvalg()` i `beregn.ts`.
- *
- * Tonen: −640 mot +675 over 26 og 176 spill er små tall med bred usikkerhet.
- * Skjermen sier hva tallene er, ikke hva de beviser.
+ * Tonen: dette er små utvalg med bred usikkerhet. Skjermen sier hva tallene er,
+ * ikke hva de beviser.
  */
 
 import { useMemo, type CSSProperties } from 'react';
 import { ErrorState, Laster, SectionHeading } from '@/components/ui';
 import { kombiner, usePortfolio, useShadow } from '@/lib/use-data';
-import { krp, nf, pcRaw, sgn } from '@/lib/format';
+import { krp, nf } from '@/lib/format';
 import { utahVindu } from '@/lib/utah';
 import type { BetEntry, ShadowEntry } from '@/types';
 import { Panel } from './Panel';
@@ -35,28 +29,18 @@ const INGEN_SPILL: readonly BetEntry[] = [];
 const INGEN_SKYGGE: readonly ShadowEntry[] = [];
 
 const KICKER = 'Skyggelogg';
-const TITTEL = 'Spillene vi sluttet å ta';
-const INGRESS = 'OT/SO-spill legges ikke inn lenger, men føres videre med full innsats.';
+const TITTEL = 'Kampene vi lot ligge';
+const INGRESS =
+    'Kamper som røk på EV-terskelen eller oddstaket, ført videre med full innsats.';
 
-/**
- * Kildelinja (påkrevd av DECISIONS). Prefikset er ordrett fra spesifikasjonen;
- * resten er der fordi fallbacken ikke skal se ut som en ekte skyggelogg.
- */
+/** Kildelinja (påkrevd av DECISIONS). Prefikset er ordrett fra spesifikasjonen. */
 function kildetekst(kilde: Kilde): string {
     switch (kilde) {
         case 'shadow':
-            return 'Kilde: shadow.json — OT/SO-spill ført med full innsats etter at de ble tatt ut av porteføljen.';
-        case 'portefølje':
-            return 'Kilde: portfolio.json · OT/SO-rader — shadow.json er tom, så skyggetallene er avledet fra de gamle OT/SO-radene i historikken, ikke fra en ekte skyggelogg.';
+            return 'Kilde: shadow.json — kamper under EV-terskelen eller over oddstaket, ført med full innsats og avregnet som ekte spill.';
         case 'ingen':
-            return 'Kilde: shadow.json — tom. Ingen avregnede OT/SO-spill å føre skyggelogg over ennå.';
+            return 'Kilde: shadow.json — ingen avregnede rader ennå.';
     }
-}
-
-function undertekstSkygge(kilde: Kilde): string {
-    return kilde === 'shadow'
-        ? 'OT/SO-spill som modellen ville tatt, ført med full innsats'
-        : 'OT/SO-spill som modellen ville tatt, ført med full innsats — her: de historiske radene';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -125,7 +109,7 @@ export function SkyggeSkjerm() {
                 <Panel
                     tittel="Faktisk portefølje"
                     tittelfarge="teal"
-                    undertekst="Hjemme- og borteseier — spillene som faktisk ble lagt inn"
+                    undertekst="Spillene som passerte begge tersklene og faktisk ble lagt inn"
                     sammendrag={faktisk.n > 0 ? faktisk : null}
                     stolpe={stolpeBredde(faktisk.profit, nevner)}
                 />
@@ -133,7 +117,9 @@ export function SkyggeSkjerm() {
                     tittel="Skyggelogg"
                     tittelfarge="vermillion"
                     undertekst={
-                        harSkygge ? undertekstSkygge(kilde) : 'Ingen OT/SO-spill registrert.'
+                        harSkygge
+                            ? 'Kampene som røk på en terskel, ført med full innsats'
+                            : 'Ingen avregnede kamper i skyggeloggen ennå.'
                     }
                     sammendrag={harSkygge ? skygge : null}
                     stolpe={stolpeBredde(skygge.profit, nevner)}
@@ -162,19 +148,20 @@ export function SkyggeSkjerm() {
             >
                 <div>
                     <h2 className={styles.forklaringTittel}>
-                        Feilen lå i seleksjonen, ikke i modellen
+                        Hva skyggeloggen faktisk måler
                     </h2>
                     <p className={styles.forklaringTekst}>
-                        Modellen anslo {pcRaw(33, 0)} sjanse for OT/SO på kampene den flagget.
-                        Faktisk endte {pcRaw(22, 0)} slik. På backtest treffer den {pcRaw(22.6)} mot{' '}
-                        {pcRaw(20.6)} predikert — skjevheten oppstår fordi vi bare spiller når
-                        modellen sier et ekstremt tall.
+                        Tersklene skiller de to panelene: oddsen må under {nf(4, 2)}, og EV
+                        over {nf(0.15, 2)} — eller {nf(0.3, 2)} for uavgjort, som har en
+                        strengere grense fordi OT/SO-oddsen ligger fast rundt {nf(3.9, 2)}.
+                        Alt annet med komplette odds havner til venstre i skyggeloggen — samme
+                        innsats, samme avregning, men pengene ble aldri satt.
                     </p>
                     <p className={styles.forklaringTekst}>
-                        Ingen skalering av OT/SO-sannsynligheten redder det: ved den best kalibrerte
-                        multiplikatoren passerer {nf(291)} av {nf(4436)} testkamper EV-terskelen med{' '}
-                        {pcRaw(23)} treff og ROI {sgn(-0.1, 0)}. Å skru den opp gjør bare at vi
-                        spiller mer av noe som taper.
+                        Går skyggeloggen bedre enn porteføljen over tid, står tersklene på feil
+                        sted. Går den dårligere, gjør de jobben sin. Det er hele poenget: valget
+                        blir målt i stedet for antatt. Så langt er utvalgene for små til at
+                        forskjellen betyr noe — se forbeholdet over panelene.
                     </p>
                 </div>
                 <UtahVindu tall={utah} />

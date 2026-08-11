@@ -26,6 +26,7 @@ import {
     evKlasse,
     stolpeBredde,
     tagg,
+    evTerskelFor,
     utelattGrunn,
     type UtelattGrunn,
 } from '@/lib/spill';
@@ -160,6 +161,8 @@ export function byggAnalyse(
     valg: Valg,
     evTerskel: number,
     maxOdds?: number | null,
+    drawEvTerskel?: number | null,
+    allowDrawBets?: boolean | null,
 ): Analyse {
     const hjemmeNavn = lagNavn(valg.home);
     const borteNavn = lagNavn(valg.away);
@@ -206,8 +209,9 @@ export function byggAnalyse(
         const modell = erTall(s.modell) ? s.modell : 0;
         const odds = tolkOdds(s.rå);
         const ev = evAvHåndskrevet(modell, odds);
-        const grunn = utelattGrunn(s.erUavgjort, odds, maxOdds);
-        const merke = tagg(ev, evTerskel, grunn);
+        const grunn = utelattGrunn(s.erUavgjort, odds, maxOdds, allowDrawBets);
+        // OT/SO måles mot sin egen, høyere terskel — se evTerskelFor().
+        const merke = tagg(ev, evTerskelFor(s.erUavgjort, evTerskel, drawEvTerskel), grunn);
         return {
             nøkkel: s.nøkkel,
             etikett: s.etikett,

@@ -6,6 +6,14 @@ Hovedfunksjoner:
   - update_daily_bets(): henter dagens beste value-bet per dag, lagrer til CSV.
   - settle_pending_bets(): sjekker ferdigspilte kamper og oppdaterer utfall/profit.
   - build_portfolio_payload(): gir data til graf (investert vs verdi).
+
+To logger, samme radform og samme avregning:
+  - data/bet_history.csv  spillene vi tar (EV > min_value og odds < max_odds)
+  - data/bet_shadow.csv   spillene vi ikke tar, fordi de ryker på én av de to
+                          tersklene. Notionell innsats, teller aldri i
+                          porteføljen, men avregnes slik at vi kan måle om
+                          tersklene ligger riktig.
+Bare grunnserien spilles; se ALLOWED_GAME_TYPES.
 """
 from __future__ import annotations
 
@@ -37,20 +45,41 @@ DEFAULT_STAKE = 100.0
 DEFAULT_MIN_VALUE = float(os.environ.get("NHL_VALUE_MIN", "0.15"))
 _MAX_ODDS_RAW = os.environ.get("NHL_MAX_ODDS")
 DEFAULT_MAX_ODDS = float(_MAX_ODDS_RAW) if _MAX_ODDS_RAW else 4.0
-# OT/SO-spill legges ikke inn. Modellen har ingen målbar edge der: på en
-# kronologisk backtest (calibrate_draw.py) treffer kampene den flagger som
-# value bare basisraten, uansett hvordan draw-proben skaleres, og i
-# bet_history.csv står 26 slike spill for -640 kr (19% treff mot 22% basisrate)
-# mens resten av porteføljen er +675 kr. Sett NHL_ALLOW_DRAW_BETS=1 for å
-# skru dem på igjen. Value-rapporten viser fortsatt OT/SO-odds og EV.
-ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "").strip().lower() in {"1", "true", "yes"}
+
+# Uavgjort har egen, høyere terskel. Norsk Tipping holder OT/SO-oddsen praktisk
+# talt fast – alle 26 slike spill i historikken lå mellom 3,80 og 3,95, median
+# 3,90 – mens hjemme- og borteoddsen beveger seg med markedet. Samme EV-terskel
+# betyr derfor to helt forskjellige ting: på hjemme/borte er den et markedssignal,
+# på uavgjort er den bare en test av hvor høyt modellen tør å gå. Med odds 3,90
+# krever EV > 0,15 at modellen sier p > 29,5 %, mot en basisrate på ~22 % – en
+# påstand den ikke har vist evne til å innfri (19,2 % treff på de 26 spillene,
+# 33,4 % predikert). EV > 0,30 tilsvarer p > 33,6 %, som er den styrken på
+# påstanden som faktisk trengs for å ha kant. Se PROBLEMS.md funn 02.
+DEFAULT_DRAW_MIN_VALUE = float(os.environ.get("NHL_DRAW_VALUE_MIN", "0.30"))
+# OT/SO-spill legges inn på lik linje med hjemme/borte: ett utfall er ett utfall,
+# og EV-terskelen er filteret som skal skille dem. De var tidligere skrudd av
+# fordi 26 slike spill sto for -640 kr mot +675 kr på resten, og fordi
+# calibrate_draw.py viser at ingen skalering av draw-proben gir dem en edge
+# (best kalibrerte multiplikator: 291 av 4 436 testkamper over terskel, 23 %
+# treff, ROI -10 %). Den advarselen står fortsatt; se PROBLEMS.md funn 02.
+# Sett NHL_ALLOW_DRAW_BETS=0 for å ta dem ut igjen – da havner de i skyggeloggen.
+ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "1").strip().lower() in {"1", "true", "yes"}
+
+# Bare grunnserien spilles (NHLs gameType 2). Elo rulles fram på nøyaktig det
+# samme utvalget – update_elo_ratings.py henter med include_playoffs=False – så
+# i preseason (1) og sluttspill (3) står ratingene stille mens lagene faktisk
+# endrer seg. Modellen predikerer da på utdaterte features uten å vite det, og
+# i sluttspillet 2026 kostet det -525 kr på 20 spill (-26 % ROI) mot +3,1 % i
+# grunnserien. Sett NHL_ALLOW_ALL_GAME_TYPES=1 for å spille alt likevel.
+ALLOWED_GAME_TYPES = {2}
+ALLOW_ALL_GAME_TYPES = os.environ.get("NHL_ALLOW_ALL_GAME_TYPES", "").strip().lower() in {"1", "true", "yes"}
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
     "UTAH": "ARI",
 }
 
-# Notionell innsats på spill vi ikke tar, men følger (skygge + under terskel).
+# Notionell innsats på spill vi ikke tar, men følger (skyggeloggen).
 # Samme beløp som ekte spill, så tallene er direkte sammenlignbare.
 NOTIONAL_STAKE = DEFAULT_STAKE
 
@@ -247,13 +276,90 @@ def _flatten_scoreboard_games(scoreboard: Dict[str, Any]) -> List[Dict[str, Any]
     return scoreboard.get("games", []) or []
 
 
-def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[Dict[str, Any]]:
-    def _canon(abbr: Optional[str]) -> Optional[str]:
-        if not abbr:
-            return None
-        abbr_up = str(abbr).upper()
-        return TEAM_ALIAS.get(abbr_up, abbr_up)
+def _canon(abbr: Optional[str]) -> Optional[str]:
+    if not abbr:
+        return None
+    abbr_up = str(abbr).upper()
+    return TEAM_ALIAS.get(abbr_up, abbr_up)
 
+
+def _find_scoreboard_game(
+    game_date: str, home_abbr: str, away_abbr: str
+) -> Optional[Dict[str, Any]]:
+    """Rå kampobjekt fra scoreboardet, eller None hvis kampen ikke står der."""
+    try:
+        sb = get_scoreboard(game_date)
+    except Exception:
+        return None
+
+    target_home = _canon(home_abbr)
+    target_away = _canon(away_abbr)
+    for game in _flatten_scoreboard_games(sb):
+        if _canon(game.get("homeTeam", {}).get("abbrev")) != target_home:
+            continue
+        if _canon(game.get("awayTeam", {}).get("abbrev")) != target_away:
+            continue
+        return game
+    return None
+
+
+def _game_type_from_id(game_id: Any) -> Optional[int]:
+    """
+    NHL-kampid er SSSSTTNNNN, der TT er kamptypen (02 grunnserie, 03 sluttspill).
+    Reserve for de tilfellene scoreboardet ikke tar med `gameType`-feltet.
+    """
+    raw = str(game_id or "").strip()
+    if len(raw) == 10 and raw.isdigit():
+        return int(raw[4:6])
+    return None
+
+
+def lookup_game_type(game_date: str, home_abbr: str, away_abbr: str) -> Optional[int]:
+    """NHLs gameType: 1 preseason, 2 grunnserie, 3 sluttspill. None = ukjent."""
+    game = _find_scoreboard_game(game_date, home_abbr, away_abbr)
+    if game is None:
+        return None
+    game_type = game.get("gameType")
+    if game_type is None:
+        game_type = _game_type_from_id(game.get("id"))
+    try:
+        return int(game_type)
+    except (TypeError, ValueError):
+        return None
+
+
+def _inside_regular_season_window(game_date: Optional[str]) -> bool:
+    """
+    Grov kalendersjekk, brukt bare når NHL-APIet ikke kan svare på kamptype.
+    Grunnserien går fra oktober til midten av april; sluttspillet starter aldri
+    før 14. april. Utenfor vinduet lar vi spillet ligge i stedet for å gjette –
+    er APIet nede i desember spiller vi som normalt, er det nede i mai gjør vi
+    ikke det.
+    """
+    try:
+        d = datetime.strptime(str(game_date)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return False
+    if d.month in {10, 11, 12, 1, 2, 3}:
+        return True
+    return d.month == 4 and d.day <= 13
+
+
+def is_bettable_game_type(
+    game_date: Optional[str], home_abbr: Optional[str], away_abbr: Optional[str]
+) -> bool:
+    """Om kampen er av en type vi spiller. Se ALLOWED_GAME_TYPES."""
+    if ALLOW_ALL_GAME_TYPES:
+        return True
+    if not game_date or not home_abbr or not away_abbr:
+        return False
+    game_type = lookup_game_type(game_date, home_abbr, away_abbr)
+    if game_type is None:
+        return _inside_regular_season_window(game_date)
+    return game_type in ALLOWED_GAME_TYPES
+
+
+def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[Dict[str, Any]]:
     target_home = _canon(home_abbr)
     target_away = _canon(away_abbr)
 
@@ -446,8 +552,10 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
     return report
 
 
-def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, Any]]:
-    selection = game.get("best_value") or game.get("selection")
+def _build_bet_entry(
+    game: Dict[str, Any], stake: float, selection: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    selection = selection or game.get("best_value") or game.get("selection")
     if not selection:
         return None
 
@@ -532,12 +640,67 @@ def _build_bet_entry(game: Dict[str, Any], stake: float) -> Optional[Dict[str, A
     }
 
 
+def min_value_for(
+    selection: Optional[str],
+    min_value: float = DEFAULT_MIN_VALUE,
+    draw_min_value: Optional[float] = None,
+) -> float:
+    """EV-terskelen som gjelder for ett utfall. Uavgjort har sin egen."""
+    if str(selection).lower() != "draw":
+        return min_value
+    return DEFAULT_DRAW_MIN_VALUE if draw_min_value is None else draw_min_value
+
+
+def _qualifying_selection(
+    game: Dict[str, Any],
+    min_value: float,
+    draw_min_value: Optional[float],
+    max_odds: Optional[float],
+) -> Optional[str]:
+    """
+    Utfallet vi spiller på: det med høyest EV blant dem som klarer sin *egen*
+    terskel. None hvis ingen gjør det.
+
+    Vi kan ikke bare se på `best_value`. Har uavgjort høyest EV, men ikke høyt
+    nok til sin strengere terskel, ville et fullgodt hjemmespill i samme kamp
+    blitt kastet sammen med det. Hvert utfall vurderes derfor for seg.
+    """
+    odds_lookup = {
+        "home": game.get("odds_home"),
+        "draw": game.get("odds_draw"),
+        "away": game.get("odds_away"),
+    }
+    value_lookup = {
+        "home": game.get("value_home"),
+        "draw": game.get("value_draw"),
+        "away": game.get("value_away"),
+    }
+
+    qualifying = []
+    for selection, value in value_lookup.items():
+        if value is None:
+            continue
+        if selection == "draw" and not ALLOW_DRAW_BETS:
+            continue
+        if float(value) <= min_value_for(selection, min_value, draw_min_value):
+            continue
+        odds = odds_lookup.get(selection)
+        if odds is None:
+            continue
+        if max_odds is not None and float(odds) >= max_odds:
+            continue
+        qualifying.append((float(value), selection))
+
+    if not qualifying:
+        return None
+    return max(qualifying)[1]
+
+
 def _build_candidate_entry(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Spill som ikke nådde EV-terskelen. De føres med notionell innsats og vanlig
-    "pending"-status slik at settle_pending_bets avregner dem – da kan vi svare
-    på om terskelen ligger riktig. De havner i sin egen fil og teller aldri med
-    i porteføljen.
+    Spill vi ikke tar. De føres med notionell innsats og vanlig "pending"-status
+    slik at settle_pending_bets avregner dem – da kan vi svare på om terskelene
+    ligger riktig. De havner i skyggeloggen og teller aldri med i porteføljen.
     """
     entry = _build_bet_entry(game, NOTIONAL_STAKE)
     if not entry:
@@ -589,21 +752,31 @@ def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
     return updated
 
 
-def _existing_keys(history: Sequence[Dict[str, Any]]) -> set:
-    keys = set()
-    for row in history:
-        selection = row.get("selection")
-        raw_event_id = row.get("event_id")
-        keys.add(f"{raw_event_id}|{selection}")
-        norm_event_id = normalize_event_id(
-            raw_event_id,
-            row.get("home_abbr"),
-            row.get("away_abbr"),
-            row.get("start_time"),
-            row.get("date"),
-        )
-        keys.add(f"{norm_event_id}|{selection}")
-    return keys
+def _event_keys(row: Dict[str, Any]) -> set:
+    """
+    Nøklene én kamp kan gjenkjennes på. Både den rå event_id-en og den
+    normaliserte, siden eldre rader ble skrevet før normaliseringen fantes.
+
+    Utfallet er bevisst ikke med: én kamp gir én kandidat, og den hører hjemme
+    i én av loggene – ikke i porteføljen på hjemmeseier og samtidig i
+    skyggeloggen på uavgjort.
+    """
+    raw_event_id = row.get("event_id")
+    norm_event_id = normalize_event_id(
+        raw_event_id,
+        row.get("home_abbr"),
+        row.get("away_abbr"),
+        row.get("start_time"),
+        row.get("date"),
+    )
+    return {str(raw_event_id), str(norm_event_id)}
+
+
+def _existing_events(rows: Sequence[Dict[str, Any]]) -> set:
+    events = set()
+    for row in rows:
+        events |= _event_keys(row)
+    return events
 
 
 def record_new_bets(
@@ -615,13 +788,22 @@ def record_new_bets(
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
     shadow: Optional[List[Dict[str, Any]]] = None,
+    draw_min_value: Optional[float] = None,
 ) -> Tuple[int, int]:
     """
-    Legger til nye spill. Default: beste per dag. Hvis take_all_prefetched=True brukes alle kamper
-    (prefetchet eller bygget), filtrert på min_value.
+    Klassifiserer dagens kamper i to logger.
 
-    Spill vi bevisst ikke tar (OT/SO når ALLOW_DRAW_BETS er av) havner i `shadow`
-    i stedet, med samme innsats og felter, så de kan avregnes og måles.
+    For hver kamp med komplette odds vurderes alle tre utfall mot sin egen
+    EV-terskel (uavgjort har en høyere, se DEFAULT_DRAW_MIN_VALUE) og mot
+    `max_odds`. Klarer ett eller flere det, spilles det beste av dem og raden
+    havner i `history`. Klarer ingen det, føres utfallet med høyest EV i
+    `shadow` med samme innsats og felter – da avregnes det som et ekte spill,
+    og «var terskelen riktig plassert?» blir et spørsmål med tall bak.
+
+    Kamptyper vi ikke spiller (sluttspill, preseason) hoppes helt over: de
+    havner ikke i skyggeloggen heller, fordi det ikke er terskelen som
+    diskvalifiserer dem, men at modellen mangler ferske Elo-ratings der.
+
     Returnerer (antall ekte spill, antall skyggespill).
     """
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
@@ -630,8 +812,6 @@ def record_new_bets(
             g
             for g in report
             if g.get("best_value_delta") is not None
-            and g.get("best_value_delta") is not None
-            and g.get("best_value_delta") > min_value
             and odds_complete(
                 g.get("odds_home"),
                 g.get("odds_draw"),
@@ -639,80 +819,62 @@ def record_new_bets(
             )
         ]
     else:
-        candidates = _choose_best_per_day(report, min_value=min_value, max_odds=max_odds)
+        # Terskelen settes ikke her: klassifiseringen under skal se også de
+        # kampene som ryker på EV eller odds, ellers blir skyggeloggen tom.
+        candidates = _choose_best_per_day(report, min_value=float("-inf"), max_odds=None)
 
-    existing_keys = _existing_keys(history)
-    shadow_keys = _existing_keys(shadow) if shadow is not None else set()
+    history_events = _existing_events(history)
+    shadow_events = _existing_events(shadow) if shadow is not None else set()
     created = 0
     shadowed = 0
 
     for game in candidates:
-        entry = _build_bet_entry(game, stake_per_bet)
+        # None = ingen utfall klarte sin terskel. Da skygges kampen på det
+        # utfallet modellen likte best, så vi måler beslutningen vi tok.
+        selection = _qualifying_selection(game, min_value, draw_min_value, max_odds)
+        entry = _build_bet_entry(game, stake_per_bet, selection=selection)
         if not entry:
             continue
-        if max_odds is not None and entry.get("odds") is not None:
-            if float(entry["odds"]) >= max_odds:
-                continue
 
-        key = f"{entry['event_id']}|{entry['selection']}"
-
-        # OT/SO tas ikke, men følges videre i skyggeloggen.
-        if str(entry.get("selection")).lower() == "draw" and not ALLOW_DRAW_BETS:
-            if shadow is not None and key not in shadow_keys:
-                shadow.append(entry)
-                shadow_keys.add(key)
-                shadowed += 1
-            continue
-
-        if key in existing_keys:
-            continue
-
-        history.append(entry)
-        existing_keys.add(key)
-        created += 1
-
-    return created, shadowed
-
-
-def record_bets_below_threshold(
-    history: Sequence[Dict[str, Any]],
-    below_threshold: List[Dict[str, Any]],
-    report: Sequence[Dict[str, Any]],
-    min_value: float = DEFAULT_MIN_VALUE,
-    max_odds: Optional[float] = DEFAULT_MAX_ODDS,
-) -> int:
-    existing_keys = _existing_keys(history)
-    existing_keys.update(_existing_keys(below_threshold))
-    created = 0
-
-    for game in report:
-        delta = game.get("best_value_delta")
-        if delta is None or delta >= min_value:
-            continue
-        if not odds_complete(
-            game.get("odds_home"),
-            game.get("odds_draw"),
-            game.get("odds_away"),
+        if not is_bettable_game_type(
+            entry.get("date"), entry.get("home_abbr"), entry.get("away_abbr")
         ):
             continue
 
-        candidate = _build_candidate_entry(game)
-        if not candidate:
+        events = _event_keys(entry)
+
+        if selection is None:
+            if shadow is not None and not (events & (shadow_events | history_events)):
+                shadow.append(entry)
+                shadow_events |= events
+                shadowed += 1
             continue
 
-        if max_odds is not None and candidate.get("odds") is not None:
-            if float(candidate["odds"]) >= max_odds:
+        if events & history_events:
+            continue
+
+        # Oddsen kan ha krysset terskelen siden forrige kjøring – eller et annet
+        # utfall i samme kamp kan ha gjort det. Da tar vi spillet på ekte, og
+        # skyggeraden skal bort, ellers telles kampen i begge loggene.
+        if shadow is not None and events & shadow_events:
+            removed = [
+                r for r in shadow
+                if (_event_keys(r) & events) and r.get("status") == "pending"
+            ]
+            if removed:
+                shadow[:] = [r for r in shadow if r not in removed]
+                shadow_events -= events
+                shadow_events |= _existing_events(shadow)
+                shadowed = max(0, shadowed - len(removed))
+            else:
+                # Skyggeraden er allerede avregnet; kampen er spilt. Ikke rør.
                 continue
 
-        key = f"{candidate['event_id']}|{candidate['selection']}"
-        if key in existing_keys:
-            continue
-
-        below_threshold.append(candidate)
-        existing_keys.add(key)
+        history.append(entry)
+        history_events |= events
         created += 1
 
-    return created
+    return created, shadowed
 
 
 def update_daily_bets(
@@ -725,13 +887,17 @@ def update_daily_bets(
     max_odds: Optional[float] = DEFAULT_MAX_ODDS,
     prefetched_report: Optional[List[Dict[str, Any]]] = None,
     take_all_prefetched: bool = True,
+    draw_min_value: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Hovedinngangen som kan kjøres i cron/GitHub Actions.
     take_all_prefetched=True legger til alle kamper over min_value (samme som API/frontend).
+
+    `below_threshold_path` leses fortsatt, men skrives ikke: skyggeloggen dekker
+    nå både «under EV-terskel» og «odds for høye», og fila står som arkiv over
+    radene som ble ført før sammenslåingen.
     """
     history = load_history(history_path)
-    below_threshold = load_below_threshold(below_threshold_path)
     shadow = load_shadow(shadow_path)
     settled = settle_pending_bets(history)
     # Skyggespillene avregnes med samme logikk, så tallene er sammenlignbare.
@@ -746,16 +912,11 @@ def update_daily_bets(
         prefetched_report=report,
         take_all_prefetched=take_all_prefetched,
         shadow=shadow,
+        draw_min_value=draw_min_value,
     )
-    below_created = record_bets_below_threshold(
-        history,
-        below_threshold,
-        report,
-        min_value=min_value,
-        max_odds=max_odds,
-    )
+    below_created = 0
+    below_threshold = load_below_threshold(below_threshold_path)
     save_history(history, history_path)
-    save_below_threshold(below_threshold, below_threshold_path)
     save_shadow(shadow, shadow_path)
     portfolio = build_portfolio_payload(history)
 
@@ -915,7 +1076,7 @@ if __name__ == "__main__":
     result = update_daily_bets()
     print(
         f"Oppdatert: {result['created']} nye bets, {result['settled']} avregnet. "
-        f"Skygge (OT/SO vi ikke tok): {result['shadow_created']} nye, "
+        f"Skygge (under terskel / for høye odds): {result['shadow_created']} nye, "
         f"{result['shadow_settled']} avregnet, "
         f"resultat {result['shadow_portfolio']['summary']['profit']:+.0f} kr."
     )

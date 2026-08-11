@@ -99,9 +99,32 @@ export function overOddstak(
 }
 
 /**
+ * EV-terskelen som gjelder for ett utfall.
+ *
+ * OT/SO har en høyere terskel enn hjemme og borte (`meta.draw_value_min`, i dag
+ * 0,30 mot 0,15). Grunnen er at Norsk Tipping holder OT/SO-oddsen praktisk talt
+ * fast rundt 3,90, mens hjemme- og borteoddsen beveger seg med markedet: samme
+ * EV-terskel måler et markedssignal i det ene tilfellet og bare modellens egen
+ * dristighet i det andre. Se `DEFAULT_DRAW_MIN_VALUE` i `NHL/bet_tracker.py`.
+ *
+ * Brukerens slider kan skjerpe, aldri slakke: terskelen er den høyeste av de to.
+ * Mangler `draw_value_min` (gammel `meta.json`), gjelder den vanlige terskelen.
+ */
+export function evTerskelFor(
+    erUavgjort: boolean,
+    evTerskel: number,
+    drawEvTerskel: number | null | undefined,
+): number {
+    if (!erUavgjort || !erTall(drawEvTerskel)) return evTerskel;
+    return Math.max(evTerskel, drawEvTerskel);
+}
+
+/**
  * Hvorfor pipelinen ikke ville tatt utfallet — to ulike grunner:
  *
- *   - `uavgjort` — OT/SO. `meta.allow_draw_bets` er `false`.
+ *   - `uavgjort` — OT/SO, og `meta.allow_draw_bets` er `false`. Er de på,
+ *     vurderes utfallet på EV som alle andre, bare mot en høyere terskel
+ *     (se `evTerskelFor`).
  *   - `oddstak` — odds ≥ `meta.max_odds`. Pipelinen ville forkastet spillet.
  *
  * `null` betyr at utfallet vurderes på EV som vanlig.
@@ -116,8 +139,10 @@ export function utelattGrunn(
     erUavgjort: boolean,
     odds: number | null | undefined,
     maxOdds: number | null | undefined,
+    /** `meta.allow_draw_bets`. Utelatt = OT/SO spilles (pipelinens default). */
+    allowDrawBets?: boolean | null,
 ): UtelattGrunn | null {
-    if (erUavgjort) return 'uavgjort';
+    if (erUavgjort && allowDrawBets === false) return 'uavgjort';
     if (overOddstak(odds, maxOdds)) return 'oddstak';
     return null;
 }
@@ -138,8 +163,10 @@ export function utelattTekst(grunn: UtelattGrunn | null): string | null {
  * Taggen for ett utfall. Rekkefølgen er ikke vilkårlig — den avgjør hvilken av
  * to sanne ting taggen forteller:
  *
- *   1. **OT/SO er alltid `UTELATT`**, uansett EV. Vi spiller ikke utfallet i det
- *      hele tatt, så EV-en er ikke en vurdering vi har tatt stilling til.
+ *   1. **`UTELATT · uavgjort` gjelder bare når OT/SO er skrudd av.** Da spiller
+ *      vi ikke utfallet i det hele tatt, og EV-en er ikke en vurdering vi har
+ *      tatt stilling til. Er de på, faller de gjennom til punkt 2 og 3 mot sin
+ *      egen, høyere terskel — send den inn via `evTerskelFor()`.
  *   2. **EV under terskel gir `NEI`**, også over oddstaket. Det er den primære
  *      grunnen: vi ville ikke tatt spillet uansett hva pipelinen tillot. For
  *      store outsidere er odds ≥ 4,0 vanlig, og `UTELATT · oddstak` på et utfall

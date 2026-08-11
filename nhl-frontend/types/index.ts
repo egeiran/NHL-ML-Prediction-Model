@@ -77,9 +77,15 @@ export interface SiteMeta {
     failed: string[];
     /** Pipelinens EV-terskel som brøk, f.eks. 0.15. */
     value_min: number;
+    /**
+     * EV-terskelen for OT/SO, f.eks. 0.30 — høyere enn `value_min` fordi
+     * OT/SO-oddsen ligger fast. Mangler i `meta.json` skrevet før terskelen
+     * fantes; da gjelder `value_min` for alle tre utfall.
+     */
+    draw_value_min?: number;
     /** Høyeste odds pipelinen spiller. */
     max_odds: number;
-    /** Om OT/SO-spill legges inn. Er `false` i dag. */
+    /** Om OT/SO-spill legges inn. */
     allow_draw_bets: boolean;
 }
 

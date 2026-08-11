@@ -340,62 +340,206 @@ def test_utah_alias_gets_same_form_as_a_team_without_alias():
     assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
 
 
-def test_draw_bets_go_to_the_shadow_ledger():
-    """
-    OT/SO-spill har ingen målbar edge og skal ikke legges inn – men de skal
-    føres i skyggeloggen med full innsats, så vi kan måle hva vi går glipp av
-    (eller sparer oss for).
-    """
-    import bet_tracker as bt
-
+def _report_game(**overrides):
+    """Én rad i value-rapporten. Default: hjemmespill godt over begge tersklene."""
     game = {
-        "best_value": "draw",
-        "best_value_delta": 0.30,
-        "date": "2026-10-10",
-        "start_time": "2026-10-10T18:00:00+00:00",
+        "best_value": "home",
+        "best_value_delta": 0.25,
+        "date": "2026-12-10",
+        "start_time": "2026-12-10T18:00:00+00:00",
         "home_abbr": "BOS",
         "away_abbr": "MTL",
         "event_id": "1",
         "odds_home": 2.0,
         "odds_draw": 3.9,
         "odds_away": 3.5,
-        "model_draw": 0.33,
+        "model_home_win": 0.625,
+        "implied_home_prob": 0.5,
+        "value_home": 0.25,
+        "model_draw": 0.28,
         "implied_draw_prob": 0.256,
-        "value_draw": 0.30,
+        "value_draw": 0.10,
     }
-    home_game = dict(game, event_id="2", best_value="home", model_home_win=0.55,
-                     implied_home_prob=0.5, value_home=0.25, best_value_delta=0.25)
+    game.update(overrides)
+    return game
 
-    history, shadow = [], []
-    created, shadowed = bt.record_new_bets(
-        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
-    )
 
-    # Uavgjort havner i skyggeloggen, hjemmespillet i den ekte.
-    assert (created, shadowed) == (1, 1)
-    assert [r["selection"] for r in history] == ["home"]
-    assert [r["selection"] for r in shadow] == ["draw"]
-    # Skyggespillet har full innsats og avregnes som et ekte spill.
-    assert shadow[0]["stake"] == 100.0 and shadow[0]["status"] == "pending"
+def _classify(report, **kwargs):
+    """record_new_bets uten nettverk: kamptypen stubbes til grunnserie."""
+    import bet_tracker as bt
+
+    history, shadow = kwargs.pop("history", []), kwargs.pop("shadow", [])
+    original = bt.is_bettable_game_type
+    bt.is_bettable_game_type = kwargs.pop("game_type_ok", lambda *_: True)
+    try:
+        created, shadowed = bt.record_new_bets(
+            history, prefetched_report=report, shadow=shadow, min_value=0.15, **kwargs
+        )
+    finally:
+        bt.is_bettable_game_type = original
+    return history, shadow, created, shadowed
+
+
+def test_rejected_bets_go_to_the_shadow_ledger():
+    """
+    Skyggeloggen er kampene vi ikke tar fordi de ryker på EV-terskelen eller
+    oddstaket. Full innsats og vanlig avregning, så terskelplasseringen kan
+    måles. OT/SO er ikke lenger et eget tilfelle – de spilles som alt annet.
+    """
+    import bet_tracker as bt
+
+    tatt = _report_game(event_id="1")
+    lav_ev = _report_game(event_id="2", best_value_delta=0.10, value_home=0.10)
+    hoye_odds = _report_game(event_id="3", odds_home=4.2, value_home=0.4,
+                             best_value_delta=0.4)
+    # Uavgjort må over sin egen, høyere terskel (0.30) for å bli spilt.
+    uavgjort = _report_game(event_id="4", best_value="draw", best_value_delta=0.35,
+                            value_draw=0.35, value_home=None, value_away=None)
+
+    history, shadow, created, shadowed = _classify([tatt, lav_ev, hoye_odds, uavgjort])
+
+    # Over sin terskel -> porteføljen. Uavgjort er ikke utelukket, bare strengere.
+    assert (created, shadowed) == (2, 2)
+    assert sorted(r["event_id"] for r in history) == ["1", "4"]
+    assert sorted(r["event_id"] for r in shadow) == ["2", "3"]
+    # Skyggespill har full innsats og avregnes som et ekte spill.
+    assert all(r["stake"] == 100.0 and r["status"] == "pending" for r in shadow)
 
     # Ingen dobbeltføring ved neste kjøring.
-    created2, shadowed2 = bt.record_new_bets(
-        history, prefetched_report=[game, home_game], shadow=shadow, min_value=0.15
+    _, _, created2, shadowed2 = _classify(
+        [tatt, lav_ev, hoye_odds, uavgjort], history=history, shadow=shadow
     )
     assert (created2, shadowed2) == (0, 0)
 
-    # Med bryteren på spilles de som før, og havner ikke i skyggeloggen.
+    # Skrus OT/SO av igjen, havner de i skyggeloggen i stedet.
     original = bt.ALLOW_DRAW_BETS
-    bt.ALLOW_DRAW_BETS = True
+    bt.ALLOW_DRAW_BETS = False
     try:
-        history2, shadow2 = [], []
-        created3, shadowed3 = bt.record_new_bets(
-            history2, prefetched_report=[game], shadow=shadow2, min_value=0.15
-        )
-        assert (created3, shadowed3) == (1, 0)
-        assert history2[0]["selection"] == "draw" and shadow2 == []
+        h, s, c, sh = _classify([uavgjort])
+        assert (c, sh) == (0, 1)
+        assert h == [] and [r["selection"] for r in s] == ["draw"]
     finally:
         bt.ALLOW_DRAW_BETS = original
+
+
+def test_draws_need_a_higher_ev_threshold_than_home_and_away():
+    """
+    Norsk Tipping holder OT/SO-oddsen fast rundt 3,90, så EV-terskelen måler noe
+    annet for uavgjort enn for hjemme/borte: den blir en ren test av hvor høyt
+    modellen tør å gå. Derfor egen terskel på 0,30.
+    """
+    import bet_tracker as bt
+
+    assert bt.DEFAULT_DRAW_MIN_VALUE == 0.30
+    assert bt.min_value_for("home", 0.15) == 0.15
+    assert bt.min_value_for("draw", 0.15) == 0.30
+
+    # EV 0,20: nok for et hjemmespill, ikke for uavgjort.
+    kun_uavgjort = dict(value_home=None, value_away=None, best_value="draw")
+    _, s, c, sh = _classify([_report_game(value_draw=0.20, **kun_uavgjort)])
+    assert (c, sh) == (0, 1) and s[0]["selection"] == "draw"
+
+    h, _, c, sh = _classify([_report_game(value_draw=0.35, **kun_uavgjort)])
+    assert (c, sh) == (1, 0) and h[0]["selection"] == "draw"
+
+    # Terskelen kan overstyres per kall (API-et sender den videre).
+    h, _, c, _ = _classify([_report_game(value_draw=0.20, **kun_uavgjort)],
+                           draw_min_value=0.15)
+    assert c == 1 and h[0]["selection"] == "draw"
+
+
+def test_a_failing_draw_does_not_drag_down_a_good_home_bet():
+    """
+    Uavgjort kan ha høyest EV uten å klare sin egen terskel. Da skal vi fortsatt
+    ta hjemmespillet i samme kamp – ikke kaste hele kampen. Hvert utfall
+    vurderes mot sin egen terskel, ikke bare `best_value`.
+    """
+    game = _report_game(
+        best_value="draw", best_value_delta=0.28,  # høyest EV ...
+        value_draw=0.28,                           # ... men under 0,30
+        value_home=0.22,                           # klarer 0,15
+        value_away=None,
+    )
+    history, shadow, created, shadowed = _classify([game])
+    assert (created, shadowed) == (1, 0)
+    assert history[0]["selection"] == "home" and history[0]["odds"] == 2.0
+
+
+def test_a_game_never_lands_in_both_ledgers():
+    """
+    Én kamp gir én kandidat. Skygges den på uavgjort og hjemmelaget senere
+    kvalifiserer, skal skyggeraden bort – ellers telles kampen to ganger, én
+    gang med notionell og én gang med ekte innsats.
+    """
+    avvist = _report_game(best_value="draw", best_value_delta=0.28,
+                          value_draw=0.28, value_home=0.10, value_away=None)
+    senere = _report_game(best_value="draw", best_value_delta=0.28,
+                          value_draw=0.28, value_home=0.22, value_away=None)
+
+    history, shadow, created, shadowed = _classify([avvist])
+    assert (created, shadowed) == (0, 1) and shadow[0]["selection"] == "draw"
+
+    history, shadow, created, shadowed = _classify(
+        [senere], history=history, shadow=shadow
+    )
+    assert (created, shadowed) == (1, 0)
+    assert [r["selection"] for r in history] == ["home"] and shadow == []
+
+
+def test_a_bet_moves_out_of_the_shadow_when_the_odds_cross_the_threshold():
+    """
+    Oddsen kan bevege seg mellom kjøringene. Krysser den terskelen, tar vi
+    spillet på ekte – og skyggeraden skal bort, ellers telles kampen to ganger.
+    """
+    under = _report_game(best_value_delta=0.10, value_home=0.10)
+    over = _report_game(best_value_delta=0.25, value_home=0.25)
+
+    history, shadow, created, shadowed = _classify([under])
+    assert (created, shadowed) == (0, 1)
+
+    history, shadow, created, shadowed = _classify(
+        [over], history=history, shadow=shadow
+    )
+    assert (created, shadowed) == (1, 0)
+    assert [r["event_id"] for r in history] == ["1"] and shadow == []
+
+
+def test_playoff_games_are_skipped_entirely():
+    """
+    Sluttspill spilles ikke: Elo oppdateres bare på grunnserien, så modellen
+    predikerer på frosne ratings. De skal ikke i skyggeloggen heller – det er
+    ikke terskelen som diskvalifiserer dem.
+    """
+    history, shadow, created, shadowed = _classify(
+        [_report_game()], game_type_ok=lambda *_: False
+    )
+    assert (created, shadowed) == (0, 0)
+    assert history == [] and shadow == []
+
+
+def test_game_type_falls_back_to_the_calendar_when_the_api_is_silent():
+    """
+    Svarer ikke NHL-APIet, gjetter vi ikke: desember spilles som normalt, mai
+    gjør det ikke. Uten den fallbacken ville et nede API i sluttspillet gitt
+    nøyaktig de spillene filteret finnes for å stoppe.
+    """
+    import bet_tracker as bt
+
+    original = bt.lookup_game_type
+    bt.lookup_game_type = lambda *_: None
+    try:
+        assert bt.is_bettable_game_type("2026-12-10", "BOS", "MTL") is True
+        assert bt.is_bettable_game_type("2026-05-20", "BOS", "MTL") is False
+        assert bt.is_bettable_game_type("2026-04-25", "BOS", "MTL") is False
+    finally:
+        bt.lookup_game_type = original
+
+    # Med et svar fra APIet er det svaret som gjelder, ikke kalenderen.
+    bt.lookup_game_type = lambda *_: 3
+    try:
+        assert bt.is_bettable_game_type("2026-12-10", "BOS", "MTL") is False
+    finally:
+        bt.lookup_game_type = original
 
 
 def test_season_column_and_portfolio_filtering():
@@ -914,7 +1058,13 @@ def main() -> int:
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
             ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
-            ("draw_shadow_ledger", test_draw_bets_go_to_the_shadow_ledger, False),
+            ("rejected_shadow_ledger", test_rejected_bets_go_to_the_shadow_ledger, False),
+            ("draw_threshold", test_draws_need_a_higher_ev_threshold_than_home_and_away, False),
+            ("draw_does_not_block_home", test_a_failing_draw_does_not_drag_down_a_good_home_bet, False),
+            ("one_ledger_per_game", test_a_game_never_lands_in_both_ledgers, False),
+            ("shadow_promotion", test_a_bet_moves_out_of_the_shadow_when_the_odds_cross_the_threshold, False),
+            ("playoffs_skipped", test_playoff_games_are_skipped_entirely, False),
+            ("game_type_fallback", test_game_type_falls_back_to_the_calendar_when_the_api_is_silent, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
             ("nt_retry_recovers", test_nt_odds_retries_a_dropped_connection, False),
             ("nt_retry_on_503", test_nt_odds_retries_a_transient_server_error, False),

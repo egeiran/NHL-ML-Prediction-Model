@@ -596,8 +596,8 @@ def main() -> None:
 
     print()
     out = {
-        "all": report(bets, "Hele historikken (inkl. OT/SO-spill vi ikke tar lenger)"),
-        "no_draw": report(no_draw, "Uten OT/SO – regimet vi faktisk spiller i dag"),
+        "all": report(bets, "Hele historikken – regimet vi faktisk spiller i dag"),
+        "no_draw": report(no_draw, "Uten OT/SO – kontroll for hvor mye uavgjort drar tallene"),
     }
 
     dest = os.environ.get("NHL_STAKE_ANALYSIS_JSON")

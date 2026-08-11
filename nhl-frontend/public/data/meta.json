@@ -11,6 +11,7 @@
   ],
   "failed": [],
   "value_min": 0.15,
+  "draw_value_min": 0.3,
   "max_odds": 4.0,
-  "allow_draw_bets": false
+  "allow_draw_bets": true
 }

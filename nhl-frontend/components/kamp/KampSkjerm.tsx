@@ -76,9 +76,16 @@ export function KampSkjerm() {
     }, [teams.data]);
 
     const maxOdds = meta.data?.max_odds;
+    // OT/SO har egen, høyere terskel og kan være skrudd av — pipeline-regler
+    // fra meta, ikke brukervalg.
+    const drawEvTerskel = meta.data?.draw_value_min;
+    const allowDrawBets = meta.data?.allow_draw_bets;
     const analyse = useMemo(
-        () => byggAnalyse(matchups.data, elo.data, valg, evTerskel, maxOdds),
-        [matchups.data, elo.data, valg, evTerskel, maxOdds],
+        () =>
+            byggAnalyse(
+                matchups.data, elo.data, valg, evTerskel, maxOdds, drawEvTerskel, allowDrawBets,
+            ),
+        [matchups.data, elo.data, valg, evTerskel, maxOdds, drawEvTerskel, allowDrawBets],
     );
 
     if (error) {

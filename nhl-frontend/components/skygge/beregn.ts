@@ -4,11 +4,15 @@
  * All filtrering og sammendrag går gjennom `settledBets()` og `summarize()` i
  * `lib/analysis.ts`. Skjermen regner ikke ut noe selv; den velger utvalg.
  *
- * Kildevalget er skjermens hele poeng (DECISIONS, «Datatilstand du må håndtere»):
- * `shadow.json` er fasit når den har rader, men den er tom i dag fordi ingen
- * sesong har kjørt siden OT/SO-spillene ble tatt ut av `bet_history.csv`. Da
- * faller skjermen tilbake på `selection === 'draw'`-radene som fortsatt ligger i
- * `portfolio.json`, og sier i UI hvilken kilde tallene kommer fra.
+ * Skyggeloggen er kampene vi *ikke* spilte fordi de røk på en av de to
+ * tersklene — for lav EV (0,15, eller 0,30 for uavgjort) eller odds 4,00 og over
+ * — ført med samme innsats og avregnet med samme logikk som ekte spill.
+ * Skjermen stiller dem mot porteføljen, så «ligger tersklene riktig?» blir et
+ * spørsmål med tall bak.
+ *
+ * Kildevalget (DECISIONS, «Datatilstand du må håndtere»): `shadow.json` er
+ * fasit når den har avregnede rader. Har den ingen, sier skjermen det i stedet
+ * for å vise et tomt panel som om det var et svar.
  */
 
 import {
@@ -24,37 +28,30 @@ import type { BetEntry, ShadowEntry } from '@/types';
 /* -------------------------------------------------------------------------- */
 
 /**
- * `shadow` = den ekte skyggeloggen · `portefølje` = OT/SO-radene i historikken ·
- * `ingen` = ingen av delene har avregnede rader.
+ * `shadow` = skyggeloggen har avregnede rader · `ingen` = den har det ikke.
+ *
+ * Fallbacken til OT/SO-radene i `portfolio.json` er borte: OT/SO spilles nå på
+ * lik linje med hjemme og borte, så de radene er ekte spill, ikke en skygge.
  */
-export type Kilde = 'shadow' | 'portefølje' | 'ingen';
+export type Kilde = 'shadow' | 'ingen';
 
 export interface Utvalg {
     kilde: Kilde;
-    /** `selection !== 'draw'` — spillene som faktisk ble lagt inn. */
+    /** Alle avregnede spill i porteføljen — inkludert OT/SO. */
     faktisk: AnalysisSummary;
-    /** Skyggeloggen, fra `shadow.json` eller fra OT/SO-radene. */
+    /** Kampene vi lot ligge, fra `shadow.json`. */
     skygge: AnalysisSummary;
 }
 
-/**
- * Velger skyggekilde og lager sammendraget for begge panelene.
- *
- * Rekkefølgen er fast: `shadow.json` vinner så snart den har én avregnet rad.
- * Skjermen bytter altså kilde av seg selv den dagen skyggeloggen fylles.
- */
+/** Sammendraget for begge panelene. */
 export function velgUtvalg(
     porteføljeRader: readonly BetEntry[],
     skyggeRader: readonly ShadowEntry[],
 ): Utvalg {
     const alle: readonly AnalysisBet[] = porteføljeRader;
-    const faktisk = settledBets(alle, { excludeDraw: true });
-    const fraShadow = settledBets(skyggeRader);
-    const fraDraw = settledBets(alle).filter((b) => b.selection === 'draw');
-
-    const skygge = fraShadow.length > 0 ? fraShadow : fraDraw;
-    const kilde: Kilde =
-        fraShadow.length > 0 ? 'shadow' : fraDraw.length > 0 ? 'portefølje' : 'ingen';
+    const faktisk = settledBets(alle);
+    const skygge = settledBets(skyggeRader);
+    const kilde: Kilde = skygge.length > 0 ? 'shadow' : 'ingen';
 
     return { kilde, faktisk: summarize(faktisk), skygge: summarize(skygge) };
 }

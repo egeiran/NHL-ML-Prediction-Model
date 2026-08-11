@@ -12,7 +12,7 @@
  * på det; forveksles de to blir både vindusnettoen og søylene feil.
  */
 
-import { erTall, evForUtfall, navnFor, overOddstak } from '@/lib/spill';
+import { erTall, evForUtfall, evTerskelFor, navnFor, overOddstak } from '@/lib/spill';
 import type { PortfolioPoint, ValueGame } from '@/types';
 
 /* -------------------------------------------------------------------------- */
@@ -155,7 +155,8 @@ export interface Spill {
     abbr: string;
     navn: string;
     motstander: string;
-    side: 'hjemme' | 'borte';
+    /** `uavgjort` = OT/SO. Da er `abbr`/`navn` hjemmelaget, som logoen viser. */
+    side: 'hjemme' | 'borte' | 'uavgjort';
     /** Fullt tidsstempel for avspark, eller `null`. */
     start: string | null;
     modellProb: number;
@@ -167,8 +168,9 @@ export interface Spill {
 /**
  * Spillene over EV-terskelen, sortert på EV synkende.
  *
- * Bare hjemme- og borteseier vurderes: `meta.allow_draw_bets` er `false`, og
- * OT/SO ligger i Skyggeloggen, ikke her.
+ * Alle tre utfall vurderes. OT/SO måles mot `drawEvTerskel`
+ * (`meta.draw_value_min`, høyere enn den vanlige — se `evTerskelFor` i
+ * `lib/spill.ts`) og faller helt ut når `allowDrawBets` er `false`.
  *
  * `evTerskel` SKAL komme fra `useEvTerskel()`. Leses den fra noe annet sted,
  * driver skjermene fra hverandre (DECISIONS punkt 6).
@@ -178,15 +180,17 @@ export interface Spill {
  * odds 4,5 og EV 0,30 som `bet_history.csv` garantert ikke får. Utelates
  * argumentet, gjelder ingen grense — send den alltid inn når `meta` er lastet.
  *
- * Taket er ikke det samme som paritet med loggen. `_choose_best_per_day()` tar
- * høyst ett spill per dag, bare `best_value`-utfallet, og bare når alle tre
- * oddsene finnes; «Dagens spill» lister alle utfall over EV-terskelen på tvers
- * av dagens kamper. Lista er altså fortsatt normalt lengre enn loggen blir.
+ * Taket er ikke det samme som paritet med loggen. `record_new_bets()` tar høyst
+ * ETT utfall per kamp – det beste av dem som klarer sin egen terskel – og bare
+ * når alle tre oddsene finnes; «Dagens spill» lister alle kvalifiserende utfall
+ * på tvers av dagens kamper. Lista er altså normalt lengre enn loggen blir.
  */
 export function finnSpill(
     kamper: readonly ValueGame[],
     evTerskel: number,
     maxOdds?: number | null,
+    drawEvTerskel?: number | null,
+    allowDrawBets?: boolean | null,
 ): Spill[] {
     const ut: Spill[] = [];
 
@@ -212,13 +216,25 @@ export function finnSpill(
                 odds: k.odds_away,
                 verdi: k.value_away,
             },
+            {
+                // Logoen viser hjemmelaget; `side` forteller at raden er OT/SO.
+                side: 'uavgjort' as const,
+                abbr: hjemmeAbbr,
+                rå: k.home,
+                motstander: navnFor(borteAbbr, k.away),
+                prob: k.model_draw,
+                odds: k.odds_draw,
+                verdi: k.value_draw,
+            },
         ];
 
         for (const c of kandidater) {
+            const erUavgjort = c.side === 'uavgjort';
+            if (erUavgjort && allowDrawBets === false) continue;
             if (!erTall(c.prob) || !erTall(c.odds) || c.odds <= 0) continue;
             if (overOddstak(c.odds, maxOdds)) continue;
             const ev = evForUtfall(c.verdi, c.prob, c.odds);
-            if (ev === null || ev < evTerskel) continue;
+            if (ev === null || ev < evTerskelFor(erUavgjort, evTerskel, drawEvTerskel)) continue;
             ut.push({
                 nøkkel: `${k.event_id}-${c.side}`,
                 abbr: c.abbr ?? c.rå,

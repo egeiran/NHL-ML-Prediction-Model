@@ -11,7 +11,7 @@ eksplisitt peker videre til handoffen.
 | `docs/design_handoff_blalinja_frontend/NHL Modell.dc.html` | Fungerende prototype. Les for eksakte verdier og SVG-geometri. **Ikke kopier koden** — den er i et proprietært komponentformat. |
 | `docs/design_handoff_blalinja_frontend/screenshots/*.png` | Rendret fasit per skjerm. |
 | [GitHub issue #7](https://github.com/egeiran/NHL-ML-Prediction-Model/issues/7) | Autoritativ på **kalibrering, EV/odds-bøtter, innsatssimulator og matematikk**. |
-| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = 202 spill, `no_draw` = 176. |
+| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = 182 spill, `no_draw` = 156. Regenereres når `bet_history.csv` endres. |
 | `PROBLEMS.md` | Åpne modellfunn som vises på Modell-skjermen. |
 
 ## Beslutninger tatt med eier
