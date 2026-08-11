@@ -13,9 +13,9 @@
  */
 
 import { useMemo, type CSSProperties } from 'react';
-import { ErrorState, EvTerskelSlider, Laster } from '@/components/ui';
+import { ErrorState, EvTerskelNotis, Laster } from '@/components/ui';
 import { useEvTerskel } from '@/lib/config';
-import { dl, nf, pc } from '@/lib/format';
+import { dl, nf } from '@/lib/format';
 import { kombiner, useMeta, usePortfolio, useValueReport } from '@/lib/use-data';
 import { finnSpill } from './beregninger';
 import { DagensSpill } from './DagensSpill';
@@ -72,20 +72,22 @@ export function Oversikt() {
     // Terskelen står i samme linje fordi overskriften teller «spill over
     // terskel» uten å si hvilken — en bruker som har dratt slideren til 40 %
     // på /verdi får ellers en permanent, uforklart «Ingen spill over terskel».
-    const kicker = `${harKamper ? dl(kamper[0].date) : 'Sesongpause'} · terskel EV ≥ ${pc(evTerskel, 0)}`;
+    const kickerPrefiks = `${harKamper ? dl(kamper[0].date) : 'Sesongpause'} · `;
     const tittel = overskrift(kamper.length, spill.length);
 
     // Tomlinja skiller sesongpause fra «det spilles, men ingenting kvalifiserer».
     const tomLinje = harKamper
         ? 'Markedet priser dagens kamper som modellen.'
-        : 'Neste sesongstart i oktober. Elo oppdateres gjennom pausen.';
+        : 'Neste sesongstart 29. september. Elo oppdateres gjennom pausen.';
 
     return (
         <>
             <section className={styles.hero} aria-labelledby="oversikt-tittel">
                 <div className={styles.heroTopp}>
                     <div className={styles.heroTekst}>
-                        <span className="t-kicker">{loading ? <Laster /> : kicker}</span>
+                        <span className="t-kicker">
+                            {loading ? <Laster /> : <EvTerskelNotis prefiks={kickerPrefiks} />}
+                        </span>
                         <h1
                             id="oversikt-tittel"
                             className={`t-hero-headline ${styles.heroOverskrift}`}
@@ -93,11 +95,6 @@ export function Oversikt() {
                             {loading ? <Laster /> : tittel}
                         </h1>
                     </div>
-                    {/* Terskelen styrer overskriften her, ikke bare /verdi.
-                        Slideren står derfor der spørsmålet «hvorfor er lista
-                        tom?» faktisk stilles, og bærer avviksnotisen fra
-                        DECISIONS punkt 6. */}
-                    <EvTerskelSlider className={styles.heroTerskel} />
                 </div>
 
                 {error !== null ? (

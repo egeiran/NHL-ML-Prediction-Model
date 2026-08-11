@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { KampSkjerm } from '@/components/kamp';
-import { EvTerskelSlider, Laster, SectionHeading } from '@/components/ui';
+import { EvTerskelNotis, Laster, SectionHeading } from '@/components/ui';
 
 export const metadata: Metadata = {
     title: 'Kampanalyse',
@@ -14,9 +14,9 @@ export const metadata: Metadata = {
  * krever en `<Suspense>`-grense i Next 15 — uten den feiler byggingen av den
  * statiske eksporten.
  *
- * `<EvTerskelSlider>` står i hodet fordi terskelen styrer SPILL/NEI-taggingen i
- * utfallskolonnene. Uten den var den usynlig her, og avviksnotisen DECISIONS
- * punkt 6 krever sto bare på /verdi. Den er en klientkomponent i en
+ * Terskelen styrer SPILL/NEI-taggingen i utfallskolonnene, men justeres bare på
+ * /verdi. `<EvTerskelNotis>` sier derfor hvilken terskel som gjelder, og at den
+ * avviker fra pipelinens (DECISIONS punkt 6). Den er en klientkomponent i en
  * serverkomponent — det er greit, den rendres som et barn og har provideren fra
  * `app/layout.tsx`.
  */
@@ -24,9 +24,8 @@ export default function KampPage() {
     return (
         <main>
             <SectionHeading
-                kicker="Kampanalyse · egendefinert oppgjør"
+                kicker={<EvTerskelNotis prefiks="Kampanalyse · egendefinert oppgjør · " />}
                 title="Sett to lag mot hverandre"
-                right={<EvTerskelSlider />}
             />
             <Suspense fallback={<div style={{ paddingTop: 36 }}><Laster /></div>}>
                 <KampSkjerm />
