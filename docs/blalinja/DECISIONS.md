@@ -11,7 +11,7 @@ eksplisitt peker videre til handoffen.
 | `docs/design_handoff_blalinja_frontend/NHL Modell.dc.html` | Fungerende prototype. Les for eksakte verdier og SVG-geometri. **Ikke kopier koden** — den er i et proprietært komponentformat. |
 | `docs/design_handoff_blalinja_frontend/screenshots/*.png` | Rendret fasit per skjerm. |
 | [GitHub issue #7](https://github.com/egeiran/NHL-ML-Prediction-Model/issues/7) | Autoritativ på **kalibrering, EV/odds-bøtter, innsatssimulator og matematikk**. |
-| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = 182 spill, `no_draw` = 156. Regenereres når `bet_history.csv` endres. |
+| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = 182 spill, `no_draw` = 156. Regenereres automatisk av `Daily Bet Update` rett etter `bet_tracker.py`, så den følger `bet_history.csv`. |
 | `PROBLEMS.md` | Åpne modellfunn som vises på Modell-skjermen. |
 
 ## Beslutninger tatt med eier
@@ -30,7 +30,11 @@ eksplisitt peker videre til handoffen.
    skrives med visningsforkortelser (UTA). Frontend skal IKKE ha aliaslogikk.
    Elo-skjermen beholder likevel forklaringsnotatet om Utah-vinduet.
 6. **EV-terskel**: Python er sannheten (`NHL_VALUE_MIN`, default `0.15`).
-   Eksporteres til `meta.json` som `value_min`. Frontend bruker den som
+   Eksporteres til `meta.json` som `value_min`. OT/SO har sin egen, høyere
+   terskel (`NHL_DRAW_VALUE_MIN`, default `0.30`, eksportert som
+   `draw_value_min`) fordi NT holder OT/SO-oddsen fast rundt 3,90 — se
+   `evTerskelFor()` i `lib/spill.ts`. Den er en pipelineregel, ikke et
+   brukervalg: slideren kan skjerpe den, aldri slakke. Frontend bruker den som
    *default* for brukerinnstillingen, som er en slider 5–45 %, steg 1,
    persistert i `localStorage`. Når brukerens verdi avviker fra pipelinens skal
    UI si fra at siten da viser noe annet enn `bet_history.csv`.
@@ -99,24 +103,27 @@ daily_pnl[i]      = value[i] - value[i-1]          // value[-1] behandles som 0
 window_net        = value[siste] - value[indeks før vindusstart]
 cumulative_staked = løpende sum av timeseries[].invested
 
-expected_hits_model  = sum(bets[].model_prob)      // = 85,5 over de 202 spillene
-expected_hits_market = sum(bets[].implied_prob)    // = 66,4
-actual_hits          = antall bets[].status == "won"   // = 68
+expected_hits_model  = sum(bets[].model_prob)      // = 76,7 over de 182 spillene
+expected_hits_market = sum(bets[].implied_prob)    // = 59,5
+actual_hits          = antall bets[].status == "won"   // = 63
 ```
 
-Referansetall å sjekke mot (hele historikken, 202 spill):
-`total_bets 202 · total_staked 20 200 · settled_return 20 235 · profit +35 kr ·
-roi 0,002 · win_rate 0,337 · snittodds 3,14 · hjemme 90, borte 86, uavgjort 26 ·
-uavgjort-spill −640 kr, ikke-uavgjort +675 kr.`
+Referansetall å sjekke mot (hele historikken, 182 spill):
+`total_bets 182 · total_staked 18 200 · settled_return 18 760 · profit +560 kr ·
+roi 0,031 · win_rate 0,346 · hjemme 79, borte 77, uavgjort 26 ·
+uavgjort-spill −640 kr, ikke-uavgjort +1 200 kr.`
+
+De 20 sluttspillkampene er fjernet fra historikken: Elo oppdateres bare på
+grunnserien, så modellen predikerte der på frosne ratings. Se `PROBLEMS.md`.
 
 ## Datatilstand du må håndtere
 
 - `value-report.json` er **tom array** akkurat nå (sesongpause). Den ekte
   tomtilstanden er hovedtilstanden — bygg den godt, ikke som et ettertanke.
-- `bet_shadow.csv` er **tom** (0 rader). `shadow.json` blir altså `[]`.
-  Skyggelogg-skjermen må falle tilbake på `selection === 'draw'`-radene i
-  `portfolio.json` når `shadow.json` er tom, og si fra i UI hvilken kilde som
-  brukes.
+- `bet_shadow.csv` har **345 rader**: kampene vi ikke tok fordi de røk på
+  EV-terskelen eller oddstaket. Skyggelogg-skjermen stiller dem mot porteføljen.
+  Er `shadow.json` tom, skal skjermen si det — ikke vise et tomt panel som om
+  det var et svar.
 - `portfolio.json` har topp-nivå `{timeseries, summary, bets}`. Ingen
   `season`/`seasons`/`all_time` — ikke anta at de finnes.
 - `matchups.json` har 992 nøkler `"HOME-AWAY"` og 32 lag med `last_5` + `stats`.

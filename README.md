@@ -272,7 +272,13 @@ Prediction Model/
    ```json
    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.15, "max_odds": 4.0 }
    ```
-9. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov), eksporterer statisk site-data og committer ny `bet_history.csv` + `nhl-frontend/public/data/`. Aktiver Actions og sjekk at default branch er korrekt.
+9. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for
+   modell (trener ved behov), eksporterer statisk site-data og committer ny
+   `bet_history.csv` + `nhl-frontend/public/data/`. Den regenererer også
+   `docs/blalinja/stake_truth.json` rett etter `bet_tracker.py` — fasiten
+   `nhl-frontend/lib/analysis.test.mjs` måler seg mot er regnet fra
+   `bet_history.csv`, så uten det steget ville den råtnet fra første nye spill.
+   Aktiver Actions og sjekk at default branch er korrekt.
 
 ## 🐛 Feilsøking
 - Backend: `pip install -r NHL/requirements-api.txt`, sjekk at `models/nhl_model.pkl` finnes og at serveren kjører på port 8000.
