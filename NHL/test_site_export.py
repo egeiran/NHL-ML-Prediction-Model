@@ -517,29 +517,67 @@ def test_playoff_games_are_skipped_entirely():
     assert history == [] and shadow == []
 
 
-def test_game_type_falls_back_to_the_calendar_when_the_api_is_silent():
+def test_unknown_game_type_is_never_played():
     """
-    Svarer ikke NHL-APIet, gjetter vi ikke: desember spilles som normalt, mai
-    gjør det ikke. Uten den fallbacken ville et nede API i sluttspillet gitt
-    nøyaktig de spillene filteret finnes for å stoppe.
+    Vet vi ikke kamptypen, spiller vi ikke. Det finnes ingen kalendergrense å
+    gjette på: preseason 2025-26 gikk til 4. oktober mens grunnserien startet
+    7., og 2026-27 starter 29. september. Et månedsskille ville sluppet gjennom
+    preseason noen år og stengt grunnserie andre.
     """
     import bet_tracker as bt
 
     original = bt.lookup_game_type
-    bt.lookup_game_type = lambda *_: None
     try:
-        assert bt.is_bettable_game_type("2026-12-10", "BOS", "MTL") is True
-        assert bt.is_bettable_game_type("2026-05-20", "BOS", "MTL") is False
-        assert bt.is_bettable_game_type("2026-04-25", "BOS", "MTL") is False
+        # Ingen dato redder et ukjent svar – heller ikke midt i grunnserien.
+        bt.lookup_game_type = lambda *_: None
+        for dato in ("2026-12-10", "2026-10-15", "2026-05-20", "2026-09-29"):
+            assert bt.is_bettable_game_type(dato, "BOS", "MTL") is False, dato
+
+        # Kamptypen avgjør, ikke kalenderen – begge veier.
+        bt.lookup_game_type = lambda *_: 2
+        assert bt.is_bettable_game_type("2026-05-20", "BOS", "MTL") is True
+        bt.lookup_game_type = lambda *_: 3
+        assert bt.is_bettable_game_type("2026-12-10", "BOS", "MTL") is False
+        bt.lookup_game_type = lambda *_: 1
+        assert bt.is_bettable_game_type("2026-09-22", "BOS", "MTL") is False
     finally:
         bt.lookup_game_type = original
 
-    # Med et svar fra APIet er det svaret som gjelder, ikke kalenderen.
-    bt.lookup_game_type = lambda *_: 3
+    assert bt.is_bettable_game_type(None, "BOS", "MTL") is False
+    assert bt.is_bettable_game_type("2026-12-10", None, "MTL") is False
+
+
+def test_game_type_picks_the_closest_game_in_the_scoreboard_window():
+    """
+    Scoreboardet svarer med ±5 dager. Møter to lag hverandre både i siste
+    grunnseriekamp og i sluttspillåpningen, ligger begge i svaret – og da må vi
+    lese den som faktisk er nærmest datoen, ellers spiller vi sluttspill.
+    """
+    import bet_tracker as bt
+
+    vindu = {
+        "gamesByDate": [
+            {"date": "2026-04-15", "games": [{
+                "id": 2025021300, "gameDate": "2026-04-15", "gameType": 2,
+                "homeTeam": {"abbrev": "BOS"}, "awayTeam": {"abbrev": "MTL"}}]},
+            {"date": "2026-04-19", "games": [{
+                "id": 2025030111, "gameDate": "2026-04-19", "gameType": 3,
+                "homeTeam": {"abbrev": "BOS"}, "awayTeam": {"abbrev": "MTL"}}]},
+        ]
+    }
+    original = bt.get_scoreboard
+    bt.get_scoreboard = lambda _date: vindu
     try:
-        assert bt.is_bettable_game_type("2026-12-10", "BOS", "MTL") is False
+        assert bt.lookup_game_type("2026-04-15", "BOS", "MTL") == 2
+        assert bt.lookup_game_type("2026-04-19", "BOS", "MTL") == 3
+        assert bt.is_bettable_game_type("2026-04-19", "BOS", "MTL") is False
     finally:
-        bt.lookup_game_type = original
+        bt.get_scoreboard = original
+
+    # Mangler gameType, leses kamptypen ut av NHL-idens siffer 5-6.
+    assert bt._game_type_from_id(2025030111) == 3
+    assert bt._game_type_from_id(2025021300) == 2
+    assert bt._game_type_from_id("tull") is None
 
 
 def test_season_column_and_portfolio_filtering():
@@ -1064,7 +1102,8 @@ def main() -> int:
             ("one_ledger_per_game", test_a_game_never_lands_in_both_ledgers, False),
             ("shadow_promotion", test_a_bet_moves_out_of_the_shadow_when_the_odds_cross_the_threshold, False),
             ("playoffs_skipped", test_playoff_games_are_skipped_entirely, False),
-            ("game_type_fallback", test_game_type_falls_back_to_the_calendar_when_the_api_is_silent, False),
+            ("unknown_type_skipped", test_unknown_game_type_is_never_played, False),
+            ("game_type_closest", test_game_type_picks_the_closest_game_in_the_scoreboard_window, False),
             ("season_ledger", test_season_column_and_portfolio_filtering, False),
             ("nt_retry_recovers", test_nt_odds_retries_a_dropped_connection, False),
             ("nt_retry_on_503", test_nt_odds_retries_a_transient_server_error, False),

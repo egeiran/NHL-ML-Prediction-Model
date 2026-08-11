@@ -73,6 +73,7 @@ ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "1").strip().lower() in 
 # grunnserien. Sett NHL_ALLOW_ALL_GAME_TYPES=1 for å spille alt likevel.
 ALLOWED_GAME_TYPES = {2}
 ALLOW_ALL_GAME_TYPES = os.environ.get("NHL_ALLOW_ALL_GAME_TYPES", "").strip().lower() in {"1", "true", "yes"}
+TYPE_NAMES = {1: "preseason", 2: "grunnserie", 3: "sluttspill"}
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
@@ -283,10 +284,29 @@ def _canon(abbr: Optional[str]) -> Optional[str]:
     return TEAM_ALIAS.get(abbr_up, abbr_up)
 
 
+def _date_distance(a: Optional[str], b: Optional[str]) -> int:
+    """Antall døgn mellom to YYYY-MM-DD. Stort tall når en av dem ikke kan leses."""
+    try:
+        da = datetime.strptime(str(a)[:10], "%Y-%m-%d").date()
+        db = datetime.strptime(str(b)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return 10_000
+    return abs((da - db).days)
+
+
 def _find_scoreboard_game(
     game_date: str, home_abbr: str, away_abbr: str
 ) -> Optional[Dict[str, Any]]:
-    """Rå kampobjekt fra scoreboardet, eller None hvis kampen ikke står der."""
+    """
+    Rå kampobjekt fra scoreboardet, eller None hvis kampen ikke står der.
+
+    Scoreboardet svarer med et vindu på ±5 dager, ikke én dag. Det er nødvendig –
+    vår dato er norsk, NHLs er nordamerikansk, så en kamp kl. 01:00 hos oss står
+    på gårsdagen hos dem – men det betyr også at flere kamper mellom de samme
+    lagene kan ligge i svaret. Vi tar den nærmeste i tid, ikke den første i
+    lista: en sluttspillåpning mot et lag man møtte i grunnserien uka før ville
+    ellers blitt lest som grunnseriekamp, og spilt.
+    """
     try:
         sb = get_scoreboard(game_date)
     except Exception:
@@ -294,13 +314,17 @@ def _find_scoreboard_game(
 
     target_home = _canon(home_abbr)
     target_away = _canon(away_abbr)
+    treff = []
     for game in _flatten_scoreboard_games(sb):
         if _canon(game.get("homeTeam", {}).get("abbrev")) != target_home:
             continue
         if _canon(game.get("awayTeam", {}).get("abbrev")) != target_away:
             continue
-        return game
-    return None
+        treff.append(game)
+
+    if not treff:
+        return None
+    return min(treff, key=lambda g: _date_distance(g.get("gameDate"), game_date))
 
 
 def _game_type_from_id(game_id: Any) -> Optional[int]:
@@ -328,35 +352,27 @@ def lookup_game_type(game_date: str, home_abbr: str, away_abbr: str) -> Optional
         return None
 
 
-def _inside_regular_season_window(game_date: Optional[str]) -> bool:
-    """
-    Grov kalendersjekk, brukt bare når NHL-APIet ikke kan svare på kamptype.
-    Grunnserien går fra oktober til midten av april; sluttspillet starter aldri
-    før 14. april. Utenfor vinduet lar vi spillet ligge i stedet for å gjette –
-    er APIet nede i desember spiller vi som normalt, er det nede i mai gjør vi
-    ikke det.
-    """
-    try:
-        d = datetime.strptime(str(game_date)[:10], "%Y-%m-%d").date()
-    except Exception:
-        return False
-    if d.month in {10, 11, 12, 1, 2, 3}:
-        return True
-    return d.month == 4 and d.day <= 13
-
-
 def is_bettable_game_type(
     game_date: Optional[str], home_abbr: Optional[str], away_abbr: Optional[str]
 ) -> bool:
-    """Om kampen er av en type vi spiller. Se ALLOWED_GAME_TYPES."""
+    """
+    Om kampen er av en type vi spiller. Se ALLOWED_GAME_TYPES.
+
+    Vet vi det ikke, spiller vi ikke. Det finnes ingen kalendergrense å gjette
+    på: preseason 2025-26 gikk til 4. oktober mens grunnserien startet 7., og
+    2026-27 starter allerede 29. september. Ethvert månedsskille ville sluppet
+    gjennom preseason noen år og stengt grunnserie andre.
+
+    Å feile lukket koster nesten ingenting: `get_json` retryer tre ganger, og er
+    NHL-APIet nede for alvor, feiler feature-byggingen uansett – da finnes det
+    ingen kandidater å ta stilling til. Prisen er en kamp vi lar ligge, mot
+    alternativet: å spille sluttspill fordi APIet var stille.
+    """
     if ALLOW_ALL_GAME_TYPES:
         return True
     if not game_date or not home_abbr or not away_abbr:
         return False
-    game_type = lookup_game_type(game_date, home_abbr, away_abbr)
-    if game_type is None:
-        return _inside_regular_season_window(game_date)
-    return game_type in ALLOWED_GAME_TYPES
+    return lookup_game_type(game_date, home_abbr, away_abbr) in ALLOWED_GAME_TYPES
 
 
 def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[Dict[str, Any]]:
@@ -839,6 +855,16 @@ def record_new_bets(
         if not is_bettable_game_type(
             entry.get("date"), entry.get("home_abbr"), entry.get("away_abbr")
         ):
+            # Sier fra hvilke kamper som falt ut, og hvorfor. Uten linja ville
+            # et stille NHL-API sett ut som en dag uten value-bets.
+            game_type = lookup_game_type(
+                entry.get("date"), entry.get("home_abbr"), entry.get("away_abbr")
+            )
+            grunn = TYPE_NAMES.get(game_type, "ukjent kamptype (ikke funnet hos NHL)")
+            print(
+                f"  [hopper over] {entry.get('date')} "
+                f"{entry.get('home_abbr')}-{entry.get('away_abbr')}: {grunn}"
+            )
             continue
 
         events = _event_keys(entry)

@@ -19,6 +19,9 @@ jobs:
       PREDICTIONS_SCRIPT: NHL/generate_predictions.py
       EXTRA_PYPI_PACKAGES: "matplotlib tabulate"
       NHL_VALUE_MIN: "0.15"
+      # OT/SO har egen, høyere terskel: NT holder oddsen fast rundt 3,90,
+      # så 0.15 ville bare målt hvor høyt modellen tør å gå. Se PROBLEMS.md.
+      NHL_DRAW_VALUE_MIN: "0.30"
       NHL_MAX_ODDS: "4.0"
     steps:
       - name: Checkout
