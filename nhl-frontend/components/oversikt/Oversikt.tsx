@@ -78,7 +78,7 @@ export function Oversikt() {
     // Tomlinja skiller sesongpause fra «det spilles, men ingenting kvalifiserer».
     const tomLinje = harKamper
         ? 'Markedet priser dagens kamper som modellen.'
-        : 'Neste sesongstart i oktober. Elo oppdateres gjennom pausen.';
+        : 'Neste sesongstart 29. september. Elo oppdateres gjennom pausen.';
 
     return (
         <>

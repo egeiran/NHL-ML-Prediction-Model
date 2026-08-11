@@ -63,8 +63,8 @@ export function UtahVindu({ tall }: UtahVinduProps) {
                 </p>
                 {otso > 0 ? (
                     <p className={styles.utahNote}>
-                        {nf(otso)} av spillene i vinduet var OT/SO-spill ({kr(otsoNetto)}), og ligger
-                        derfor også i skyggeloggen. Auditen tilskriver aliasfeilen {kr(-98)} av dem —
+                        {nf(otso)} av spillene i vinduet var OT/SO-spill ({kr(otsoNetto)}). De ligger
+                        i porteføljen, ikke i skyggeloggen. Auditen tilskriver aliasfeilen {kr(-98)} av dem —
                         støy fra feilen løftet kryssingsraten mot en terskel som uansett lå langt ute
                         i halen.
                     </p>

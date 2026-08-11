@@ -43,13 +43,20 @@ const FILTERVALG: readonly PillOption<Filter>[] = [
     { value: 'alle', label: 'Alle kamper' },
 ];
 
-/** OT/SO-noten. `allow_draw_bets` forklarer hvorfor raden alltid er UTELATT. */
-function fotnoteTekst(tillaterUavgjort: boolean | undefined): string {
-    const hvorfor =
-        tillaterUavgjort === false
-            ? 'pipelinen kjører med allow_draw_bets = false'
-            : 'OT/SO-spill tas ikke lenger';
-    return `OT/SO prises, men spilles ikke — ${hvorfor}. Prisen står likevel, fordi skyggeloggen trenger den.`;
+/**
+ * OT/SO-noten. Uavgjort spilles som alle andre utfall, bare mot en høyere
+ * terskel — noten forklarer hvorfor en OT/SO-rad kan stå med god EV og likevel
+ * si NEI. Er de skrudd av, sier den det i stedet.
+ */
+function fotnoteTekst(
+    tillaterUavgjort: boolean | undefined,
+    drawEvTerskel: number | undefined,
+): string {
+    if (tillaterUavgjort === false) {
+        return 'OT/SO prises, men spilles ikke — pipelinen kjører med allow_draw_bets = false. Prisen står likevel, fordi skyggeloggen trenger den.';
+    }
+    if (drawEvTerskel === undefined) return '';
+    return `OT/SO spilles, men må over ${pc(drawEvTerskel, 0)} EV — en høyere grense enn hjemme og borte. Norsk Tipping holder OT/SO-oddsen fast rundt 3,90, så EV-en der måler modellens dristighet mer enn markedets feilprising.`;
 }
 
 export function VerdiSkjerm() {
@@ -103,7 +110,7 @@ export function VerdiSkjerm() {
         node?.focus();
     }, [valgtId]);
 
-    const fotnote = fotnoteTekst(meta.data?.allow_draw_bets);
+    const fotnote = fotnoteTekst(allowDrawBets, drawEvTerskel);
     const kicker = `Value-rapport · terskel EV ≥ ${pc(evTerskel, 0)}`;
     const tittel = dl(kamper[0]?.dato ?? meta.data?.generated_at);
 
