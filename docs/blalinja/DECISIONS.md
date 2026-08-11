@@ -34,7 +34,13 @@ eksplisitt peker videre til handoffen.
    terskel (`NHL_DRAW_VALUE_MIN`, default `0.30`, eksportert som
    `draw_value_min`) fordi NT holder OT/SO-oddsen fast rundt 3,90 — se
    `evTerskelFor()` i `lib/spill.ts`. Den er en pipelineregel, ikke et
-   brukervalg: slideren kan skjerpe den, aldri slakke. Frontend bruker den som
+   brukervalg: slideren kan skjerpe den, aldri slakke.
+
+   **Slideren står bare på /verdi.** Verdien er fortsatt delt og persistert, så
+   den styrer taggingen på Oversikt og Kampanalyse også — de to skjermene viser
+   den med `<EvTerskelNotis>` i kickeren, med samme avviksnotis og
+   Tilbakestill-knapp. Tre kontroller for én verdi var støy; kravet fra dette
+   punktet er at avviket er synlig, ikke at det er justerbart overalt. Frontend bruker den som
    *default* for brukerinnstillingen, som er en slider 5–45 %, steg 1,
    persistert i `localStorage`. Når brukerens verdi avviker fra pipelinens skal
    UI si fra at siten da viser noe annet enn `bet_history.csv`.
