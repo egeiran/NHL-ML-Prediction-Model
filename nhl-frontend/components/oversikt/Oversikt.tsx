@@ -55,7 +55,14 @@ export function Oversikt() {
     // pipelinen krever `odds < max_odds`. Uten den kunne heroen tagge SPILL på
     // et utfall `bet_history.csv` aldri får.
     const maxOdds = meta.data?.max_odds;
-    const spill = useMemo(() => finnSpill(kamper, evTerskel, maxOdds), [kamper, evTerskel, maxOdds]);
+    // OT/SO har egen, høyere terskel og kan være skrudd av – begge er
+    // pipeline-regler, ikke brukervalg, så de kommer fra meta.
+    const drawEvTerskel = meta.data?.draw_value_min;
+    const allowDrawBets = meta.data?.allow_draw_bets;
+    const spill = useMemo(
+        () => finnSpill(kamper, evTerskel, maxOdds, drawEvTerskel, allowDrawBets),
+        [kamper, evTerskel, maxOdds, drawEvTerskel, allowDrawBets],
+    );
 
     const timeseries = useMemo(() => portefølje.data?.timeseries ?? [], [portefølje.data]);
     const bets = useMemo(() => portefølje.data?.bets ?? [], [portefølje.data]);

@@ -17,6 +17,7 @@ import {
     evAv,
     evForUtfall,
     evKlasse,
+    evTerskelFor,
     markedAv,
     navnFor,
     stolpeBredde,
@@ -47,7 +48,7 @@ export interface Utfall {
     /** `value_*` når pipelinen har skrevet det, ellers `model_prob * odds - 1`. */
     ev: number | null;
     tagg: TagVariant;
-    /** OT/SO — alltid `UTELATT`, alltid halv opasitet. */
+    /** OT/SO. `UTELATT` bare når OT/SO-spill er skrudd av. */
     erUavgjort: boolean;
     /**
      * Hvorfor utfallet er `UTELATT`: `uavgjort` (OT/SO) eller `oddstak`
@@ -68,7 +69,7 @@ export interface Kamp {
     start: string | null;
     dato: string;
     utfall: Utfall[];
-    /** Antall utfall tagget `SPILL`. OT/SO teller aldri med. */
+    /** Antall utfall tagget `SPILL`. */
     antallSpill: number;
 }
 
@@ -111,15 +112,18 @@ export function finnAbbr(abbr: string | null | undefined, navn: string): string 
  * over taket, som `bet_history.csv` garantert ikke får. Send den alltid inn når
  * `meta` er lastet.
  *
- * Merk at taket ikke gir paritet med loggen: `_choose_best_per_day()` i
- * `NHL/bet_tracker.py` tar høyst ett spill per dag, bare `best_value`-utfallet,
- * og bare når alle tre oddsene finnes. Denne skjermen viser alle kvalifiserende
- * utfall i alle kampene. Taket lukker én kilde til avvik, ikke avviket.
+ * Merk at taket ikke gir paritet med loggen: `record_new_bets()` i
+ * `NHL/bet_tracker.py` tar høyst ETT utfall per kamp – det beste av dem som
+ * klarer sin egen terskel – og bare når alle tre oddsene finnes. Denne skjermen
+ * viser alle kvalifiserende utfall. Taket lukker én kilde til avvik, ikke
+ * avviket.
  */
 export function byggKamp(
     spill: ValueGame,
     evTerskel: number,
     maxOdds?: number | null,
+    drawEvTerskel?: number | null,
+    allowDrawBets?: boolean | null,
 ): Kamp {
     const hjemme = finnAbbr(spill.home_abbr, spill.home);
     const borte = finnAbbr(spill.away_abbr, spill.away);
@@ -163,8 +167,9 @@ export function byggKamp(
     const utfall: Utfall[] = rå.map((r) => {
         const erUavgjort = r.nøkkel === 'draw';
         const ev = evForUtfall(r.verdi, r.modell, r.odds);
-        const grunn = utelattGrunn(erUavgjort, r.odds, maxOdds);
-        const merke = tagg(ev, evTerskel, grunn);
+        const grunn = utelattGrunn(erUavgjort, r.odds, maxOdds, allowDrawBets);
+        // OT/SO måles mot sin egen, høyere terskel — se evTerskelFor().
+        const merke = tagg(ev, evTerskelFor(erUavgjort, evTerskel, drawEvTerskel), grunn);
         return {
             nøkkel: r.nøkkel,
             etikett: r.etikett,
@@ -195,16 +200,19 @@ export function byggKamp(
 
 /**
  * Alle kampene, sortert på avkast og deretter kamp-id, slik at rekkefølgen er
- * stabil. `maxOdds` er `meta.json:max_odds` — send den inn så skjermen ikke
- * tagger spill pipelinen ville forkastet.
+ * stabil. `maxOdds`, `drawEvTerskel` og `allowDrawBets` er pipelinens egne
+ * regler fra `meta.json` — send dem inn så skjermen ikke tagger spill pipelinen
+ * ville forkastet, eller utelater OT/SO den faktisk tar.
  */
 export function byggKamper(
     rapport: readonly ValueGame[],
     evTerskel: number,
     maxOdds?: number | null,
+    drawEvTerskel?: number | null,
+    allowDrawBets?: boolean | null,
 ): Kamp[] {
     return rapport
-        .map((g) => byggKamp(g, evTerskel, maxOdds))
+        .map((g) => byggKamp(g, evTerskel, maxOdds, drawEvTerskel, allowDrawBets))
         .sort((a, b) => {
             const av = a.start ?? a.dato;
             const bv = b.start ?? b.dato;

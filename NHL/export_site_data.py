@@ -33,6 +33,7 @@ import pandas as pd
 
 from bet_tracker import (
     ALLOW_DRAW_BETS,
+    DEFAULT_DRAW_MIN_VALUE,
     DEFAULT_MAX_ODDS,
     DEFAULT_MIN_VALUE,
     build_portfolio_payload,
@@ -273,6 +274,8 @@ def main() -> int:
             # si fra når brukerens innstilling avviker – og forklare hvorfor
             # OT/SO-raden er merket UTELATT.
             "value_min": DEFAULT_MIN_VALUE,
+            # Uavgjort har egen terskel fordi NT holder OT/SO-oddsen fast.
+            "draw_value_min": DEFAULT_DRAW_MIN_VALUE,
             "max_odds": DEFAULT_MAX_ODDS,
             "allow_draw_bets": ALLOW_DRAW_BETS,
         },

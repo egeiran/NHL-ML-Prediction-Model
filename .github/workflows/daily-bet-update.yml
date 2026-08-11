@@ -19,6 +19,9 @@ jobs:
       PREDICTIONS_SCRIPT: NHL/generate_predictions.py
       EXTRA_PYPI_PACKAGES: "matplotlib tabulate"
       NHL_VALUE_MIN: "0.15"
+      # OT/SO har egen, høyere terskel: NT holder oddsen fast rundt 3,90,
+      # så 0.15 ville bare målt hvor høyt modellen tør å gå. Se PROBLEMS.md.
+      NHL_DRAW_VALUE_MIN: "0.30"
       NHL_MAX_ODDS: "4.0"
     steps:
       - name: Checkout
@@ -112,6 +115,23 @@ jobs:
         run: |
           python bet_tracker.py
 
+      # stake_truth.json er fasiten nhl-frontend/lib/analysis.test.mjs måler seg
+      # mot, og den er regnet fra bet_history.csv. Uten dette steget råtner den
+      # fra første nye spill: testen sammenligner fersk portfolio.json mot
+      # gårsdagens fasit og feiler på tall som begge er riktige. Må derfor kjøre
+      # ETTER bet_tracker.py. Bruker bare stdlib (~35 s, seedet og
+      # deterministisk – uendret historikk gir uendret fil og ingen commit).
+      - name: Regenerate stake sizing truth
+        id: stake_truth
+        working-directory: NHL
+        # Feiler den, skal dagens bet-historikk fortsatt bli committet. Jobben
+        # blir rød i sluttsteget i stedet.
+        continue-on-error: true
+        env:
+          NHL_STAKE_ANALYSIS_JSON: ../docs/blalinja/stake_truth.json
+        run: |
+          python analyze_stake_sizing.py
+
       - name: Generate daily predictions assets
         env:
           MPLCONFIGDIR: /tmp/mplcache
@@ -158,7 +178,7 @@ jobs:
           # (site-dataen er utracket første gang den genereres).
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/data/bet_shadow.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png README.md nhl-frontend/public/data/*.json
+          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/data/bet_shadow.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png docs/blalinja/stake_truth.json README.md nhl-frontend/public/data/*.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -168,17 +188,24 @@ jobs:
           git commit -m "chore: daily bet + predictions update"
           git push
 
-      # Site-dataen kan bli stående på gårsdagens tall av to grunner: testene
-      # feilet så eksporten ble hoppet over, eller eksporten selv røk. Begge
-      # skal gjøre jobben rød. Committen over har allerede gått gjennom, så
-      # dagens historikk er lagret uansett — det er bare stillheten vi ikke vil ha.
-      - name: Fail if site data was not exported
-        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success'
+      # Data kan bli stående på gårsdagens tall av tre grunner: testene feilet
+      # så eksporten ble hoppet over, eksporten selv røk, eller fasit-dumpen
+      # røk. Alle skal gjøre jobben rød. Committen over har allerede gått
+      # gjennom, så dagens historikk er lagret uansett — det er bare stillheten
+      # vi ikke vil ha.
+      - name: Fail if generated data is stale
+        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success' || steps.stake_truth.outcome != 'success'
         run: |
           if [ "${{ steps.export_tests.outcome }}" != "success" ]; then
             echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert."
-          else
+            echo "::error::nhl-frontend/public/data/ står på gårsdagens tall."
+          elif [ "${{ steps.export.outcome }}" != "success" ]; then
             echo "::error::Eksporten feilet – site-dataen ble ikke oppdatert."
+            echo "::error::nhl-frontend/public/data/ står på gårsdagens tall."
           fi
-          echo "::error::nhl-frontend/public/data/ står på gårsdagens tall. Alt annet dagen produserte er committet."
+          if [ "${{ steps.stake_truth.outcome }}" != "success" ]; then
+            echo "::error::stake_truth.json ble ikke regenerert. Den er nå ute av takt"
+            echo "::error::med bet_history.csv, og nhl-frontend sin analysis.test.mjs feiler."
+          fi
+          echo "::error::Alt annet dagen produserte er committet."
           exit 1

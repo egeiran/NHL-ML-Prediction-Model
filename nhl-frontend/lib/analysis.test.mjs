@@ -287,8 +287,15 @@ section('analyze() determinisme');
   const two = A.analyze(portfolio.bets);
   if (JSON.stringify(one) === JSON.stringify(two)) pass('to kall gir identisk resultat', 1, 1);
   else fail('to kall gir identisk resultat', 0, 1);
-  eq('analyze().summary.n', one.summary.n, 202);
-  eq('analyze() ekskl. draw', A.analyze(portfolio.bets, { excludeDraw: true }).summary.n, 176);
+  // Antallet hentes fra fasiten, ikke skrives inn her: `portfolio.json` vokser
+  // for hver kjøring, og da skal `stake_truth.json` regenereres – ikke to
+  // steder oppdateres i takt.
+  eq('analyze().summary.n', one.summary.n, truth.all.n);
+  eq(
+    'analyze() ekskl. draw',
+    A.analyze(portfolio.bets, { excludeDraw: true }).summary.n,
+    truth.no_draw.n,
+  );
 }
 
 console.log('\n' + '='.repeat(78));

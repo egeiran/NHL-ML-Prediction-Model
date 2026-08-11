@@ -71,9 +71,13 @@ export function VerdiSkjerm() {
     // `odds < max_odds`, så uten den kunne lista tagge SPILL på et utfall
     // `bet_history.csv` aldri får.
     const maxOdds = meta.data?.max_odds;
+    // OT/SO har egen, høyere terskel og kan være skrudd av. Begge er
+    // pipeline-regler, ikke brukervalg, så de kommer fra meta – ikke slideren.
+    const drawEvTerskel = meta.data?.draw_value_min;
+    const allowDrawBets = meta.data?.allow_draw_bets;
     const kamper = useMemo(
-        () => byggKamper(rapport.data ?? [], evTerskel, maxOdds),
-        [rapport.data, evTerskel, maxOdds],
+        () => byggKamper(rapport.data ?? [], evTerskel, maxOdds, drawEvTerskel, allowDrawBets),
+        [rapport.data, evTerskel, maxOdds, drawEvTerskel, allowDrawBets],
     );
 
     // Elo og form trengs bare når det finnes kamper å vise. I sesongpausen

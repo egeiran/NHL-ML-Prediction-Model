@@ -488,7 +488,6 @@ def update_readme_status() -> None:
     """
     from bet_tracker import (
         build_portfolio_payload,
-        load_below_threshold,
         load_history,
         load_shadow,
     )
@@ -512,8 +511,7 @@ def update_readme_status() -> None:
         "| Logg | Spill | Resultat | ROI |",
         "| --- | ---: | ---: | ---: |",
         _ledger_line("Portefølje", payload["bets"]),
-        _ledger_line("Skygge (OT/SO vi ikke tar)", load_shadow()),
-        _ledger_line("Under EV-terskel", load_below_threshold()),
+        _ledger_line("Skygge (under EV-terskel / odds for høye)", load_shadow()),
         "",
         f"Treffrate {summary['win_rate'] * 100:.1f} % · "
         f"{summary['open_bets']} åpne spill · "

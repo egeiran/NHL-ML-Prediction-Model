@@ -14,11 +14,10 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 
 | Logg | Spill | Resultat | ROI |
 | --- | ---: | ---: | ---: |
-| Portefølje | 202 | +35 kr | +0.2 % |
-| Skygge (OT/SO vi ikke tar) | – | – | – |
-| Under EV-terskel | – | – | – |
+| Portefølje | 182 | +560 kr | +3.1 % |
+| Skygge (under EV-terskel / odds for høye) | – | – | – |
 
-Treffrate 33.7 % · 0 åpne spill · totalt siden start +35 kr på 202 spill.
+Treffrate 34.6 % · 0 åpne spill · totalt siden start +560 kr på 182 spill.
 <!-- STATUS:END -->
 
 ## 📊 Daglig resultat (siste 5 dager)
@@ -121,7 +120,7 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 - `GET /portfolio` – Tidsserie + sammendrag + bet-liste fra `data/bet_history.csv`.
   Uten parametre vises nyeste sesong som har spill. `?season=2025-26` velger en
   bestemt sesong, `?all_seasons=true` gir hele historikken samlet.
-- `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `max_odds`, `value_games` (prefetch fra frontend).
+- `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `draw_min_value`, `max_odds`, `value_games` (prefetch fra frontend).
 
 ## 🎨 Frontend
 - Value board for i dag + neste 7 dager med modellodds, markedodds og best value pr. utfall.
@@ -237,32 +236,49 @@ Prediction Model/
    python bet_tracker.py
    ```
    - Avregner ferdige kamper og oppdaterer profit.
-   - Legger til value-bets med `value > 0.20` og `odds < 4.00` (standard stake 100 kr).
-3. **Tre logger, samme skjema og samme avregning**:
+   - Legger til value-bets med `odds < 4.00` og `value` over sin terskel:
+     `0.15` for hjemme/borte, `0.30` for uavgjort (standard stake 100 kr).
+3. **To logger, samme skjema og samme avregning**:
    - `data/bet_history.csv` – ekte spill, det som teller i porteføljen.
-   - `data/bet_shadow.csv` – OT/SO-spill vi ikke tar, med notionell innsats.
-   - `data/bet_below_threshold.csv` – kandidater under EV-terskelen.
+   - `data/bet_shadow.csv` – kampene vi lot ligge fordi de røk på EV-terskelen
+     eller oddstaket, med notionell innsats.
 
-   Alle tre avregnes med samme logikk, så vi kan svare på «tjente vi penger?»,
-   «burde vi tatt uavgjort?» og «ligger terskelen riktig?». Gamle rader i
-   under-terskel-loggen ble aldri avregnet – kjør `python backfill_shadow_results.py`
-   én gang for å etterfylle dem (slår opp mot NHL-APIet, tar noen minutter).
+   Begge avregnes med samme logikk, så «tjente vi penger?» og «ligger tersklene
+   riktig plassert?» er spørsmål med tall bak. `data/bet_below_threshold.csv` er
+   arkiv: den hadde samme rolle som skyggeloggen har nå, og radene derfra ligger
+   inne i `bet_shadow.csv`. Fila leses ikke lenger av pipelinen.
 4. **Sesong**: hver rad har en `season` (utledet av kampdatoen, skille 1. juli).
    Nøkkeltallene i toppen av denne READMEen viser nyeste sesong med spill, og
    oppdateres av den daglige jobben.
 5. **Graf / frontend**: `GET /portfolio` for data (realisert resultat + åpen innsats – stake teller ikke som påfyll). `POST /portfolio/update` kan kalles fra cron/API om du vil trigge via HTTP.
-6. **OT/SO-spill er slått av, men følges i en skyggelogg.** Modellen har ingen
-   målbar edge på uavgjort (se `PROBLEMS.md` og `NHL/calibrate_draw.py`), så
-   `bet_tracker` legger dem ikke inn. De føres i stedet i
-   `NHL/data/bet_shadow.csv` med full innsats og avregnes som ekte spill, slik
-   at vi kan se hva beslutningen faktisk koster eller sparer oss for. Sett
-   `NHL_ALLOW_DRAW_BETS=1` for å spille dem på ekte igjen. Value-rapporten viser
-   OT/SO-odds og EV som før.
-7. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
+6. **OT/SO-spill legges inn, men med egen terskel (`value > 0.30`).** Norsk
+   Tipping holder OT/SO-oddsen fast rundt 3,90, mens hjemme- og borteoddsen
+   beveger seg med markedet. Samme EV-terskel betyr derfor to ulike ting: på
+   hjemme/borte er den et markedssignal, på uavgjort bare en test av hvor høyt
+   modellen tør å gå. Med odds 3,90 krever `value > 0.15` at modellen sier
+   p > 29,5 % mot en basisrate på ~22 %; `value > 0.30` krever p > 33,6 %, som
+   er den styrken på påstanden som faktisk trengs. Juster med
+   `NHL_DRAW_VALUE_MIN`, eller ta dem helt ut med `NHL_ALLOW_DRAW_BETS=0`.
+   Hvert utfall vurderes mot sin egen terskel, så en uavgjort som ikke når opp
+   hindrer ikke et fullgodt hjemmespill i samme kamp.
+7. **Bare grunnserien spilles.** Elo rulles fram på NHLs `gameType 2` alene, så
+   i preseason og sluttspill står ratingene stille mens lagene endrer seg –
+   modellen predikerer da på utdaterte features uten å vite det. `bet_tracker`
+   slår opp kamptypen mot NHL-APIet og hopper over alt annet enn grunnserie.
+   Svarer ikke APIet, faller den tilbake på kalenderen: oktober–13. april
+   spilles som normalt, resten av året ikke. `NHL_ALLOW_ALL_GAME_TYPES=1`
+   skrur filteret av.
+8. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
    ```json
-   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.2, "max_odds": 4.0 }
+   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.15, "max_odds": 4.0 }
    ```
-8. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for modell (trener ved behov), eksporterer statisk site-data og committer ny `bet_history.csv` + `nhl-frontend/public/data/`. Aktiver Actions og sjekk at default branch er korrekt.
+9. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for
+   modell (trener ved behov), eksporterer statisk site-data og committer ny
+   `bet_history.csv` + `nhl-frontend/public/data/`. Den regenererer også
+   `docs/blalinja/stake_truth.json` rett etter `bet_tracker.py` — fasiten
+   `nhl-frontend/lib/analysis.test.mjs` måler seg mot er regnet fra
+   `bet_history.csv`, så uten det steget ville den råtnet fra første nye spill.
+   Aktiver Actions og sjekk at default branch er korrekt.
 
 ## 🐛 Feilsøking
 - Backend: `pip install -r NHL/requirements-api.txt`, sjekk at `models/nhl_model.pkl` finnes og at serveren kjører på port 8000.
