@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T09:21:26.497641+00:00",
+  "generated_at": "2026-08-14T09:16:02.912816+00:00",
   "config": {
     "base_rating": 1500.0,
     "home_advantage": 50.0,
@@ -13,7 +13,7 @@
     "n_games": 29606,
     "source": "game.csv + api-web.nhle.com (club-schedule-season)",
     "through": "2026-04-16",
-    "updated_at": "2026-08-13T09:20:29Z"
+    "updated_at": "2026-08-14T09:15:05Z"
   },
   "display_keys": true,
   "ratings": {
