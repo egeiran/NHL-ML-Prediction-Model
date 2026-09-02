@@ -41,7 +41,7 @@ Treffrate 34.6 % · 0 åpne spill · totalt siden start +560 kr på 182 spill.
 - Start API-serveren: `python api.py` (kjører på `http://localhost:8000`, docs på `/docs`).
 - CORS: alle localhost-porter er tillatt, men sett `FRONTEND_ORIGINS` hvis frontend kjører på et annet domene/host.
 
-### 2. Frontend (Next.js 16)
+### 2. Frontend (Next.js 15)
 - Krav: Node 20+.
 - ```bash
   cd nhl-frontend
@@ -96,7 +96,9 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | `value-report.json` | Samme payload som `GET /value-report` |
 | `portfolio.json` | Samme payload som `GET /portfolio` |
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
-| `meta.json` | Når dataen ble generert (vises i UI-et) |
+| `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
+| `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
+| `meta.json` | Når dataen ble generert, hvilke seksjoner som feilet, og tersklene pipelinen kjørte med |
 
 - Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
 - Hver seksjon skrives uavhengig: feiler f.eks. NHL-APIet, beholdes forrige versjon av den
@@ -179,7 +181,7 @@ job-sammendraget.
 
 ## 🛠️ Teknologi
 - **Backend:** Python 3.11+, FastAPI, Pandas, scikit-learn, Requests.
-- **Frontend:** Next.js 16 (App Router, TypeScript), React 19, Tailwind CSS v4, lucide-react.
+- **Frontend:** Next.js 15 (App Router, TypeScript), React 19, Tailwind CSS v4, lucide-react.
 
 ## 📁 Prosjektstruktur
 ```

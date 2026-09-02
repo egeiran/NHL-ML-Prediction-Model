@@ -1,4 +1,4 @@
-# NHL Frontend (Next.js 16)
+# NHL Frontend (Next.js 15)
 
 Next.js-app som viser modellens NHL-odds, value-board og bankroll/portefølje basert på FastAPI-backenden i `../NHL`.
 
@@ -35,5 +35,5 @@ Appen kjører på `http://localhost:3000`. Prod: `npm run build && npm start`.
 - `npm run lint` – ESLint.
 
 ## 🧰 Stack
-- Next.js 16 (App Router), React 19, TypeScript.
+- Next.js 15 (App Router), React 19, TypeScript.
 - Tailwind CSS v4, lucide-react.
