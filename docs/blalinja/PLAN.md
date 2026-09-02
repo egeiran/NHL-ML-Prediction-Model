@@ -42,8 +42,10 @@ Ingen frontend-kode er skrevet ennå. Neste sesjon starter på bølge A.
   får tomme felt uten å knekke.
 - `NHL/models/elo_ratings.json`: 34 lag (inkl. historiske ATL/PHX), nøkkelen er
   `ARI`, ikke `UTA`. Aliasing skal skje i eksport-steget (se DECISIONS pkt. 5).
-- Datastatus: `bet_history.csv` 202 rader · `bet_shadow.csv` **0 rader** ·
+- Datastatus **per 2026-07-29** (kartleggingen over — ikke gjeldende tall):
+  `bet_history.csv` 202 rader · `bet_shadow.csv` **0 rader** ·
   `bet_below_threshold.csv` 388 rader, alle `status=below_threshold`.
+  Live tall står i `nhl-frontend/public/data/portfolio.json` og `shadow.json`.
 
 ### Frontend
 

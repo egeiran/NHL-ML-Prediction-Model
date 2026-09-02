@@ -13,7 +13,7 @@ Uses live Norsk Tipping odds via the same value-report logic as the API/bet trac
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -129,12 +129,24 @@ def _game_date(game: Dict[str, Any]) -> str:
 
 
 def _report_date_range(report: Sequence[Dict[str, Any]]) -> str:
+    """
+    Datospennet kampene i rapporten faktisk dekker, eller "" når det ikke er
+    noen kamper. Tidligere sto det "Unknown date" her, og siden rapporten er tom
+    mesteparten av sommeren ble sesongpausen presentert som om vi ikke visste
+    hvilken periode vi hadde sett på. Vi vet det – se `_scan_window`.
+    """
     dates = sorted({d for d in (_game_date(g) for g in report) if d})
     if not dates:
-        return "Unknown date"
+        return ""
     if len(dates) == 1:
         return dates[0]
     return f"{dates[0]} to {dates[-1]}"
+
+
+def _scan_window(timestamp: datetime, days_ahead: int) -> str:
+    """Perioden vi lette i, uavhengig av om den inneholdt kamper."""
+    slutt = timestamp.date() + timedelta(days=max(int(days_ahead), 0))
+    return f"{timestamp:%Y-%m-%d} to {slutt:%Y-%m-%d}"
 
 
 def load_value_report(days_ahead: int) -> Tuple[List[Dict[str, Any]], str]:
@@ -260,11 +272,16 @@ def save_markdown(
     fallback_days = report_meta.get("fallback_days")
     error = report_meta.get("error") or ""
 
+    # Tom rapport har ikke noe kampdatospenn å vise. Da står vinduet vi lette i,
+    # ikke "Unknown date": vi kjenner perioden, den var bare uten kamper.
+    vindu = date_range or _scan_window(timestamp, days_ahead)
+    tittel = date_range or f"{vindu} (ingen kamper i vinduet)"
+
     header = [
-        f"# Value Bets for {date_range}",
+        f"# Value Bets for {tittel}",
         "",
         f"Generated at {timestamp:%Y-%m-%d %H:%M} UTC",
-        f"Data window: {date_range} (days_ahead={days_ahead})",
+        f"Data window: {vindu} (days_ahead={days_ahead})",
         f"Min EV threshold: {min_value:.2f}",
         f"Max odds: {max_odds:.2f}" if max_odds is not None else "Max odds: -",
         f"Games scanned: {total_games} | Value bets: {len(table)}",

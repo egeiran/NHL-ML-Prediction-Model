@@ -11,7 +11,7 @@ eksplisitt peker videre til handoffen.
 | `docs/design_handoff_blalinja_frontend/NHL Modell.dc.html` | Fungerende prototype. Les for eksakte verdier og SVG-geometri. **Ikke kopier koden** — den er i et proprietært komponentformat. |
 | `docs/design_handoff_blalinja_frontend/screenshots/*.png` | Rendret fasit per skjerm. |
 | [GitHub issue #7](https://github.com/egeiran/NHL-ML-Prediction-Model/issues/7) | Autoritativ på **kalibrering, EV/odds-bøtter, innsatssimulator og matematikk**. |
-| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = 182 spill, `no_draw` = 156. Regenereres automatisk av `Daily Bet Update` rett etter `bet_tracker.py`, så den følger `bet_history.csv`. |
+| `docs/blalinja/stake_truth.json` | Fasit-tall dumpet fra `NHL/analyze_stake_sizing.py`. Frontend MÅ reprodusere disse. Nøkkel `all` = hele historikken, `no_draw` = uten OT/SO. Regenereres automatisk av `Daily Bet Update` rett etter `bet_tracker.py`, så den følger `bet_history.csv` — les antall og tall derfra, ikke herfra. |
 | `PROBLEMS.md` | Åpne modellfunn som vises på Modell-skjermen. |
 
 ## Beslutninger tatt med eier
@@ -110,15 +110,15 @@ daily_pnl[i]      = value[i] - value[i-1]          // value[-1] behandles som 0
 window_net        = value[siste] - value[indeks før vindusstart]
 cumulative_staked = løpende sum av timeseries[].invested
 
-expected_hits_model  = sum(bets[].model_prob)      // = 76,7 over de 182 spillene
-expected_hits_market = sum(bets[].implied_prob)    // = 59,5
-actual_hits          = antall bets[].status == "won"   // = 63
+expected_hits_model  = sum(bets[].model_prob)
+expected_hits_market = sum(bets[].implied_prob)
+actual_hits          = antall bets[].status == "won"
 ```
 
-Referansetall å sjekke mot (hele historikken, 182 spill):
-`total_bets 182 · total_staked 18 200 · settled_return 18 760 · profit +560 kr ·
-roi 0,031 · win_rate 0,346 · hjemme 79, borte 77, uavgjort 26 ·
-uavgjort-spill −640 kr, ikke-uavgjort +1 200 kr.`
+Referansetall å sjekke mot står i `docs/blalinja/stake_truth.json` og
+`nhl-frontend/public/data/portfolio.json:summary`. Begge regenereres av den
+daglige workflowen, så de følger `bet_history.csv` — en tabell her ville stått
+og løyet fra første nye spill. `npm test` i `nhl-frontend` er den ekte sjekken.
 
 De 20 sluttspillkampene er fjernet fra historikken: Elo oppdateres bare på
 grunnserien, så modellen predikerte der på frosne ratings. Se `PROBLEMS.md`.

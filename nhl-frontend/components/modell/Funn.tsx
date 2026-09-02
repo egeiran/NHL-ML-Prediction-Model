@@ -1,21 +1,18 @@
 /**
  * De åpne funnene fra `PROBLEMS.md`, nederst på skjermen.
  *
- * Teksten er redaksjonell og gjengitt fra `PROBLEMS.md` — den regnes ikke ut av
- * dataen og endres ikke av OT/SO-toggelen. Derfor står tallene med et eksplisitt
- * utvalg (`UTVALG`) i ingressen: de er talt på historikken slik den var da
- * funnene ble skrevet, og pipelinen skriver nye rader uten å røre dem.
+ * Teksten er redaksjonell og gjengitt fra `PROBLEMS.md`. Den er bevisst uten
+ * tall: hvert funn har allerede sitt eget bevis lenger opp på skjermen, regnet
+ * fra `portfolio.json` i samme lasting — de tre treff-tallene for funn 01,
+ * EV-kvartilene og innsatssimulatoren for funn 02.
  *
- * Enhetene bruker hardt mellomrom (U+00A0) som resten av appen — se
- * `lib/format.ts`. Tallene her settes for hånd fordi de er sitater, ikke
- * beregninger, men de skal brekke likt.
+ * En tidligere versjon gjentok tallene her som sitater. De frøs på historikken
+ * slik den var da funnene ble skrevet (202 spill), og sto igjen og motsa
+ * kickeren i samme skjermbilde etter at 20 sluttspillrader ble fjernet. Skal et
+ * tall stå her, må det leses fra dataen — ellers skal det ikke stå.
  */
 
-import { NBSP } from '@/lib/format';
 import styles from './Modell.module.css';
-
-/** Hvilket utvalg de redaksjonelle tallene er talt på. */
-const UTVALG = `per 202${NBSP}spill`;
 
 interface Funn {
     nr: string;
@@ -28,23 +25,24 @@ const FUNN: readonly Funn[] = [
         nr: '01',
         tittel: 'Modellen er globalt overkonfident',
         tekst:
-            'På de 202 spillene i historikken forventet modellen 85,5 treff, markedet 66,4, og 68 skjedde. ' +
-            `Markedet er godt kalibrert på denne porteføljen; modellen ligger cirka 26${NBSP}% for høyt. Det gjelder ` +
-            'hvert spill vi legger inn, ikke bare OT/SO, og er dermed et større problem enn både Utah-feilen og ' +
-            'uavgjort-seleksjonen. Sannsynlig retning: kalibrer sannsynlighetene isotonisk eller med Platt på en ' +
-            'kronologisk holdout før EV regnes ut, i stedet for å bruke Random Forest-ens rå predict_proba.',
+            'Modellen forventer systematisk flere treff enn den får, mens markedet er godt kalibrert på ' +
+            'den samme porteføljen — se de tre tallene øverst på skjermen, og hvor mange bøtter som ' +
+            'ligger under diagonalen i kalibreringskurven. Det gjelder hvert spill vi legger inn, ikke ' +
+            'bare OT/SO, og er dermed et større problem enn uavgjort-seleksjonen. Sannsynlig retning: ' +
+            'kalibrer sannsynlighetene isotonisk eller med Platt på en kronologisk holdout før EV regnes ' +
+            'ut, i stedet for å bruke Random Forest-ens rå predict_proba.',
     },
     {
         nr: '02',
         tittel: 'EV er ikke informativ nok til å skalere innsatsen etter',
         tekst:
-            'Korrelasjonen mellom EV og realisert avkastning per krone er r = −0,03 med permutasjonstest ' +
-            `p = 0,74: sammenhengen finnes ikke i dataen. Lineær skalering gir −311${NBSP}kr mot flat innsats, ` +
-            `kvadratisk −1 004${NBSP}kr, ved lik omsetning, og ingen av regimene har et bootstrap-intervall som ` +
-            `utelukker null. Kelly slår flat med +448${NBSP}kr, men gevinsten kommer fra odds-leddet, ikke ` +
-            `EV-leddet: en regel som satser 1/(odds − 1) og ignorerer EV helt gir +634${NBSP}kr. Med sammensatt ` +
-            `bankrull er ekte Kelly direkte farlig med dagens overkonfidens — full Kelly ender på −93${NBSP}%, halv ` +
-            `på −51${NBSP}%, kvart på −6${NBSP}%, mot flat +0,2${NBSP}%. Behold flat innsats til sannsynlighetene er kalibrert.`,
+            'Korrelasjonen mellom EV og realisert avkastning per krone er ikke til å skille fra null — ' +
+            'permutasjonstesten står under «Betaler høy EV seg?». Å satse mer der modellen ser størst ' +
+            'kant gjør derfor bare variansen dyrere, og ingen av regimene i simulatoren har et ' +
+            'bootstrap-intervall som utelukker null. Slår en regel flat innsats, kommer gevinsten fra ' +
+            'odds-leddet og ikke fra EV-leddet: regelen som satser 1/(odds − 1) og ignorerer EV helt er ' +
+            'den å måle mot. Med sammensatt bankrull er ekte Kelly dessuten direkte farlig så lenge ' +
+            'modellen er overkonfident. Behold flat innsats til sannsynlighetene er kalibrert.',
     },
     {
         nr: '03',
@@ -61,12 +59,12 @@ const FUNN: readonly Funn[] = [
 export function Funn() {
     return (
         <section className={styles.funn}>
-            <span className="t-kicker">Åpne funn · ikke fikset · {UTVALG}</span>
+            <span className="t-kicker">Åpne funn · ikke fikset</span>
             <h2 className={styles.panelTittel}>Det vi vet er galt</h2>
             <p className={styles.note}>
-                Punktene er gjengitt ordrett fra PROBLEMS.md og følger ikke OT/SO-toggelen. Tallene i dem er
-                talt {UTVALG} — historikken slik den sto da funnene ble skrevet — og regnes ikke om når
-                pipelinen skriver nye rader. Punktene strykes først når de faktisk er løst.
+                Punktene er gjengitt fra PROBLEMS.md og følger ikke OT/SO-toggelen. De står uten tall med
+                vilje: beviset for hvert av dem er figurene over, som regnes fra historikken slik den er nå.
+                Punktene strykes først når de faktisk er løst.
             </p>
             {FUNN.map((f) => (
                 <div key={f.nr} className={styles.funnPunkt}>

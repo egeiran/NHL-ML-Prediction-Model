@@ -4,6 +4,15 @@ Denne fila står på egne ben. Du skal ikke måtte åpne prototypen eller handof
 for å bygge en skjerm. Alle tall er hentet fra den fungerende prototypen
 (`NHL Modell.dc.html`) og verifisert mot skjermbildene.
 
+> **Om tallene i denne fila.** Layout, piksler, farger og typografi er bindende.
+> Tall som beskriver *innholdet* — antall rader, treff, kroner, «202 spill»,
+> «85,5 / 66,4 / 68» — er derimot øyeblikksbilder fra prototypen (historikken
+> slik den var før de 20 sluttspillradene ble fjernet). De er der for å vise
+> formen, ikke for å sjekkes mot. Gjeldende fasit er
+> `docs/blalinja/stake_truth.json` og `nhl-frontend/public/data/portfolio.json`,
+> som regenereres daglig. Akseptansepunkter som nevner et konkret antall eller
+> beløp leses som «tallet appen regner ut», ikke som tallet som står her.
+
 Rangordning ved konflikt: `docs/blalinja/DECISIONS.md` → denne fila → handoff-README.
 Kjente uenigheter mellom README og prototype er samlet i **§H**.
 
