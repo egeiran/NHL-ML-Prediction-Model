@@ -97,6 +97,17 @@
   max-width: 58ch;
 }
 
+/*
+ * Presiseringen rett under de tre tallene. Står etter `.noteSterk` med vilje:
+ * den bygger på den og skal vinne på margin og bredde. Linja er bærende — den
+ * sier hva de tre figurene over faktisk teller — så den låner `--body`, ikke
+ * `--faint`.
+ */
+.presisering {
+  margin: 18px 0 0;
+  max-width: 76ch;
+}
+
 /* ========================================================================== *
  * Kalibreringsplottet (§D.3)
  * ========================================================================== */

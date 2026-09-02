@@ -133,6 +133,16 @@ export function ModellSkjerm() {
     /** Billig sammenlignet med `analyze`, men følger samme utvalg. */
     const utfall: UtfallsRad[] = useMemo(() => utfallsRader(spill), [spill]);
 
+    /**
+     * Hvor mange av spillene modellen selv gir under 50 %. Bærer presiseringen
+     * under de tre tallene: «treff» her er spill som gikk inn, ikke kamper vi
+     * spådde riktig vinner i. Telles fra utvalget, aldri skrevet inn.
+     */
+    const underdogs = useMemo(
+        () => spill.filter((b) => b.model_prob < 0.5).length,
+        [spill],
+    );
+
     const { summary, calibration, ev_buckets, odds_buckets, ev_correlation, odds_correlation, rules } =
         resultat;
 
@@ -202,14 +212,14 @@ export function ModellSkjerm() {
                         <span className={`t-calib-figure c-vermillion ${styles.tallFigur}`}>
                             {harData ? nf(summary.expected_hits_model, 1) : MANGLER}
                         </span>
-                        <span className={styles.tallEnhet}>treff</span>
+                        <span className={styles.tallEnhet}>vunne spill</span>
                     </div>
                     <div className={styles.tallCelle}>
                         <span className="t-stat-label">Markedet forventet</span>
                         <span className={`t-calib-figure c-muted ${styles.tallFigur}`}>
                             {harData ? nf(summary.expected_hits_market, 1) : MANGLER}
                         </span>
-                        <span className={styles.tallEnhet}>treff</span>
+                        <span className={styles.tallEnhet}>vunne spill</span>
                     </div>
                     <div className={styles.tallCelle}>
                         <span className="t-stat-label">Faktisk</span>
@@ -217,10 +227,24 @@ export function ModellSkjerm() {
                             {harData ? nf(summary.hits) : MANGLER}
                         </span>
                         <span className={styles.tallEnhet}>
-                            treff · {harData ? pc(summary.hit_rate) : MANGLER} treffrate
+                            vunne spill · {harData ? pc(summary.hit_rate) : MANGLER} treffrate
                         </span>
                     </div>
                 </section>
+
+                {/*
+                 * Uten denne linja leses «treff» som «kamper vi spådde riktig
+                 * vinner i». Det er et annet tall: vi spiller stort sett utfall
+                 * modellen IKKE tror på, fordi oddsen er for raus.
+                 */}
+                {harData ? (
+                    <p className={`${styles.noteSterk} ${styles.presisering}`}>
+                        Tallene gjelder spillene vi la inn, ikke alle kamper.
+                        {underdogs > 0
+                            ? ` I ${nf(underdogs)} av ${nf(summary.n)} gir modellen under ${pc(0.5, 0)} for utfallet vi backet — vi spiller når oddsen er for raus, ikke når vi tror laget vinner.`
+                            : ' Et spill teller som vunnet når utfallet vi backet slo til, ikke når vi spådde riktig vinner.'}
+                    </p>
+                ) : null}
 
                 {/* --- 1. kalibrering --------------------------------------- */}
                 <Kalibrering

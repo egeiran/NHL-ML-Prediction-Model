@@ -259,7 +259,7 @@ export function Kalibrering({ bøtter, sammendrag, utfall, utenDraw, otSo }: Kal
                         </div>
 
                         <p className={styles.noteSterk}>
-                            Modellen forventet {nf(sammendrag.expected_hits_model, 1)} treff, markedet{' '}
+                            Modellen forventet {nf(sammendrag.expected_hits_model, 1)} vunne spill, markedet{' '}
                             {nf(sammendrag.expected_hits_market, 1)}. Faktisk: {nf(sammendrag.hits)}. Under den
                             stiplede linja betyr sjeldnere enn anslått — modellen ligger over den i{' '}
                             {nf(overBøtter)} av {nf(bøtter.length)} bøtter, markedet i {nf(markedOverBøtter)}.
