@@ -74,6 +74,3 @@ export function stolpeBredde(netto: number, nevner: number): string {
     return `${((Math.abs(netto) / nevner) * 100).toFixed(1)}%`;
 }
 
-/* Utah-vinduet lå her, men Elo-skjermen forteller om det samme vinduet og
- * importerte `utahVindu()` herfra. En skjerm som leser fra en annen skjerms
- * mappe er koblingen filsonene skal hindre, så filteret bor i `lib/utah.ts`. */

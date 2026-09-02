@@ -10,6 +10,10 @@
  * slik den var da funnene ble skrevet (202 spill), og sto igjen og motsa
  * kickeren i samme skjermbilde etter at 20 sluttspillrader ble fjernet. Skal et
  * tall stå her, må det leses fra dataen — ellers skal det ikke stå.
+ *
+ * PROBLEMS.md har ett funn til — at loggene bare lagrer det valgte utfallet.
+ * Det står ikke her: det er forbeholdet til kalibreringskurven, og hører hjemme
+ * ved siden av den. `Kalibrering.tsx` sier det der.
  */
 
 import styles from './Modell.module.css';
@@ -43,16 +47,6 @@ const FUNN: readonly Funn[] = [
             'odds-leddet og ikke fra EV-leddet: regelen som satser 1/(odds − 1) og ignorerer EV helt er ' +
             'den å måle mot. Med sammensatt bankrull er ekte Kelly dessuten direkte farlig så lenge ' +
             'modellen er overkonfident. Behold flat innsats til sannsynlighetene er kalibrert.',
-    },
-    {
-        nr: '03',
-        tittel: 'Loggene lagrer bare det valgte utfallet',
-        tekst:
-            'model_prob og implied_prob finnes kun for utfallet vi spilte, ikke for alle tre. Det gir ' +
-            'seleksjonsskjevhet i all etteranalyse — vi kan ikke se hva modellen mente om de to andre ' +
-            'utfallene, og kalibreringskurven over måler derfor bare de utfallene modellen var mest ' +
-            'optimistisk om. Å logge alle tre per kamp ville fjernet den begrensningen for framtidige ' +
-            'undersøkelser.',
     },
 ];
 

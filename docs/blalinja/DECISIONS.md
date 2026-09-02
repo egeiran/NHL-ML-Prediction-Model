@@ -28,7 +28,15 @@ eksplisitt peker videre til handoffen.
    bøtter gir n=4 i enkelte bøtter.
 5. **Utah/ARI aliases i eksport-steget**, ikke i frontend. `public/data/elo.json`
    skrives med visningsforkortelser (UTA). Frontend skal IKKE ha aliaslogikk.
-   Elo-skjermen beholder likevel forklaringsnotatet om Utah-vinduet.
+
+   *Endret etter avklaring med eier:* Elo-skjermen hadde opprinnelig et
+   forklaringsnotat om Utah-vinduet, og Skyggeloggen et eget panel. Begge er
+   tatt ut. Feilen er rettet i `live/live_feature_builder.py`, låst av
+   `test_site_export.py::utah_alias_form`, lå i formberegningen og ikke i Elo,
+   og berørte aldri ratingene i tabellen — så notatene forklarte noe skjermene
+   ikke viser. Post-mortemen står i `PROBLEMS.md`, som er stedet for den slags.
+   Frontend skal ikke ha noe Utah-spesifikt igjen utover lagnavnet i
+   `lib/teams.ts`.
 6. **EV-terskel**: Python er sannheten (`NHL_VALUE_MIN`, default `0.15`).
    Eksporteres til `meta.json` som `value_min`. Frontend bruker den som
    *default* for brukerinnstillingen, som er en slider 5–45 %, steg 1,

@@ -130,7 +130,7 @@
 }
 
 /* ========================================================================== *
- * Forklaring + Utah-vinduet
+ * Forklaring
  * ========================================================================== */
 
 .forklaring {
@@ -152,32 +152,6 @@
   text-wrap: pretty;
 }
 
-.utahPanel {
-  margin-top: 14px;
-  padding: 22px 24px;
-  background: var(--tint);
-  border-left: 3px solid var(--vermillion);
-}
-
-.utahStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-}
-
-.utahFigur {
-  display: block;
-  margin-top: 6px;
-  font: 400 26px/1 var(--serif);
-}
-
-.utahNote {
-  margin: 14px 0 0;
-  font: 400 12.5px/1.7 var(--sans);
-  color: var(--body);
-  text-wrap: pretty;
-}
-
 /* ========================================================================== *
  * Mobil — ett brytepunkt, som resten av appen (§F)
  * ========================================================================== */
@@ -194,9 +168,5 @@
 
   .forklaring {
     padding-top: 32px;
-  }
-
-  .utahPanel {
-    padding: 20px 18px;
   }
 }

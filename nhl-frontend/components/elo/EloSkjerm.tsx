@@ -9,8 +9,7 @@
  * `elo.json` skrives med visningsforkortelser (`display_keys: true`): Utah står
  * under `UTA`, `ARI` finnes ikke, og historiske lag er allerede filtrert bort i
  * eksport-steget. Det er derfor ingen aliaslogikk her, og skal ikke komme noen
- * heller (DECISIONS punkt 5). Utah-forbeholdet i panelet handler om noe annet:
- * perioden da formberegningen leste laget speilvendt.
+ * heller (DECISIONS punkt 5).
  */
 
 import { useMemo, useState } from 'react';

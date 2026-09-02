@@ -19,10 +19,8 @@ import { useMemo, type CSSProperties } from 'react';
 import { ErrorState, Laster, SectionHeading } from '@/components/ui';
 import { kombiner, useMeta, usePortfolio, useShadow } from '@/lib/use-data';
 import { krp, nf } from '@/lib/format';
-import { utahVindu } from '@/lib/utah';
 import type { BetEntry, ShadowEntry, SiteMeta } from '@/types';
 import { Panel } from './Panel';
-import { UtahVindu } from './UtahVindu';
 import { stolpeBredde, stolpeNevner, velgUtvalg, type Kilde } from './beregn';
 import styles from './Skygge.module.css';
 
@@ -76,7 +74,6 @@ export function SkyggeSkjerm() {
         () => velgUtvalg(rader, skyggedata.data ?? INGEN_SKYGGE),
         [rader, skyggedata.data],
     );
-    const utah = useMemo(() => utahVindu(rader), [rader]);
 
     const { kilde, faktisk, skygge } = utvalg;
     const nevner = stolpeNevner(faktisk.profit, skygge.profit);
@@ -156,33 +153,19 @@ export function SkyggeSkjerm() {
                 </p>
             ) : null}
 
-            {/* --- forklaring + Utah-vinduet ---------------------------- */}
-            <section
-                className={`split ${styles.forklaring}`}
-                style={
-                    {
-                        '--split-cols': 'minmax(0,1.2fr) minmax(0,.8fr)',
-                        '--split-gutter': '44px',
-                    } as CSSProperties
-                }
-            >
-                <div>
-                    <h2 className={styles.forklaringTittel}>
-                        Hva skyggeloggen faktisk måler
-                    </h2>
-                    <p className={styles.forklaringTekst}>
-                        {terskelsetning(meta.data)} Alt annet med komplette odds havner til
-                        venstre i skyggeloggen — samme innsats, samme avregning, men pengene ble
-                        aldri satt.
-                    </p>
-                    <p className={styles.forklaringTekst}>
-                        Går skyggeloggen bedre enn porteføljen over tid, står tersklene på feil
-                        sted. Går den dårligere, gjør de jobben sin. Det er hele poenget: valget
-                        blir målt i stedet for antatt. Så langt er utvalgene for små til at
-                        forskjellen betyr noe — se forbeholdet over panelene.
-                    </p>
-                </div>
-                <UtahVindu tall={utah} />
+            {/* --- forklaring ------------------------------------------- */}
+            <section className={styles.forklaring}>
+                <h2 className={styles.forklaringTittel}>Hva skyggeloggen faktisk måler</h2>
+                <p className={styles.forklaringTekst}>
+                    {terskelsetning(meta.data)} Alt annet med komplette odds havner til venstre i
+                    skyggeloggen — samme innsats, samme avregning, men pengene ble aldri satt.
+                </p>
+                <p className={styles.forklaringTekst}>
+                    Går skyggeloggen bedre enn porteføljen over tid, står tersklene på feil sted.
+                    Går den dårligere, gjør de jobben sin. Det er hele poenget: valget blir målt i
+                    stedet for antatt. Så langt er utvalgene for små til at forskjellen betyr noe —
+                    se forbeholdet over panelene.
+                </p>
             </section>
         </main>
     );
