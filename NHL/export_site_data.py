@@ -11,7 +11,7 @@ workflowen og legger ferdig beregnet data i `nhl-frontend/public/data/`:
   portfolio.json     - porteføljens tidsserie, sammendrag og bets
   matchups.json      - forhåndsberegnet prediksjon for alle lagkombinasjoner
   elo.json           - Elo-ratings for de 32 aktive lagene (visningsforkortelser)
-  shadow.json        - skyggeloggen (OT/SO-spill vi bevisst ikke tar)
+  shadow.json        - skyggeloggen (kampene som røk på EV-terskelen eller oddstaket)
   meta.json          - når dataen ble generert, hvilke filer som finnes og
                        pipelinens EV-/odds-terskler
 
@@ -206,10 +206,11 @@ def build_elo(generated_at: str) -> Dict[str, Any]:
 
 def build_shadow() -> List[Dict[str, Any]]:
     """
-    Skyggeloggen: spill vi bevisst ikke tar (OT/SO), men følger videre.
+    Skyggeloggen: kampene vi lot ligge fordi de røk på EV-terskelen eller
+    oddstaket, ført videre med notionell innsats og samme avregning.
 
     Samme radform som `portfolio.json`s `bets[]` – `load_shadow` gjør den
-    samme typekonverteringen. Fila er normalt tom, og da er `[]` riktig svar.
+    samme typekonverteringen. Er fila tom, er `[]` riktig svar.
     """
     return load_shadow()
 

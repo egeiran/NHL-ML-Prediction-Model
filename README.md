@@ -41,7 +41,7 @@ Treffrate 34.6 % · 0 åpne spill · totalt siden start +560 kr på 182 spill.
 - Start API-serveren: `python api.py` (kjører på `http://localhost:8000`, docs på `/docs`).
 - CORS: alle localhost-porter er tillatt, men sett `FRONTEND_ORIGINS` hvis frontend kjører på et annet domene/host.
 
-### 2. Frontend (Next.js 16)
+### 2. Frontend (Next.js 15)
 - Krav: Node 20+.
 - ```bash
   cd nhl-frontend
@@ -96,7 +96,9 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | `value-report.json` | Samme payload som `GET /value-report` |
 | `portfolio.json` | Samme payload som `GET /portfolio` |
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
-| `meta.json` | Når dataen ble generert (vises i UI-et) |
+| `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
+| `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
+| `meta.json` | Når dataen ble generert, hvilke seksjoner som feilet, og tersklene pipelinen kjørte med |
 
 - Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
 - Hver seksjon skrives uavhengig: feiler f.eks. NHL-APIet, beholdes forrige versjon av den
@@ -123,9 +125,22 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 - `POST /portfolio/update` – Avregner ferdige kamper og legger til nye value-bets. Body-felter: `days_ahead`, `stake_per_bet`, `min_value`, `draw_min_value`, `max_odds`, `value_games` (prefetch fra frontend).
 
 ## 🎨 Frontend
-- Value board for i dag + neste 7 dager med modellodds, markedodds og best value pr. utfall.
-- Porteføljeseksjon med investert/verdi-graf, ROI og manuell oppdatering via `/portfolio/update`.
-- Egendefinert matchup-panelet viser sannsynlighet (Home/OT/Away), siste 5 kamper og nøkkelstatistikk for valgte lag.
+Frontenden («Blålinja») er en statisk Next.js-app med sju ruter. Detaljene står i
+`nhl-frontend/README.md`; kort fortalt:
+
+| Rute | Viser |
+| --- | --- |
+| `/` | Dagens spill, porteføljekurven og de siste avgjorte |
+| `/verdi` | Value-rapporten for kampprogrammet, med justerbar EV-terskel |
+| `/kamp` | Egendefinert matchup: sannsynligheter, siste 5 kamper, nøkkeltall |
+| `/historikk` | Beslutningsloggen — hvert spill som er lagt inn |
+| `/elo` | Ligaen rangert etter Elo, med parametere og datagrunnlag |
+| `/modell` | Kalibrering, EV-/odds-kvartiler, innsatssimulator og åpne funn |
+| `/skygge` | Skyggeloggen mot den faktiske porteføljen |
+
+- Tallene på skjermene regnes fra `public/data/*.json` ved lasting. Terskler
+  (`value_min`, `draw_value_min`, `max_odds`) leses fra `meta.json` — Python er
+  sannheten, og de skal ikke skrives inn i komponentene.
 - API-base kan settes via `NEXT_PUBLIC_API_BASE` (default: `http://localhost:8000` i dev). Uten verdi kjører frontend i statisk modus mot `public/data/`.
 
 ## 🧠 Backend
@@ -179,7 +194,7 @@ job-sammendraget.
 
 ## 🛠️ Teknologi
 - **Backend:** Python 3.11+, FastAPI, Pandas, scikit-learn, Requests.
-- **Frontend:** Next.js 16 (App Router, TypeScript), React 19, Tailwind CSS v4, lucide-react.
+- **Frontend:** Next.js 15 (App Router, TypeScript), React 19, Tailwind CSS v4, lucide-react.
 
 ## 📁 Prosjektstruktur
 ```

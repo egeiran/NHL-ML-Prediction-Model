@@ -209,36 +209,6 @@
 }
 
 /* ========================================================================== *
- * Utah-forbeholdet
- * ========================================================================== */
-
-.forbehold {
-  margin-top: 26px;
-  padding: 18px 20px;
-  background: var(--tint);
-  border-left: 3px solid var(--vermillion);
-}
-
-.forbeholdEtikett {
-  display: block;
-  font: 500 9px/1 var(--mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--vermillion);
-}
-
-.forbeholdTekst {
-  margin: 9px 0 0;
-  font: 400 12.5px/1.65 var(--sans);
-  color: var(--body);
-  text-wrap: pretty;
-}
-
-.forbeholdTekst + .forbeholdTekst {
-  margin-top: 9px;
-}
-
-/* ========================================================================== *
  * Under 768px: kolonnene stables, panelet havner under tabellen
  * ========================================================================== */
 

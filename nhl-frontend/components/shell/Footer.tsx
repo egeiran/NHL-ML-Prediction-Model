@@ -22,7 +22,7 @@ export function Footer() {
                 <span className={styles.venstre}>
                     {`Random Forest + Elo · ${nGames} kamper · Elo t.o.m. ${through}`}
                 </span>
-                <span className={styles.høyre}>Blålinja · arbeidsnavn</span>
+                <span className={styles.høyre}>Blålinja</span>
             </div>
         </footer>
     );

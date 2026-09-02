@@ -65,7 +65,7 @@ export const RUTER = {
         tittel: 'Skyggelogg',
         kort: 'Skygge',
         skjermtittel: 'Skyggelogg',
-        beskrivelse: 'Spillene vi sluttet å ta',
+        beskrivelse: 'Kampene som røk på en terskel',
     },
 } as const satisfies Record<string, NavRute>;
 

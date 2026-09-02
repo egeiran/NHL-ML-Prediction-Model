@@ -143,9 +143,9 @@ export interface EquityPoint {
 export interface AnalysisSummary {
   n: number;
   hits: number;
-  /** Sum `model_prob` = 85,5 over de 202 spillene. */
+  /** Sum `model_prob` over utvalget — modellens forventede antall treff. */
   expected_hits_model: number;
-  /** Sum `implied_prob` = 66,4. */
+  /** Sum `implied_prob` over utvalget — markedets forventede antall treff. */
   expected_hits_market: number;
   staked: number;
   profit: number;
@@ -452,7 +452,7 @@ function bucketFrom(chunk: readonly AnalysisBet[], key: 'value' | 'odds'): Value
   };
 }
 
-/** EV-kvartiler (n = 50/51/50/51 over 202 spill). */
+/** EV-kvartiler: like mange spill i hver, uansett hvor stor historikken er. */
 export function evBuckets(bets: readonly AnalysisBet[], k = 4): ValueBucket[] {
   return quantileBucketsBy(bets, k, (b) => b.value).map((c) => bucketFrom(c, 'value'));
 }

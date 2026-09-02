@@ -3,11 +3,13 @@
 /**
  * Skyggelogg (§C.7) — hele skjermen.
  *
- * To terskler avgjør hva som blir et spill: EV må over sin egen grense – 0,15
- * for hjemme og borte, 0,30 for uavgjort – og oddsen under 4,00. Kampene som
- * ryker på en av dem havner i `shadow.json` med samme innsats og samme
- * avregning som ekte spill. Skjermen stiller de to loggene mot hverandre, slik
- * at plasseringen av tersklene kan måles i stedet for antas.
+ * To terskler avgjør hva som blir et spill: EV må over sin egen grense — én for
+ * hjemme og borte, en strengere for uavgjort — og oddsen under et tak. Alle tre
+ * leses fra `meta.json` (`value_min`, `draw_value_min`, `max_odds`), som er
+ * pipelinens egne verdier; de skrives ikke inn her. Kampene som ryker på en av
+ * dem havner i `shadow.json` med samme innsats og samme avregning som ekte
+ * spill. Skjermen stiller de to loggene mot hverandre, slik at plasseringen av
+ * tersklene kan måles i stedet for antas.
  *
  * Tonen: dette er små utvalg med bred usikkerhet. Skjermen sier hva tallene er,
  * ikke hva de beviser.
@@ -15,12 +17,10 @@
 
 import { useMemo, type CSSProperties } from 'react';
 import { ErrorState, Laster, SectionHeading } from '@/components/ui';
-import { kombiner, usePortfolio, useShadow } from '@/lib/use-data';
+import { kombiner, useMeta, usePortfolio, useShadow } from '@/lib/use-data';
 import { krp, nf } from '@/lib/format';
-import { utahVindu } from '@/lib/utah';
-import type { BetEntry, ShadowEntry } from '@/types';
+import type { BetEntry, ShadowEntry, SiteMeta } from '@/types';
 import { Panel } from './Panel';
-import { UtahVindu } from './UtahVindu';
 import { stolpeBredde, stolpeNevner, velgUtvalg, type Kilde } from './beregn';
 import styles from './Skygge.module.css';
 
@@ -43,11 +43,29 @@ function kildetekst(kilde: Kilde): string {
     }
 }
 
+/**
+ * Terskelsetningen. Verdiene er pipelinens, lest fra `meta.json` — står de
+ * skrevet her, lyver setningen første gang en terskel endres i Python.
+ * Mangler fila, sier setningen hva tersklene gjør uten å påstå hvilke de er.
+ */
+function terskelsetning(meta: SiteMeta | null): string {
+    if (meta === null) {
+        return 'Tersklene skiller de to panelene: oddsen må under et tak, og EV over sin egen grense — strengere for uavgjort, fordi OT/SO-oddsen ligger tilnærmet fast.';
+    }
+    const draw = meta.draw_value_min ?? meta.value_min;
+    const uavgjort =
+        draw === meta.value_min
+            ? ''
+            : ` — eller ${nf(draw, 2)} for uavgjort, som har en strengere grense fordi OT/SO-oddsen ligger tilnærmet fast`;
+    return `Tersklene skiller de to panelene: oddsen må under ${nf(meta.max_odds, 2)}, og EV over ${nf(meta.value_min, 2)}${uavgjort}.`;
+}
+
 /* -------------------------------------------------------------------------- */
 
 export function SkyggeSkjerm() {
     const portefølje = usePortfolio();
     const skyggedata = useShadow();
+    const meta = useMeta();
     const { loading, error, retry } = kombiner(portefølje, skyggedata);
 
     const rader = portefølje.data?.bets ?? INGEN_SPILL;
@@ -56,7 +74,6 @@ export function SkyggeSkjerm() {
         () => velgUtvalg(rader, skyggedata.data ?? INGEN_SKYGGE),
         [rader, skyggedata.data],
     );
-    const utah = useMemo(() => utahVindu(rader), [rader]);
 
     const { kilde, faktisk, skygge } = utvalg;
     const nevner = stolpeNevner(faktisk.profit, skygge.profit);
@@ -136,35 +153,19 @@ export function SkyggeSkjerm() {
                 </p>
             ) : null}
 
-            {/* --- forklaring + Utah-vinduet ---------------------------- */}
-            <section
-                className={`split ${styles.forklaring}`}
-                style={
-                    {
-                        '--split-cols': 'minmax(0,1.2fr) minmax(0,.8fr)',
-                        '--split-gutter': '44px',
-                    } as CSSProperties
-                }
-            >
-                <div>
-                    <h2 className={styles.forklaringTittel}>
-                        Hva skyggeloggen faktisk måler
-                    </h2>
-                    <p className={styles.forklaringTekst}>
-                        Tersklene skiller de to panelene: oddsen må under {nf(4, 2)}, og EV
-                        over {nf(0.15, 2)} — eller {nf(0.3, 2)} for uavgjort, som har en
-                        strengere grense fordi OT/SO-oddsen ligger fast rundt {nf(3.9, 2)}.
-                        Alt annet med komplette odds havner til venstre i skyggeloggen — samme
-                        innsats, samme avregning, men pengene ble aldri satt.
-                    </p>
-                    <p className={styles.forklaringTekst}>
-                        Går skyggeloggen bedre enn porteføljen over tid, står tersklene på feil
-                        sted. Går den dårligere, gjør de jobben sin. Det er hele poenget: valget
-                        blir målt i stedet for antatt. Så langt er utvalgene for små til at
-                        forskjellen betyr noe — se forbeholdet over panelene.
-                    </p>
-                </div>
-                <UtahVindu tall={utah} />
+            {/* --- forklaring ------------------------------------------- */}
+            <section className={styles.forklaring}>
+                <h2 className={styles.forklaringTittel}>Hva skyggeloggen faktisk måler</h2>
+                <p className={styles.forklaringTekst}>
+                    {terskelsetning(meta.data)} Alt annet med komplette odds havner til venstre i
+                    skyggeloggen — samme innsats, samme avregning, men pengene ble aldri satt.
+                </p>
+                <p className={styles.forklaringTekst}>
+                    Går skyggeloggen bedre enn porteføljen over tid, står tersklene på feil sted.
+                    Går den dårligere, gjør de jobben sin. Det er hele poenget: valget blir målt i
+                    stedet for antatt. Så langt er utvalgene for små til at forskjellen betyr noe —
+                    se forbeholdet over panelene.
+                </p>
             </section>
         </main>
     );

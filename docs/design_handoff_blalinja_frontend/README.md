@@ -1,5 +1,13 @@
 # Handoff: Blålinja — NHL-modell frontend
 
+> **Historical document.** This handoff was written against a snapshot of the
+> betting history that had 202 settled bets, before the 20 playoff rows were
+> removed. Every count and kroner figure below (202 bets, 85.5 / 66.4 / 68,
+> +35 kr, 33,7 %) describes that snapshot and is no longer current. It is kept
+> as-is because it is the design brief the build was done from; for live numbers
+> read `nhl-frontend/public/data/portfolio.json` and
+> `docs/blalinja/stake_truth.json`. The visual specification is unaffected.
+
 ## Overview
 
 A full frontend rebuild for `egeiran/NHL-ML-Prediction-Model`. The existing app
