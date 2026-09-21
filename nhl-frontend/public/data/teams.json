@@ -12,10 +12,6 @@
     "id": "6"
   },
   {
-    "abbreviation": "BUF",
-    "id": "7"
-  },
-  {
     "abbreviation": "CAR",
     "id": "12"
   },
@@ -34,10 +30,6 @@
   {
     "abbreviation": "DAL",
     "id": "25"
-  },
-  {
-    "abbreviation": "DET",
-    "id": "17"
   },
   {
     "abbreviation": "EDM",
@@ -60,24 +52,16 @@
     "id": "8"
   },
   {
+    "abbreviation": "NJD",
+    "id": "1"
+  },
+  {
     "abbreviation": "NSH",
     "id": "18"
   },
   {
-    "abbreviation": "NYR",
-    "id": "3"
-  },
-  {
-    "abbreviation": "OTT",
-    "id": "9"
-  },
-  {
-    "abbreviation": "PHI",
-    "id": "4"
-  },
-  {
-    "abbreviation": "PIT",
-    "id": "5"
+    "abbreviation": "NYI",
+    "id": "2"
   },
   {
     "abbreviation": "SEA",
@@ -110,5 +94,9 @@
   {
     "abbreviation": "WPG",
     "id": "52"
+  },
+  {
+    "abbreviation": "WSH",
+    "id": "15"
   }
 ]
