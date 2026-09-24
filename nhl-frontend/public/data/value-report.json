@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "event_id": "8667310.1",
+    "date": "2026-09-25",
+    "start_time": "2026-09-25T01:00:00+02:00",
+    "home": "Tampa Bay Lightning",
+    "away": "Florida Panthers",
+    "home_abbr": "TBL",
+    "away_abbr": "FLA",
+    "odds_home": 1.37,
+    "odds_draw": 4.6,
+    "odds_away": 5.3,
+    "model_home_win": 0.48,
+    "model_draw": 0.248,
+    "model_away_win": 0.272,
+    "model_home_odds": 2.09,
+    "model_draw_odds": 4.03,
+    "model_away_odds": 3.67,
+    "implied_home_prob": 0.72993,
+    "implied_draw_prob": 0.21739,
+    "implied_away_prob": 0.18868,
+    "value_home": -0.34298,
+    "value_draw": 0.14199,
+    "value_away": 0.4425,
+    "best_value": "away",
+    "best_value_delta": 0.4425
+  }
+]
