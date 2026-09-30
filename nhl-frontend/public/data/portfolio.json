@@ -6,42 +6,42 @@
   ],
   "all_time": {
     "total_bets": 184,
-    "profit": 560.0
+    "profit": 595.0
   },
   "timeseries": [
     {
       "date": "2026-09-29",
       "invested": 100.0,
-      "value": 0.0,
+      "value": -100.0,
       "settled_return": 0.0,
-      "open_stake": 100.0,
+      "open_stake": 0,
       "bets_placed": 1,
       "bets_won": 0,
-      "bets_settled": 0,
-      "open_bets": 1
+      "bets_settled": 1,
+      "open_bets": 0
     },
     {
       "date": "2026-09-30",
       "invested": 100.0,
-      "value": 0.0,
-      "settled_return": 0.0,
-      "open_stake": 200.0,
+      "value": 35.0,
+      "settled_return": 235.0,
+      "open_stake": 0,
       "bets_placed": 1,
-      "bets_won": 0,
-      "bets_settled": 0,
-      "open_bets": 2
+      "bets_won": 1,
+      "bets_settled": 1,
+      "open_bets": 0
     }
   ],
   "summary": {
     "total_bets": 2,
-    "open_bets": 2,
+    "open_bets": 0,
     "total_staked": 200.0,
-    "settled_return": 0,
-    "current_value": 0.0,
-    "open_stake": 200.0,
-    "profit": 0.0,
-    "roi": 0.0,
-    "win_rate": 0.0
+    "settled_return": 235.0,
+    "current_value": 35.0,
+    "open_stake": 0,
+    "profit": 35.0,
+    "roi": 0.175,
+    "win_rate": 0.5
   },
   "bets": [
     {
@@ -57,12 +57,12 @@
       "implied_prob": 0.44444,
       "value": 0.17803,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "draw",
       "created_at": "2026-09-28T16:43:58.088475",
-      "updated_at": "2026-09-28T16:43:58.088475",
+      "updated_at": "2026-09-30T14:51:29.120393",
       "odds_home": 2.25,
       "odds_draw": 4.1,
       "odds_away": 2.55,
@@ -89,12 +89,12 @@
       "implied_prob": 0.42553,
       "value": 0.17392,
       "stake": 100.0,
-      "status": "pending",
-      "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "status": "won",
+      "payout": 235.0,
+      "profit": 135.0,
+      "actual_outcome": "home",
       "created_at": "2026-09-28T16:43:58.850222",
-      "updated_at": "2026-09-28T16:43:58.850222",
+      "updated_at": "2026-09-30T14:51:29.326901",
       "odds_home": 2.35,
       "odds_draw": 4.0,
       "odds_away": 2.45,
