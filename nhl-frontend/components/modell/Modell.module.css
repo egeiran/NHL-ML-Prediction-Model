@@ -9,6 +9,15 @@
  * Toppen — de tre tallene
  * ========================================================================== */
 
+/* Sesong og OT/SO side om side i hodet. Brekker under hverandre når
+ * plassen tar slutt, høyrejustert som én pillegruppe ville vært. */
+.velgere {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .toppTall {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

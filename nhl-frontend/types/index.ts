@@ -137,6 +137,8 @@ export type BetStatus = 'pending' | 'won' | 'lost';
  * pipelinen regenererer. Behandle dem alltid som `number | null | undefined`.
  */
 export interface BetEntry {
+    /** Sesongen, `"2025-26"`. Pipelinen setter den; eldre filer kan mangle den. */
+    season?: string;
     date: string;
     event_id: string;
     start_time?: string;
@@ -196,10 +198,28 @@ export interface PortfolioSummary {
     win_rate: number;
 }
 
-/** `portfolio.json` — topp-nivå er nøyaktig disse tre nøklene. */
+/**
+ * `portfolio.json` — **én** sesong: nyeste sesong som har spill. Fra første
+ * spill i en ny sesong er fjoråret borte herfra; hele historikken ligger i
+ * `portfolio-history.json`.
+ */
 export interface PortfolioResponse {
+    /** Sesongen fila viser, `"2026-27"`. */
+    season?: string | null;
+    /** Alle sesonger med spill, eldste først. */
+    seasons?: string[];
+    all_time?: { total_bets: number; profit: number };
     timeseries: PortfolioPoint[];
     summary: PortfolioSummary;
+    bets: BetEntry[];
+}
+
+/** `portfolio-history.json` — alle spill fra alle sesonger. */
+export interface PortfolioHistory {
+    /** Sesongen `portfolio.json` viser. Standardvalget i sesongvelgeren. */
+    season: string | null;
+    /** Alle sesonger med spill, eldste først. */
+    seasons: string[];
     bets: BetEntry[];
 }
 

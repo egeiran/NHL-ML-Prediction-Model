@@ -1,7 +1,12 @@
 'use client';
 
 /**
- * Historikk (§C.4) — hver beslutning som faktisk ble tatt, 202 rader.
+ * Historikk (§C.4) — hver beslutning som faktisk ble tatt, alle sesonger.
+ *
+ * Leser `portfolio-history.json`, ikke `portfolio.json`: den siste har bare
+ * nyeste sesong, og ville latt fjoråret forsvinne ved første spill i ny sesong.
+ * Sesongvelgeren står på samme sesong som `portfolio.json` viser, og valget
+ * bor i `?sesong=` som de andre filtrene.
  *
  * Nøkkeltallene i hodet regnes av det **filtrerte** utvalget, ikke av totalen.
  * Står det «Utvalg 26 · Treffrate 33,7 %» samtidig, lyver treffraten.
@@ -15,7 +20,9 @@ import { useMemo } from 'react';
 import { Button, EmptyState, ErrorState, Laster, PillGroup, SectionHeading } from '@/components/ui';
 import { FLAT_INNSATS } from '@/lib/config';
 import { MANGLER, kr, krp, nf, pc } from '@/lib/format';
-import { usePortfolio } from '@/lib/use-data';
+import { ALLE_SESONGER, filtrerSesong, sesongValg } from '@/lib/sesong';
+import { usePortfolioHistory } from '@/lib/use-data';
+import { useSesong } from '@/lib/use-sesong';
 import type { BetEntry } from '@/types';
 import {
     SORT_VALG,
@@ -32,8 +39,9 @@ import { useErMobil } from '@/lib/use-er-mobil';
 import { useHistorikkFilter } from './useHistorikkFilter';
 import styles from './Historikk.module.css';
 
-/** Stabil referanse — ellers ville memoiseringene brytes hver render mens data laster. */
+/** Stabile referanser — ellers ville memoiseringene brytes hver render mens data laster. */
 const INGEN: readonly BetEntry[] = [];
+const INGEN_SESONGER: readonly string[] = [];
 
 const FARGE = {
     positiv: 'c-teal',
@@ -53,15 +61,20 @@ function Nøkkeltall({ etikett, verdi, farge }: { etikett: string; verdi: string
 }
 
 export function HistorikkSkjerm() {
-    const portefølje = usePortfolio();
+    const portefølje = usePortfolioHistory();
     const filter = useHistorikkFilter();
     const erMobil = useErMobil();
 
     const alle = portefølje.data?.bets ?? INGEN;
+    const sesonger = portefølje.data?.seasons ?? INGEN_SESONGER;
+    const standardSesong = portefølje.data?.season ?? sesonger[sesonger.length - 1] ?? ALLE_SESONGER;
+    const [sesong, setSesong] = useSesong(sesonger, standardSesong);
+    const valg = useMemo(() => sesongValg(sesonger), [sesonger]);
 
+    const iSesong = useMemo(() => filtrerSesong(alle, sesong), [alle, sesong]);
     const filtrerte = useMemo(
-        () => filtrer(alle, filter.status, filter.utfall),
-        [alle, filter.status, filter.utfall],
+        () => filtrer(iSesong, filter.status, filter.utfall),
+        [iSesong, filter.status, filter.utfall],
     );
     const rader = useMemo(() => sorter(filtrerte, filter.sort), [filtrerte, filter.sort]);
     const tall = useMemo(() => nøkkeltall(filtrerte), [filtrerte]);
@@ -105,6 +118,15 @@ export function HistorikkSkjerm() {
             ) : (
                 <>
                     <section className={styles.filtre}>
+                        {sesonger.length > 1 ? (
+                            <PillGroup
+                                label="Sesong"
+                                size="md"
+                                options={valg}
+                                value={sesong}
+                                onChange={setSesong}
+                            />
+                        ) : null}
                         <PillGroup
                             label="Status"
                             size="md"
@@ -139,8 +161,16 @@ export function HistorikkSkjerm() {
                         {rader.length === 0 ? (
                             <EmptyState
                                 size="md"
-                                headline="Ingen spill matcher filteret"
-                                body="Løsne på ett av filtrene."
+                                headline={
+                                    iSesong.length === 0
+                                        ? 'Ingen spill i denne sesongen ennå'
+                                        : 'Ingen spill matcher filteret'
+                                }
+                                body={
+                                    iSesong.length === 0
+                                        ? 'Velg en tidligere sesong for å se loggen derfra.'
+                                        : 'Løsne på ett av filtrene.'
+                                }
                                 actions={
                                     filter.erFiltrert ? (
                                         <Button variant="secondary" onClick={filter.nullstill}>

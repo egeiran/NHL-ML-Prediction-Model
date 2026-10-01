@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:analysis && npm run test:format && npm run test:spill",
+    "test": "npm run test:analysis && npm run test:format && npm run test:spill && npm run test:sesong",
     "test:analysis": "node --experimental-strip-types lib/analysis.test.mjs",
     "test:format": "node --experimental-strip-types lib/format.test.mjs",
-    "test:spill": "node --experimental-strip-types lib/spill.test.mjs"
+    "test:spill": "node --experimental-strip-types lib/spill.test.mjs",
+    "test:sesong": "node --experimental-strip-types lib/sesong.test.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

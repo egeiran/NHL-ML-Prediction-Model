@@ -20,6 +20,7 @@ import {
     fetchMatchups,
     fetchMeta,
     fetchPortfolio,
+    fetchPortfolioHistory,
     fetchShadow,
     fetchTeams,
     fetchValueReport,
@@ -30,6 +31,7 @@ import {
 import type {
     EloData,
     MatchupsData,
+    PortfolioHistory,
     PortfolioResponse,
     ShadowEntry,
     SiteMeta,
@@ -104,6 +106,10 @@ export function useValueReport(): DataState<ValueGame[]> {
 
 export function usePortfolio(): DataState<PortfolioResponse> {
     return useDatasett('portfolio', fetchPortfolio);
+}
+
+export function usePortfolioHistory(): DataState<PortfolioHistory> {
+    return useDatasett('portfolioHistory', fetchPortfolioHistory);
 }
 
 export function useMatchups(): DataState<MatchupsData> {
