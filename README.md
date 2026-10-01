@@ -94,7 +94,8 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | --- | --- |
 | `teams.json` | Lagene som kan velges (kun lag med ferske data) |
 | `value-report.json` | Samme payload som `GET /value-report` |
-| `portfolio.json` | Samme payload som `GET /portfolio` |
+| `portfolio.json` | Samme payload som `GET /portfolio` (nyeste sesong med spill) |
+| `portfolio-history.json` | Alle spill fra alle sesonger – Historikk og Skyggelogg filtrerer på sesong |
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
 | `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
 | `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
