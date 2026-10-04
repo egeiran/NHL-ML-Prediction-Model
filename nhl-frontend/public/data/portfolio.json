@@ -5,8 +5,8 @@
     "2026-27"
   ],
   "all_time": {
-    "total_bets": 189,
-    "profit": 295.0
+    "total_bets": 190,
+    "profit": 95.0
   },
   "timeseries": [
     {
@@ -45,25 +45,36 @@
     {
       "date": "2026-10-04",
       "invested": 200.0,
-      "value": -265.0,
+      "value": -465.0,
       "settled_return": 235.0,
-      "open_stake": 200.0,
+      "open_stake": 0,
       "bets_placed": 2,
       "bets_won": 0,
+      "bets_settled": 2,
+      "open_bets": 0
+    },
+    {
+      "date": "2026-10-05",
+      "invested": 100.0,
+      "value": -465.0,
+      "settled_return": 235.0,
+      "open_stake": 100.0,
+      "bets_placed": 1,
+      "bets_won": 0,
       "bets_settled": 0,
-      "open_bets": 2
+      "open_bets": 1
     }
   ],
   "summary": {
-    "total_bets": 7,
-    "open_bets": 2,
-    "total_staked": 700.0,
+    "total_bets": 8,
+    "open_bets": 1,
+    "total_staked": 800.0,
     "settled_return": 235.0,
-    "current_value": -265.0,
-    "open_stake": 200.0,
-    "profit": -265.0,
-    "roi": -0.379,
-    "win_rate": 0.2
+    "current_value": -465.0,
+    "open_stake": 100.0,
+    "profit": -465.0,
+    "roi": -0.581,
+    "win_rate": 0.143
   },
   "bets": [
     {
@@ -239,12 +250,12 @@
       "implied_prob": 0.29851,
       "value": 0.3929,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "home",
       "created_at": "2026-10-03T13:18:08.334216",
-      "updated_at": "2026-10-03T13:18:08.334216",
+      "updated_at": "2026-10-04T13:54:32.952894",
       "odds_home": 1.72,
       "odds_draw": 4.2,
       "odds_away": 3.35,
@@ -271,12 +282,12 @@
       "implied_prob": 0.42553,
       "value": 0.18811,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "away",
       "created_at": "2026-10-03T13:18:08.334490",
-      "updated_at": "2026-10-03T13:18:08.334490",
+      "updated_at": "2026-10-04T13:54:32.953151",
       "odds_home": 2.35,
       "odds_draw": 3.85,
       "odds_away": 2.25,
@@ -289,6 +300,38 @@
       "value_home": 0.18811,
       "value_draw": -0.39782,
       "value_away": -0.23948
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-05",
+      "event_id": "VAN-VGK-2026-10-05",
+      "start_time": "2026-10-05T03:00:00+02:00",
+      "home_abbr": "VAN",
+      "away_abbr": "VGK",
+      "selection": "home",
+      "odds": 3.9,
+      "model_prob": 0.346,
+      "implied_prob": 0.25641,
+      "value": 0.35122,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-04T13:55:25.161106",
+      "updated_at": "2026-10-04T13:55:25.161106",
+      "odds_home": 3.9,
+      "odds_draw": 4.3,
+      "odds_away": 1.62,
+      "model_home_win": 0.346,
+      "model_draw": 0.213,
+      "model_away_win": 0.441,
+      "implied_home_prob": 0.25641,
+      "implied_draw_prob": 0.23256,
+      "implied_away_prob": 0.61728,
+      "value_home": 0.35122,
+      "value_draw": -0.08433,
+      "value_away": -0.28625
     }
   ]
 }
