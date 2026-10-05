@@ -14,10 +14,10 @@ ML-modell for NHL-odds med FastAPI-backend og Next.js-frontend (value-board, por
 
 | Logg | Spill | Resultat | ROI |
 | --- | ---: | ---: | ---: |
-| Portefølje | 7 | -465 kr | -66.4 % |
-| Skygge (under EV-terskel / odds for høye) | 27 | +189 kr | +7.0 % |
+| Portefølje | 8 | -565 kr | -70.6 % |
+| Skygge (under EV-terskel / odds for høye) | 31 | -211 kr | -6.8 % |
 
-Treffrate 14.3 % · 1 åpne spill · totalt siden start +95 kr på 190 spill.
+Treffrate 12.5 % · 1 åpne spill · totalt siden start -5 kr på 191 spill.
 <!-- STATUS:END -->
 
 ## 📊 Daglig resultat (siste 5 dager)

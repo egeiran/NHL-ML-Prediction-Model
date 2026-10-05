@@ -5,8 +5,8 @@
     "2026-27"
   ],
   "all_time": {
-    "total_bets": 190,
-    "profit": 95.0
+    "total_bets": 191,
+    "profit": -5.0
   },
   "timeseries": [
     {
@@ -56,7 +56,18 @@
     {
       "date": "2026-10-05",
       "invested": 100.0,
-      "value": -465.0,
+      "value": -565.0,
+      "settled_return": 235.0,
+      "open_stake": 0,
+      "bets_placed": 1,
+      "bets_won": 0,
+      "bets_settled": 1,
+      "open_bets": 0
+    },
+    {
+      "date": "2026-10-06",
+      "invested": 100.0,
+      "value": -565.0,
       "settled_return": 235.0,
       "open_stake": 100.0,
       "bets_placed": 1,
@@ -66,15 +77,15 @@
     }
   ],
   "summary": {
-    "total_bets": 8,
+    "total_bets": 9,
     "open_bets": 1,
-    "total_staked": 800.0,
+    "total_staked": 900.0,
     "settled_return": 235.0,
-    "current_value": -465.0,
+    "current_value": -565.0,
     "open_stake": 100.0,
-    "profit": -465.0,
-    "roi": -0.581,
-    "win_rate": 0.143
+    "profit": -565.0,
+    "roi": -0.628,
+    "win_rate": 0.125
   },
   "bets": [
     {
@@ -314,12 +325,12 @@
       "implied_prob": 0.25641,
       "value": 0.35122,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "away",
       "created_at": "2026-10-04T13:55:25.161106",
-      "updated_at": "2026-10-04T13:55:25.161106",
+      "updated_at": "2026-10-05T17:05:06.503037",
       "odds_home": 3.9,
       "odds_draw": 4.3,
       "odds_away": 1.62,
@@ -332,6 +343,38 @@
       "value_home": 0.35122,
       "value_draw": -0.08433,
       "value_away": -0.28625
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-06",
+      "event_id": "TBL-PHI-2026-10-06",
+      "start_time": "2026-10-06T01:00:00+02:00",
+      "home_abbr": "TBL",
+      "away_abbr": "PHI",
+      "selection": "away",
+      "odds": 3.5,
+      "model_prob": 0.35,
+      "implied_prob": 0.28571,
+      "value": 0.22652,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-05T17:06:16.617375",
+      "updated_at": "2026-10-05T17:06:16.617375",
+      "odds_home": 1.7,
+      "odds_draw": 4.1,
+      "odds_away": 3.5,
+      "model_home_win": 0.38,
+      "model_draw": 0.269,
+      "model_away_win": 0.35,
+      "implied_home_prob": 0.58824,
+      "implied_draw_prob": 0.2439,
+      "implied_away_prob": 0.28571,
+      "value_home": -0.35352,
+      "value_draw": 0.10405,
+      "value_away": 0.22652
     }
   ]
 }
