@@ -6,7 +6,7 @@
   ],
   "all_time": {
     "total_bets": 191,
-    "profit": -5.0
+    "profit": -105.0
   },
   "timeseries": [
     {
@@ -67,25 +67,25 @@
     {
       "date": "2026-10-06",
       "invested": 100.0,
-      "value": -565.0,
+      "value": -665.0,
       "settled_return": 235.0,
-      "open_stake": 100.0,
+      "open_stake": 0,
       "bets_placed": 1,
       "bets_won": 0,
-      "bets_settled": 0,
-      "open_bets": 1
+      "bets_settled": 1,
+      "open_bets": 0
     }
   ],
   "summary": {
     "total_bets": 9,
-    "open_bets": 1,
+    "open_bets": 0,
     "total_staked": 900.0,
     "settled_return": 235.0,
-    "current_value": -565.0,
-    "open_stake": 100.0,
-    "profit": -565.0,
-    "roi": -0.628,
-    "win_rate": 0.125
+    "current_value": -665.0,
+    "open_stake": 0,
+    "profit": -665.0,
+    "roi": -0.739,
+    "win_rate": 0.111
   },
   "bets": [
     {
@@ -357,12 +357,12 @@
       "implied_prob": 0.28571,
       "value": 0.22652,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "home",
       "created_at": "2026-10-05T17:06:16.617375",
-      "updated_at": "2026-10-05T17:06:16.617375",
+      "updated_at": "2026-10-06T15:00:45.503147",
       "odds_home": 1.7,
       "odds_draw": 4.1,
       "odds_away": 3.5,
