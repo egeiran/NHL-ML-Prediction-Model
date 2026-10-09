@@ -6,7 +6,7 @@
   ],
   "all_time": {
     "total_bets": 194,
-    "profit": -105.0
+    "profit": -405.0
   },
   "timeseries": [
     {
@@ -78,25 +78,25 @@
     {
       "date": "2026-10-09",
       "invested": 300.0,
-      "value": -665.0,
+      "value": -965.0,
       "settled_return": 235.0,
-      "open_stake": 300.0,
+      "open_stake": 0,
       "bets_placed": 3,
       "bets_won": 0,
-      "bets_settled": 0,
-      "open_bets": 3
+      "bets_settled": 3,
+      "open_bets": 0
     }
   ],
   "summary": {
     "total_bets": 12,
-    "open_bets": 3,
+    "open_bets": 0,
     "total_staked": 1200.0,
     "settled_return": 235.0,
-    "current_value": -665.0,
-    "open_stake": 300.0,
-    "profit": -665.0,
-    "roi": -0.554,
-    "win_rate": 0.111
+    "current_value": -965.0,
+    "open_stake": 0,
+    "profit": -965.0,
+    "roi": -0.804,
+    "win_rate": 0.083
   },
   "bets": [
     {
@@ -400,12 +400,12 @@
       "implied_prob": 0.33898,
       "value": 0.18471,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "home",
       "created_at": "2026-10-08T15:31:28.613197",
-      "updated_at": "2026-10-08T15:31:28.613197",
+      "updated_at": "2026-10-09T15:12:46.095331",
       "odds_home": 1.9,
       "odds_draw": 3.9,
       "odds_away": 2.95,
@@ -432,12 +432,12 @@
       "implied_prob": 0.40816,
       "value": 0.15522,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "away",
       "created_at": "2026-10-08T15:31:28.613441",
-      "updated_at": "2026-10-08T15:31:28.613441",
+      "updated_at": "2026-10-09T15:12:46.095566",
       "odds_home": 2.45,
       "odds_draw": 3.9,
       "odds_away": 2.2,
@@ -464,12 +464,12 @@
       "implied_prob": 0.26316,
       "value": 0.27246,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "away",
       "created_at": "2026-10-08T15:31:28.613746",
-      "updated_at": "2026-10-08T15:31:28.613746",
+      "updated_at": "2026-10-09T15:12:46.095599",
       "odds_home": 3.8,
       "odds_draw": 4.2,
       "odds_away": 1.67,
