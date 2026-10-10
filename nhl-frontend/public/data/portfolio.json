@@ -5,7 +5,7 @@
     "2026-27"
   ],
   "all_time": {
-    "total_bets": 194,
+    "total_bets": 196,
     "profit": -405.0
   },
   "timeseries": [
@@ -85,17 +85,28 @@
       "bets_won": 0,
       "bets_settled": 3,
       "open_bets": 0
+    },
+    {
+      "date": "2026-10-11",
+      "invested": 200.0,
+      "value": -965.0,
+      "settled_return": 235.0,
+      "open_stake": 200.0,
+      "bets_placed": 2,
+      "bets_won": 0,
+      "bets_settled": 0,
+      "open_bets": 2
     }
   ],
   "summary": {
-    "total_bets": 12,
-    "open_bets": 0,
-    "total_staked": 1200.0,
+    "total_bets": 14,
+    "open_bets": 2,
+    "total_staked": 1400.0,
     "settled_return": 235.0,
     "current_value": -965.0,
-    "open_stake": 0,
+    "open_stake": 200.0,
     "profit": -965.0,
-    "roi": -0.804,
+    "roi": -0.689,
     "win_rate": 0.083
   },
   "bets": [
@@ -482,6 +493,70 @@
       "value_home": 0.27246,
       "value_draw": 0.04831,
       "value_away": -0.30604
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-11",
+      "event_id": "PIT-DAL-2026-10-11",
+      "start_time": "2026-10-11T01:00:00+02:00",
+      "home_abbr": "PIT",
+      "away_abbr": "DAL",
+      "selection": "home",
+      "odds": 3.0,
+      "model_prob": 0.403,
+      "implied_prob": 0.33333,
+      "value": 0.20803,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-10T14:26:23.364448",
+      "updated_at": "2026-10-10T14:26:23.364448",
+      "odds_home": 3.0,
+      "odds_draw": 4.1,
+      "odds_away": 1.85,
+      "model_home_win": 0.403,
+      "model_draw": 0.216,
+      "model_away_win": 0.381,
+      "implied_home_prob": 0.33333,
+      "implied_draw_prob": 0.2439,
+      "implied_away_prob": 0.54054,
+      "value_home": 0.20803,
+      "value_draw": -0.1151,
+      "value_away": -0.29423
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-11",
+      "event_id": "CHI-CAR-2026-10-11",
+      "start_time": "2026-10-11T01:00:00+02:00",
+      "home_abbr": "CHI",
+      "away_abbr": "CAR",
+      "selection": "home",
+      "odds": 3.95,
+      "model_prob": 0.35,
+      "implied_prob": 0.25316,
+      "value": 0.38282,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-10T14:26:23.364501",
+      "updated_at": "2026-10-10T14:26:23.364501",
+      "odds_home": 3.95,
+      "odds_draw": 4.3,
+      "odds_away": 1.62,
+      "model_home_win": 0.35,
+      "model_draw": 0.175,
+      "model_away_win": 0.475,
+      "implied_home_prob": 0.25316,
+      "implied_draw_prob": 0.23256,
+      "implied_away_prob": 0.61728,
+      "value_home": 0.38282,
+      "value_draw": -0.24608,
+      "value_away": -0.23117
     }
   ]
 }
