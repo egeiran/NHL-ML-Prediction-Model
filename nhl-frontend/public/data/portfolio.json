@@ -5,8 +5,8 @@
     "2026-27"
   ],
   "all_time": {
-    "total_bets": 196,
-    "profit": -405.0
+    "total_bets": 197,
+    "profit": -605.0
   },
   "timeseries": [
     {
@@ -89,25 +89,36 @@
     {
       "date": "2026-10-11",
       "invested": 200.0,
-      "value": -965.0,
+      "value": -1165.0,
       "settled_return": 235.0,
-      "open_stake": 200.0,
+      "open_stake": 0,
       "bets_placed": 2,
       "bets_won": 0,
+      "bets_settled": 2,
+      "open_bets": 0
+    },
+    {
+      "date": "2026-10-12",
+      "invested": 100.0,
+      "value": -1165.0,
+      "settled_return": 235.0,
+      "open_stake": 100.0,
+      "bets_placed": 1,
+      "bets_won": 0,
       "bets_settled": 0,
-      "open_bets": 2
+      "open_bets": 1
     }
   ],
   "summary": {
-    "total_bets": 14,
-    "open_bets": 2,
-    "total_staked": 1400.0,
+    "total_bets": 15,
+    "open_bets": 1,
+    "total_staked": 1500.0,
     "settled_return": 235.0,
-    "current_value": -965.0,
-    "open_stake": 200.0,
-    "profit": -965.0,
-    "roi": -0.689,
-    "win_rate": 0.083
+    "current_value": -1165.0,
+    "open_stake": 100.0,
+    "profit": -1165.0,
+    "roi": -0.777,
+    "win_rate": 0.071
   },
   "bets": [
     {
@@ -507,12 +518,12 @@
       "implied_prob": 0.33333,
       "value": 0.20803,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "draw",
       "created_at": "2026-10-10T14:26:23.364448",
-      "updated_at": "2026-10-10T14:26:23.364448",
+      "updated_at": "2026-10-11T14:52:16.532931",
       "odds_home": 3.0,
       "odds_draw": 4.1,
       "odds_away": 1.85,
@@ -539,12 +550,12 @@
       "implied_prob": 0.25316,
       "value": 0.38282,
       "stake": 100.0,
-      "status": "pending",
+      "status": "lost",
       "payout": 0.0,
-      "profit": 0.0,
-      "actual_outcome": "",
+      "profit": -100.0,
+      "actual_outcome": "away",
       "created_at": "2026-10-10T14:26:23.364501",
-      "updated_at": "2026-10-10T14:26:23.364501",
+      "updated_at": "2026-10-11T14:52:16.533113",
       "odds_home": 3.95,
       "odds_draw": 4.3,
       "odds_away": 1.62,
@@ -557,6 +568,38 @@
       "value_home": 0.38282,
       "value_draw": -0.24608,
       "value_away": -0.23117
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-12",
+      "event_id": "PHI-CAR-2026-10-12",
+      "start_time": "2026-10-12T01:00:00+02:00",
+      "home_abbr": "PHI",
+      "away_abbr": "CAR",
+      "selection": "home",
+      "odds": 3.25,
+      "model_prob": 0.373,
+      "implied_prob": 0.30769,
+      "value": 0.21375,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-11T14:53:03.779038",
+      "updated_at": "2026-10-11T14:53:03.779038",
+      "odds_home": 3.25,
+      "odds_draw": 4.0,
+      "odds_away": 1.77,
+      "model_home_win": 0.373,
+      "model_draw": 0.274,
+      "model_away_win": 0.353,
+      "implied_home_prob": 0.30769,
+      "implied_draw_prob": 0.25,
+      "implied_away_prob": 0.56497,
+      "value_home": 0.21375,
+      "value_draw": 0.09525,
+      "value_away": -0.37567
     }
   ]
 }
