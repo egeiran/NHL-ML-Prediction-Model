@@ -36,9 +36,11 @@ from bet_tracker import (
     DEFAULT_DRAW_MIN_VALUE,
     DEFAULT_MAX_ODDS,
     DEFAULT_MIN_VALUE,
+    available_seasons,
     build_portfolio_payload,
     load_history,
     load_shadow,
+    resolve_season,
 )
 from live.live_feature_builder import build_live_features
 from live.nhl_results import CURRENT_TEAMS
@@ -204,6 +206,23 @@ def build_elo(generated_at: str) -> Dict[str, Any]:
     }
 
 
+def build_portfolio_history() -> Dict[str, Any]:
+    """
+    Alle spill fra alle sesonger, til Historikk og Skyggelogg.
+
+    `portfolio.json` viser bare én sesong (nyeste med spill), så fra første
+    spill i en ny sesong forsvinner fjoråret derfra. Denne fila beholder alt;
+    frontend filtrerer på `season` i radene. `season` på toppnivå er sesongen
+    `portfolio.json` viser, og dermed standardvalget i sesongvelgeren.
+    """
+    history = load_history()
+    return {
+        "season": resolve_season(history),
+        "seasons": available_seasons(history),
+        "bets": history,
+    }
+
+
 def build_shadow() -> List[Dict[str, Any]]:
     """
     Skyggeloggen: kampene vi lot ligge fordi de røk på EV-terskelen eller
@@ -261,6 +280,7 @@ def main() -> int:
     run("teams", "teams.json", build_teams_section)
     run("value-report", "value-report.json", lambda: build_value_report(days, verbose=True))
     run("portfolio", "portfolio.json", lambda: build_portfolio_payload(load_history()))
+    run("portfolio-history", "portfolio-history.json", build_portfolio_history)
     run("elo", "elo.json", lambda: build_elo(generated_at))
     run("shadow", "shadow.json", build_shadow)
 

@@ -29,6 +29,12 @@
  *      dempingen har noe å vise.
  *
  * Antall bootstrap-trekninger røres ikke: presisjonen er poenget med skjermen.
+ *
+ * Sesong: skjermen leser `portfolio-history.json` (alle sesonger), ikke
+ * `portfolio.json` (bare nyeste). Standardvalget er **alle sesonger**, ikke
+ * inneværende som i Historikk: kalibrering og kvartiler trenger utvalg i
+ * hundretall, og i starten av en sesong ville skjermen ellers stått på en
+ * håndfull spill. Valget bor i `?sesong=`.
  */
 
 import { useMemo, useState, useTransition } from 'react';
@@ -40,7 +46,9 @@ import {
     type AnalysisResult,
     type CorrelationResult,
 } from '@/lib/analysis';
-import { usePortfolio } from '@/lib/use-data';
+import { ALLE_SESONGER, filtrerSesong, sesongEtikett, sesongValg } from '@/lib/sesong';
+import { usePortfolioHistory } from '@/lib/use-data';
+import { useSesong } from '@/lib/use-sesong';
 import { ErrorState, Laster, PillGroup, SectionHeading } from '@/components/ui';
 import { MANGLER, nf, odds as fmtOdds, pc } from '@/lib/format';
 import type { BetEntry } from '@/types';
@@ -50,8 +58,9 @@ import { Simulator } from './Simulator';
 import { Funn } from './Funn';
 import styles from './Modell.module.css';
 
-/** Stabil referanse — ellers ville `useMemo` sett en ny tom liste hver render. */
+/** Stabile referanser — ellers ville `useMemo` sett en ny tom liste hver render. */
 const INGEN_SPILL: readonly BetEntry[] = [];
+const INGEN_SESONGER: readonly string[] = [];
 
 type Utvalg = 'alle' | 'utenDraw';
 
@@ -82,7 +91,7 @@ function korrelasjon(c: CorrelationResult): string {
 }
 
 export function ModellSkjerm() {
-    const portefølje = usePortfolio();
+    const portefølje = usePortfolioHistory();
     /** Pilla — settes synkront, så trykket registrerer med én gang. */
     const [valgt, setValgt] = useState<Utvalg>('alle');
     /** Dataene — henger etter i en transition mens `analyze()` går. */
@@ -90,12 +99,23 @@ export function ModellSkjerm() {
     const [venter, start] = useTransition();
     const utenDraw = aktivt === 'utenDraw';
 
-    const alleSpill: readonly AnalysisBet[] =
-        portefølje.data?.bets ?? INGEN_SPILL;
+    const sesonger = portefølje.data?.seasons ?? INGEN_SESONGER;
+    const [sesong, setSesong] = useSesong(sesonger, ALLE_SESONGER);
+    const sesongPiller = useMemo(() => sesongValg(sesonger), [sesonger]);
 
+    const historikk = portefølje.data?.bets ?? INGEN_SPILL;
+    const alleSpill: readonly AnalysisBet[] = useMemo(
+        () => filtrerSesong(historikk, sesong),
+        [historikk, sesong],
+    );
+
+    /**
+     * Datoaksen for simulatoren: én dato per spilledag i utvalget, åpne spill
+     * inkludert — samme akse som `portfolio.json:timeseries` har for én sesong.
+     */
     const datoer = useMemo(
-        () => (portefølje.data?.timeseries ?? []).map((t) => t.date),
-        [portefølje.data],
+        () => [...new Set(alleSpill.map((b) => b.date).filter(Boolean))].sort(),
+        [alleSpill],
     );
 
     /**
@@ -154,16 +174,27 @@ export function ModellSkjerm() {
     }
 
     const toggel = (
-        <PillGroup
-            label="Utvalg"
-            size="md"
-            value={valgt}
-            onChange={velgUtvalg}
-            options={[
-                { value: 'alle', label: `Alle spill (${nf(grunnlag.alle.length)})` },
-                { value: 'utenDraw', label: `Uten OT/SO (${nf(grunnlag.utenDraw.length)})` },
-            ]}
-        />
+        <div className={styles.velgere}>
+            {sesonger.length > 1 ? (
+                <PillGroup
+                    label="Sesong"
+                    size="md"
+                    value={sesong}
+                    onChange={setSesong}
+                    options={sesongPiller}
+                />
+            ) : null}
+            <PillGroup
+                label="Utvalg"
+                size="md"
+                value={valgt}
+                onChange={velgUtvalg}
+                options={[
+                    { value: 'alle', label: `Alle spill (${nf(grunnlag.alle.length)})` },
+                    { value: 'utenDraw', label: `Uten OT/SO (${nf(grunnlag.utenDraw.length)})` },
+                ]}
+            />
+        </div>
     );
 
     if (portefølje.loading) {
@@ -191,7 +222,7 @@ export function ModellSkjerm() {
     return (
         <main>
             <SectionHeading
-                kicker={`Modellkvalitet · ${nf(summary.n)} avregnede spill`}
+                kicker={`Modellkvalitet · ${sesongEtikett(sesong)} · ${nf(summary.n)} avregnede spill`}
                 title="Er modellen god?"
                 right={toggel}
             />

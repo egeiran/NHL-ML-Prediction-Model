@@ -117,7 +117,7 @@ jobs:
 
       # stake_truth.json er fasiten nhl-frontend/lib/analysis.test.mjs måler seg
       # mot, og den er regnet fra bet_history.csv. Uten dette steget råtner den
-      # fra første nye spill: testen sammenligner fersk portfolio.json mot
+      # fra første nye spill: testen sammenligner fersk portfolio-history.json mot
       # gårsdagens fasit og feiler på tall som begge er riktige. Må derfor kjøre
       # ETTER bet_tracker.py. Bruker bare stdlib (~35 s, seedet og
       # deterministisk – uendret historikk gir uendret fil og ingen commit).

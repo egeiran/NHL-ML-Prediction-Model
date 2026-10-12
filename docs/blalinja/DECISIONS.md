@@ -139,8 +139,13 @@ grunnserien, så modellen predikerte der på frosne ratings. Se `PROBLEMS.md`.
   EV-terskelen eller oddstaket. Skyggelogg-skjermen stiller dem mot porteføljen.
   Er `shadow.json` tom, skal skjermen si det — ikke vise et tomt panel som om
   det var et svar.
-- `portfolio.json` har topp-nivå `{timeseries, summary, bets}`. Ingen
-  `season`/`seasons`/`all_time` — ikke anta at de finnes.
+- `portfolio.json` har **én sesong**: nyeste sesong med spill (`season`,
+  `seasons`, `all_time` ligger også på toppnivå). Fra første spill i en ny
+  sesong er fjoråret borte derfra. Historikk, Skyggelogg og Modell leser derfor
+  `portfolio-history.json` (`{season, seasons, bets}`, alle sesonger) og har en
+  sesongvelger (`?sesong=`). Historikk og Skyggelogg står som standard på samme
+  sesong som `portfolio.json`; Modell står på alle sesonger, fordi kalibrering
+  og kvartiler trenger utvalg i hundretall.
 - `matchups.json` har 992 nøkler `"HOME-AWAY"` og 32 lag med `last_5` + `stats`.
 - `bets[]` har `created_at`/`updated_at` i tillegg til feltene i `BetEntry`.
 - Alle spill har `stake = 100`. Derfor ingen innsatskolonne i Historikk.

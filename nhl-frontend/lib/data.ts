@@ -11,6 +11,7 @@
 import type {
     EloData,
     MatchupsData,
+    PortfolioHistory,
     PortfolioResponse,
     PredictionResponse,
     ShadowEntry,
@@ -28,6 +29,7 @@ export const DATA_FILER = {
     meta: 'meta.json',
     valueReport: 'value-report.json',
     portfolio: 'portfolio.json',
+    portfolioHistory: 'portfolio-history.json',
     matchups: 'matchups.json',
     elo: 'elo.json',
     shadow: 'shadow.json',
@@ -107,6 +109,11 @@ export function fetchValueReport(): Promise<ValueGame[]> {
 
 export function fetchPortfolio(): Promise<PortfolioResponse> {
     return memoisert<PortfolioResponse>('portfolio', 'Kunne ikke hente porteføljen');
+}
+
+/** Alle spill fra alle sesonger. `portfolio.json` har bare nyeste sesong. */
+export function fetchPortfolioHistory(): Promise<PortfolioHistory> {
+    return memoisert<PortfolioHistory>('portfolioHistory', 'Kunne ikke hente spillhistorikken');
 }
 
 export function fetchMatchups(): Promise<MatchupsData> {

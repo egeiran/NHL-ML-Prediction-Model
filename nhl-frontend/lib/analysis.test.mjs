@@ -34,6 +34,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = resolve(HERE, '..');
 const REPO = resolve(FRONTEND, '..');
 
+// Fasiten regnes fra hele bet_history.csv, alle sesonger. `portfolio.json` har
+// bare nyeste sesong, så radene hentes fra `portfolio-history.json`.
+const HISTORY = join(FRONTEND, 'public', 'data', 'portfolio-history.json');
 const PORTFOLIO = join(FRONTEND, 'public', 'data', 'portfolio.json');
 const TRUTH = join(REPO, 'docs', 'blalinja', 'stake_truth.json');
 const MODULE = join(HERE, 'analysis.ts');
@@ -117,7 +120,9 @@ function section(title) {
 // Kjøring
 // --------------------------------------------------------------------------- //
 const A = await loadModule();
+const history = JSON.parse(readFileSync(HISTORY, 'utf8'));
 const portfolio = JSON.parse(readFileSync(PORTFOLIO, 'utf8'));
+const allBets = history.bets;
 const truth = JSON.parse(readFileSync(TRUTH, 'utf8'));
 
 const TRUTH_SCHEME_BY_LABEL = (key) =>
@@ -125,7 +130,7 @@ const TRUTH_SCHEME_BY_LABEL = (key) =>
 
 for (const [truthKey, excludeDraw] of [['all', false], ['no_draw', true]]) {
   const t = truth[truthKey];
-  const bets = A.settledBets(portfolio.bets, { excludeDraw });
+  const bets = A.settledBets(allBets, { excludeDraw });
 
   console.log('\n' + '='.repeat(78));
   console.log('UTVALG "' + truthKey + '" — ' + t.label);
@@ -222,7 +227,9 @@ for (const [truthKey, excludeDraw] of [['all', false], ['no_draw', true]]) {
 
   // ---- 8) Equity-kurve ---------------------------------------------------- //
   section('Equity-kurve per regel');
-  const axis = portfolio.timeseries.map((p) => p.date);
+  // Samme akse som `portfolio.json:timeseries` ville hatt over alle sesonger:
+  // én dato per spilledag.
+  const axis = [...new Set(allBets.map((b) => b.date).filter(Boolean))].sort();
   for (const rule of A.STAKE_RULES) {
     const curve = A.equityCurve(bets, rule.weight, axis);
     const res = A.applyStakeRule(bets, rule.weight);
@@ -234,12 +241,12 @@ for (const [truthKey, excludeDraw] of [['all', false], ['no_draw', true]]) {
   }
   const flatCurve = A.equityCurve(bets, A.w_flat, axis);
   const datesMatch = flatCurve.every((p, i) => p.date === axis[i]);
-  if (datesMatch) pass('kurvens datoakse = timeseries[].date', axis.length, axis.length);
-  else fail('kurvens datoakse = timeseries[].date', 0, 1);
+  if (datesMatch) pass('kurvens datoakse = spilledagene', axis.length, axis.length);
+  else fail('kurvens datoakse = spilledagene', 0, 1);
   if (truthKey === 'all') {
-    // Flat kurve må lande på portfolio.timeseries siste kumulative nettogevinst.
-    const last = portfolio.timeseries[portfolio.timeseries.length - 1].value;
-    eq('flat kurve slutt = timeseries siste value', flatCurve[flatCurve.length - 1].value, last, 1e-6);
+    // Flat kurve må lande på pipelinens totale nettogevinst over alle sesonger.
+    const last = portfolio.all_time.profit;
+    eq('flat kurve slutt = all_time.profit', flatCurve[flatCurve.length - 1].value, last, 1e-6);
   }
 }
 
@@ -283,17 +290,17 @@ section('mulberry32 determinisme');
 
 section('analyze() determinisme');
 {
-  const one = A.analyze(portfolio.bets);
-  const two = A.analyze(portfolio.bets);
+  const one = A.analyze(allBets);
+  const two = A.analyze(allBets);
   if (JSON.stringify(one) === JSON.stringify(two)) pass('to kall gir identisk resultat', 1, 1);
   else fail('to kall gir identisk resultat', 0, 1);
-  // Antallet hentes fra fasiten, ikke skrives inn her: `portfolio.json` vokser
+  // Antallet hentes fra fasiten, ikke skrives inn her: historikken vokser
   // for hver kjøring, og da skal `stake_truth.json` regenereres – ikke to
   // steder oppdateres i takt.
   eq('analyze().summary.n', one.summary.n, truth.all.n);
   eq(
     'analyze() ekskl. draw',
-    A.analyze(portfolio.bets, { excludeDraw: true }).summary.n,
+    A.analyze(allBets, { excludeDraw: true }).summary.n,
     truth.no_draw.n,
   );
 }

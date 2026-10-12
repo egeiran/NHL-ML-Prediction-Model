@@ -483,14 +483,22 @@ def save_recent_profit_chart(
     plt.close(fig)
 
 
-def _ledger_line(label: str, rows) -> str:
-    """Én linje med nøkkeltall for en logg (ekte, skygge eller under terskel)."""
-    from bet_tracker import build_portfolio_payload
+def _ledger_line(label: str, rows, season=None) -> str:
+    """
+    Én linje med nøkkeltall for en logg (ekte, skygge eller under terskel).
 
-    settled = [r for r in rows if r.get("status") in {"won", "lost"}]
+    `season` låser linja til samme sesong som overskriften. Uten den velger
+    hver logg sin egen nyeste sesong med avregnede spill, og i starten av en
+    sesong ville skyggelinja vist fjoråret under årets overskrift.
+    """
+    from bet_tracker import build_portfolio_payload, filter_season
+
+    settled = [
+        r for r in filter_season(rows, season) if r.get("status") in {"won", "lost"}
+    ]
     if not settled:
         return f"| {label} | – | – | – |"
-    payload = build_portfolio_payload(settled, all_seasons=False)
+    payload = build_portfolio_payload(settled, all_seasons=True)
     s = payload["summary"]
     return (
         f"| {label} | {s['total_bets']} | {s['profit']:+.0f} kr | "
@@ -517,7 +525,8 @@ def update_readme_status() -> None:
 
     history = load_history()
     payload = build_portfolio_payload(history)
-    season = payload.get("season") or "–"
+    selected_season = payload.get("season")
+    season = selected_season or "–"
     summary = payload["summary"]
     all_time = payload.get("all_time") or {}
 
@@ -527,8 +536,10 @@ def update_readme_status() -> None:
         "",
         "| Logg | Spill | Resultat | ROI |",
         "| --- | ---: | ---: | ---: |",
-        _ledger_line("Portefølje", payload["bets"]),
-        _ledger_line("Skygge (under EV-terskel / odds for høye)", load_shadow()),
+        _ledger_line("Portefølje", payload["bets"], selected_season),
+        _ledger_line(
+            "Skygge (under EV-terskel / odds for høye)", load_shadow(), selected_season
+        ),
         "",
         f"Treffrate {summary['win_rate'] * 100:.1f} % · "
         f"{summary['open_bets']} åpne spill · "

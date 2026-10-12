@@ -29,6 +29,14 @@
   padding: 28px 0 40px;
 }
 
+/* Sesongvelgeren mellom hodet og panelene. Samme rytme som filterlinja i
+ * Historikk. */
+.sesongvalg {
+  display: flex;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
 /* ========================================================================== *
  * De to panelene
  * ========================================================================== */

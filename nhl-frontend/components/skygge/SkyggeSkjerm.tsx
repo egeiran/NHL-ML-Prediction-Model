@@ -11,13 +11,20 @@
  * spill. Skjermen stiller de to loggene mot hverandre, slik at plasseringen av
  * tersklene kan måles i stedet for antas.
  *
+ * Begge panelene viser **samme sesong**. Porteføljen leses fra
+ * `portfolio-history.json` (alle sesonger), ikke `portfolio.json` (bare nyeste),
+ * og skyggeloggen filtreres på samme sesong. Ellers ville skjermen i starten av
+ * en sesong stilt årets få spill mot hele fjorårets skyggelogg.
+ *
  * Tonen: dette er små utvalg med bred usikkerhet. Skjermen sier hva tallene er,
  * ikke hva de beviser.
  */
 
 import { useMemo, type CSSProperties } from 'react';
-import { ErrorState, Laster, SectionHeading } from '@/components/ui';
-import { kombiner, useMeta, usePortfolio, useShadow } from '@/lib/use-data';
+import { ErrorState, Laster, PillGroup, SectionHeading } from '@/components/ui';
+import { ALLE_SESONGER, filtrerSesong, sesongValg, sesongerI } from '@/lib/sesong';
+import { kombiner, useMeta, usePortfolioHistory, useShadow } from '@/lib/use-data';
+import { useSesong } from '@/lib/use-sesong';
 import { krp, nf } from '@/lib/format';
 import type { BetEntry, ShadowEntry, SiteMeta } from '@/types';
 import { Panel } from './Panel';
@@ -63,16 +70,24 @@ function terskelsetning(meta: SiteMeta | null): string {
 /* -------------------------------------------------------------------------- */
 
 export function SkyggeSkjerm() {
-    const portefølje = usePortfolio();
+    const portefølje = usePortfolioHistory();
     const skyggedata = useShadow();
     const meta = useMeta();
     const { loading, error, retry } = kombiner(portefølje, skyggedata);
 
     const rader = portefølje.data?.bets ?? INGEN_SPILL;
+    const skyggerader = skyggedata.data ?? INGEN_SKYGGE;
+
+    // Nyeste sesong i én av loggene er standard. Skyggeloggen kan få rader før
+    // første ekte spill i en ny sesong, og da skal den nye sesongen vises.
+    const sesonger = useMemo(() => sesongerI(rader, skyggerader), [rader, skyggerader]);
+    const standardSesong = sesonger[sesonger.length - 1] ?? ALLE_SESONGER;
+    const [sesong, setSesong] = useSesong(sesonger, standardSesong);
+    const valg = useMemo(() => sesongValg(sesonger), [sesonger]);
 
     const utvalg = useMemo(
-        () => velgUtvalg(rader, skyggedata.data ?? INGEN_SKYGGE),
-        [rader, skyggedata.data],
+        () => velgUtvalg(filtrerSesong(rader, sesong), filtrerSesong(skyggerader, sesong)),
+        [rader, skyggerader, sesong],
     );
 
     const { kilde, faktisk, skygge } = utvalg;
@@ -118,6 +133,18 @@ export function SkyggeSkjerm() {
         <main>
             {hode}
 
+            {sesonger.length > 1 ? (
+                <section className={styles.sesongvalg}>
+                    <PillGroup
+                        label="Sesong"
+                        size="md"
+                        options={valg}
+                        value={sesong}
+                        onChange={setSesong}
+                    />
+                </section>
+            ) : null}
+
             {/* --- de to panelene, 50/50 -------------------------------- */}
             <section
                 className={`split ${styles.paneler}`}
@@ -126,7 +153,11 @@ export function SkyggeSkjerm() {
                 <Panel
                     tittel="Faktisk portefølje"
                     tittelfarge="teal"
-                    undertekst="Spillene som passerte begge tersklene og faktisk ble lagt inn"
+                    undertekst={
+                        faktisk.n > 0
+                            ? 'Spillene som passerte begge tersklene og faktisk ble lagt inn'
+                            : 'Ingen avregnede spill i porteføljen denne sesongen ennå.'
+                    }
                     sammendrag={faktisk.n > 0 ? faktisk : null}
                     stolpe={stolpeBredde(faktisk.profit, nevner)}
                 />

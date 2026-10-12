@@ -206,6 +206,7 @@ def test_full_export(tmp: Path):
         "teams.json",
         "value-report.json",
         "portfolio.json",
+        "portfolio-history.json",
         "matchups.json",
         "elo.json",
         "shadow.json",
@@ -224,8 +225,15 @@ def test_full_export(tmp: Path):
     assert files["meta.json"]["failed"] == []
     assert files["portfolio.json"]["summary"]["total_bets"] >= 0
 
+    # portfolio-history.json har alle sesonger, ikke bare den portfolio.json viser.
+    historikk = files["portfolio-history.json"]
+    assert historikk["season"] == files["portfolio.json"]["season"]
+    assert historikk["seasons"] == files["portfolio.json"]["seasons"]
+    assert len(historikk["bets"]) == files["portfolio.json"]["all_time"]["total_bets"]
+    assert all(b["season"] for b in historikk["bets"])
+
     # Nye filer skal ligge i meta.json.files, ellers finner ikke frontend dem.
-    assert {"elo.json", "shadow.json"} <= set(files["meta.json"]["files"])
+    assert {"elo.json", "shadow.json", "portfolio-history.json"} <= set(files["meta.json"]["files"])
 
     # Innholdet i models/elo_ratings.json rulles framover hver natt, så her
     # sjekkes bare formen. Aliasing/rangering testes mot fixture i
