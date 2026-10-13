@@ -5,7 +5,7 @@
     "2026-27"
   ],
   "all_time": {
-    "total_bets": 197,
+    "total_bets": 198,
     "profit": -705.0
   },
   "timeseries": [
@@ -107,17 +107,28 @@
       "bets_won": 0,
       "bets_settled": 1,
       "open_bets": 0
+    },
+    {
+      "date": "2026-10-14",
+      "invested": 100.0,
+      "value": -1265.0,
+      "settled_return": 235.0,
+      "open_stake": 100.0,
+      "bets_placed": 1,
+      "bets_won": 0,
+      "bets_settled": 0,
+      "open_bets": 1
     }
   ],
   "summary": {
-    "total_bets": 15,
-    "open_bets": 0,
-    "total_staked": 1500.0,
+    "total_bets": 16,
+    "open_bets": 1,
+    "total_staked": 1600.0,
     "settled_return": 235.0,
     "current_value": -1265.0,
-    "open_stake": 0,
+    "open_stake": 100.0,
     "profit": -1265.0,
-    "roi": -0.843,
+    "roi": -0.791,
     "win_rate": 0.067
   },
   "bets": [
@@ -600,6 +611,38 @@
       "value_home": 0.21375,
       "value_draw": 0.09525,
       "value_away": -0.37567
+    },
+    {
+      "season": "2026-27",
+      "date": "2026-10-14",
+      "event_id": "OTT-STL-2026-10-14",
+      "start_time": "2026-10-14T01:30:00+02:00",
+      "home_abbr": "OTT",
+      "away_abbr": "STL",
+      "selection": "home",
+      "odds": 2.3,
+      "model_prob": 0.509,
+      "implied_prob": 0.43478,
+      "value": 0.17108,
+      "stake": 100.0,
+      "status": "pending",
+      "payout": 0.0,
+      "profit": 0.0,
+      "actual_outcome": "",
+      "created_at": "2026-10-13T15:52:50.793861",
+      "updated_at": "2026-10-13T15:52:50.793861",
+      "odds_home": 2.3,
+      "odds_draw": 3.8,
+      "odds_away": 2.35,
+      "model_home_win": 0.509,
+      "model_draw": 0.239,
+      "model_away_win": 0.252,
+      "implied_home_prob": 0.43478,
+      "implied_draw_prob": 0.26316,
+      "implied_away_prob": 0.42553,
+      "value_home": 0.17108,
+      "value_draw": -0.09207,
+      "value_away": -0.40802
     }
   ]
 }
