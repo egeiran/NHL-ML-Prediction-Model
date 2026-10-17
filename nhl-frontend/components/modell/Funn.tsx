@@ -3,7 +3,7 @@
  *
  * Teksten er redaksjonell og gjengitt fra `PROBLEMS.md`. Den er bevisst uten
  * tall: hvert funn har allerede sitt eget bevis lenger opp på skjermen, regnet
- * fra `portfolio.json` i samme lasting — de tre treff-tallene for funn 01,
+ * fra `portfolio-all.json` i samme lasting — de tre treff-tallene for funn 01,
  * EV-kvartilene og innsatssimulatoren for funn 02.
  *
  * En tidligere versjon gjentok tallene her som sitater. De frøs på historikken

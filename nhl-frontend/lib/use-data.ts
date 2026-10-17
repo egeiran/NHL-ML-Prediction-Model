@@ -20,6 +20,7 @@ import {
     fetchMatchups,
     fetchMeta,
     fetchPortfolio,
+    fetchPortfolioAll,
     fetchShadow,
     fetchTeams,
     fetchValueReport,
@@ -104,6 +105,11 @@ export function useValueReport(): DataState<ValueGame[]> {
 
 export function usePortfolio(): DataState<PortfolioResponse> {
     return useDatasett('portfolio', fetchPortfolio);
+}
+
+/** Alle sesonger. For skjermer som analyserer historikken, ikke inneværende sesong. */
+export function usePortfolioAll(): DataState<PortfolioResponse> {
+    return useDatasett('portfolioAll', fetchPortfolioAll);
 }
 
 export function useMatchups(): DataState<MatchupsData> {

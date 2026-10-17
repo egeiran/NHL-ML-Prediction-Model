@@ -8,7 +8,8 @@ workflowen og legger ferdig beregnet data i `nhl-frontend/public/data/`:
 
   teams.json         - lagene som kan velges i matchup-panelet
   value-report.json  - dagens/kommende kamper med modellodds og EV
-  portfolio.json     - porteføljens tidsserie, sammendrag og bets
+  portfolio.json     - porteføljens tidsserie, sammendrag og bets (inneværende sesong)
+  portfolio-all.json - samme, for alle sesonger (/modell og /skygge analyserer hele historikken)
   matchups.json      - forhåndsberegnet prediksjon for alle lagkombinasjoner
   elo.json           - Elo-ratings for de 32 aktive lagene (visningsforkortelser)
   shadow.json        - skyggeloggen (kampene som røk på EV-terskelen eller oddstaket)
@@ -254,6 +255,15 @@ def main() -> int:
     run("teams", "teams.json", build_teams_section)
     run("value-report", "value-report.json", lambda: build_value_report(days, verbose=True))
     run("portfolio", "portfolio.json", lambda: build_portfolio_payload(load_history()))
+    # Analysene på /modell og sammenligningen på /skygge skal se hele
+    # historikken, ikke bare inneværende sesong. Uten denne fila analyserte de
+    # 18 spill fra 28. september 2026, mens teksten og fasiten
+    # (docs/blalinja/stake_truth.json) gjaldt alle.
+    run(
+        "portfolio-all",
+        "portfolio-all.json",
+        lambda: build_portfolio_payload(load_history(), all_seasons=True),
+    )
     run("elo", "elo.json", lambda: build_elo(generated_at))
     run("shadow", "shadow.json", build_shadow)
 

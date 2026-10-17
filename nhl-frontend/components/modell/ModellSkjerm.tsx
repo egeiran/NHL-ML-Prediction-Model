@@ -40,7 +40,7 @@ import {
     type AnalysisResult,
     type CorrelationResult,
 } from '@/lib/analysis';
-import { usePortfolio } from '@/lib/use-data';
+import { usePortfolioAll } from '@/lib/use-data';
 import { ErrorState, Laster, PillGroup, SectionHeading } from '@/components/ui';
 import { MANGLER, nf, odds as fmtOdds, pc } from '@/lib/format';
 import type { BetEntry } from '@/types';
@@ -82,7 +82,10 @@ function korrelasjon(c: CorrelationResult): string {
 }
 
 export function ModellSkjerm() {
-    const portefølje = usePortfolio();
+    // Hele historikken: analysene trenger alle avregnede spill, ikke bare
+    // inneværende sesong (portfolio.json), og fasiten i stake_truth.json
+    // regnes på det samme utvalget.
+    const portefølje = usePortfolioAll();
     /** Pilla — settes synkront, så trykket registrerer med én gang. */
     const [valgt, setValgt] = useState<Utvalg>('alle');
     /** Dataene — henger etter i en transition mens `analyze()` går. */

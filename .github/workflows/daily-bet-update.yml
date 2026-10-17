@@ -171,6 +171,22 @@ jobs:
           NHL_EXPORT_DAYS: "3"
         run: python export_site_data.py
 
+      # Frontendens analyse skal stemme med fasiten (stake_truth.json) på dagens
+      # data. Pusher fra denne jobben starter ikke frontend-tests.yml, så uten
+      # dette steget ville et avvik først blitt oppdaget for hånd.
+      - name: Set up Node
+        if: steps.export.outcome == 'success'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run frontend tests
+        id: frontend_tests
+        if: steps.export.outcome == 'success'
+        continue-on-error: true
+        working-directory: nhl-frontend
+        run: npm test
+
       - name: Commit and push changes
         run: |
           # Sjekken på staged endringer under fanger både endrede og nye filer
@@ -194,7 +210,7 @@ jobs:
       # gjennom, så dagens historikk er lagret uansett — det er bare stillheten
       # vi ikke vil ha.
       - name: Fail if generated data is stale
-        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success' || steps.stake_truth.outcome != 'success'
+        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success' || steps.stake_truth.outcome != 'success' || steps.frontend_tests.outcome == 'failure'
         run: |
           if [ "${{ steps.export_tests.outcome }}" != "success" ]; then
             echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert."
@@ -202,6 +218,10 @@ jobs:
           elif [ "${{ steps.export.outcome }}" != "success" ]; then
             echo "::error::Eksporten feilet – site-dataen ble ikke oppdatert."
             echo "::error::nhl-frontend/public/data/ står på gårsdagens tall."
+          fi
+          if [ "${{ steps.frontend_tests.outcome }}" = "failure" ]; then
+            echo "::error::Frontend-testene feilet: analysen på /modell stemmer ikke med"
+            echo "::error::stake_truth.json, eller formaterings-/spilltestene røk. Se steget over."
           fi
           if [ "${{ steps.stake_truth.outcome }}" != "success" ]; then
             echo "::error::stake_truth.json ble ikke regenerert. Den er nå ute av takt"
