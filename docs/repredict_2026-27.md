@@ -1,6 +1,6 @@
 # Re-prediksjon 2026-27 uten preseason i formen
 
-Generert 2026-10-17 14:58 UTC av `NHL/repredict_season.py`. 133 kamper fra porteføljen og skyggeloggen, med oddsen som faktisk ble logget. Loggene er ikke endret.
+Generert 2026-10-17 15:02 UTC av `NHL/repredict_season.py`. 133 kamper fra porteføljen og skyggeloggen, med oddsen som faktisk ble logget. Loggene er ikke endret.
 
 ## Kontroll: gjenskaper vi det produksjonen gjorde?
 
@@ -9,6 +9,19 @@ Gammel modell + gammel form + Elo-fila fra commiten som la inn raden: snittavvik
 ## Hvor mye preseason var det i formen?
 
 Første uke av sesongen var 74 % av kampene i 5-kampersvinduet preseason-kamper. Snittavviket mellom «gjenskapt» og «uten preseason» er 0.030 per utfall over hele perioden.
+
+## Hvor treffsikre er sannsynlighetene?
+
+Log loss på de 119 avgjorte kampene (lavere er bedre). Dette måler alle kampene, ikke bare dem som ble spilt.
+
+| Sannsynligheter | Log loss |
+| --- | ---: |
+| Logget (gammel modell, med preseason) | 1.0677 |
+| Gammel modell uten preseason | 1.0499 |
+| Ny modell | 1.0442 |
+| Markedet (Norsk Tipping, uten margin) | 1.0277 |
+
+Markedet er best. Det er derfor modellen skal spille sjelden: når den er langt fra oddsen, er det som regel modellen som tar feil.
 
 ## Hva ville blitt spilt?
 
