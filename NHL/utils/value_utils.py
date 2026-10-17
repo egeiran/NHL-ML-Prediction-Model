@@ -2,7 +2,10 @@ import os
 from typing import Optional, Tuple
 
 
-_DRAW_PROB_MULTIPLIER = float(os.environ.get("NHL_DRAW_PROB_MULT", "0.95"))
+# 1.0 = ingen justering. 0.95 var et plaster på Random Forest-ens draw-prob;
+# den logistiske modellen er kalibrert per utfall uten hjelp. Overstyr med
+# NHL_DRAW_PROB_MULT om en ny kalibrering skulle vise noe annet.
+_DRAW_PROB_MULTIPLIER = float(os.environ.get("NHL_DRAW_PROB_MULT", "1.0"))
 
 
 def adjust_three_way_probs(

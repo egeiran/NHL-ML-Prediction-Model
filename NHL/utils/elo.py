@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, asdict
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -107,10 +108,34 @@ def regress_to_mean(
     }
 
 
+def season_id(day) -> int:
+    """
+    NHL-sesongen en dato hører til, som heltall (2026-10-17 -> 20262027).
+    Sesongen regnes fra juli, samme skille som resten av pipelinen bruker.
+    """
+    if isinstance(day, str):
+        day = datetime.strptime(day[:10], "%Y-%m-%d").date()
+    elif isinstance(day, datetime):
+        day = day.date()
+    if not isinstance(day, date):
+        raise TypeError(f"Ukjent datotype: {type(day).__name__}")
+    start = day.year if day.month >= 7 else day.year - 1
+    return int(f"{start}{start + 1}")
+
+
 def compute_elo_history(
     games: pd.DataFrame,
     config: EloConfig = EloConfig(),
 ) -> Tuple[pd.DataFrame, Dict[str, float]]:
+    """Som compute_elo_state, uten sesongen hvert lag sist spilte i."""
+    elo_df, ratings, _ = compute_elo_state(games, config)
+    return elo_df, ratings
+
+
+def compute_elo_state(
+    games: pd.DataFrame,
+    config: EloConfig = EloConfig(),
+) -> Tuple[pd.DataFrame, Dict[str, float], Dict[str, int]]:
     """
     Går gjennom alle kamper kronologisk og bygger pre-kamp Elo-features.
 
@@ -122,6 +147,9 @@ def compute_elo_history(
       - elo_df: DataFrame med én rad per game_id og kolonnene i
         ELO_FEATURE_COLUMNS (pre-kamp ratings).
       - latest_ratings: dict lag -> siste rating etter siste kamp.
+      - last_season: dict lag -> sesongen lagets siste kamp hørte til. Trengs
+        for å regressere ratingen før lagets første kamp i en ny sesong, slik
+        treningen gjør (se build_elo_feature_values).
 
     Merk: kildedataen inneholder en del eksakte duplikat-rader (samme game_id).
     Vi dropper duplikater på game_id slik at hver reelle kamp kun oppdaterer
@@ -175,7 +203,7 @@ def compute_elo_history(
         )
 
     elo_df = pd.DataFrame.from_records(records, columns=["game_id"] + ELO_FEATURE_COLUMNS)
-    return elo_df, ratings
+    return elo_df, ratings, last_season
 
 
 def latest_rating(
@@ -187,18 +215,45 @@ def latest_rating(
     return float(ratings.get(team, config.base_rating))
 
 
+def rating_for_season(
+    ratings: Dict[str, float],
+    team: str,
+    config: EloConfig = EloConfig(),
+    season: Optional[int] = None,
+    last_season: Optional[Dict[str, int]] = None,
+) -> float:
+    """
+    Ratingen laget går inn i en kamp i `season` med. Har laget ikke spilt i
+    den sesongen ennå, trekkes ratingen mot snittet – nøyaktig det
+    compute_elo_state gjør før lagets første kamp i ny sesong. Uten det står
+    sesongåpningene på fjorårets uregresserte tall, som treningen aldri så.
+    """
+    rating = latest_rating(ratings, team, config)
+    if season is None or not last_season:
+        return rating
+    previous = last_season.get(team)
+    if previous is not None and int(previous) != int(season):
+        rating = config.base_rating + config.season_regression * (
+            rating - config.base_rating
+        )
+    return rating
+
+
 def build_elo_feature_values(
     home_team: str,
     away_team: str,
     ratings: Dict[str, float],
     config: EloConfig = EloConfig(),
+    season: Optional[int] = None,
+    last_season: Optional[Dict[str, int]] = None,
 ) -> Dict[str, float]:
     """
     Lager Elo-feature-verdiene for én kommende kamp ut fra siste ratings.
-    Brukes i prediksjon (live og CLI).
+    Brukes i prediksjon (live og CLI). Med `season` og `last_season` regresseres
+    lag som ikke har spilt i kampens sesong ennå, slik treningen gjør.
     """
-    home_rating = latest_rating(ratings, home_team, config)
-    away_rating = latest_rating(ratings, away_team, config)
+    home_rating = rating_for_season(ratings, home_team, config, season, last_season)
+    away_rating = rating_for_season(ratings, away_team, config, season, last_season)
     return {
         "home_elo_pre": home_rating,
         "away_elo_pre": away_rating,
@@ -229,11 +284,13 @@ def save_ratings(
     config: EloConfig,
     path: str = "models/elo_ratings.json",
     metadata: Optional[Dict] = None,
+    last_season: Optional[Dict[str, int]] = None,
 ) -> None:
     """
     Lagrer siste ratings + konfig til JSON ved siden av modellen.
     `metadata` (f.eks. {"through": "2026-06-12", "n_games": 1234}) lagres under
-    nøkkelen "meta" og ignoreres trygt av load_ratings.
+    nøkkelen "meta" og ignoreres trygt av load_ratings. `last_season` (lag ->
+    sesong) lagres under "last_season" og leses av load_last_seasons.
     """
     resolved = Path(path)
     resolved.parent.mkdir(parents=True, exist_ok=True)
@@ -243,6 +300,8 @@ def save_ratings(
     }
     if metadata:
         payload["meta"] = metadata
+    if last_season:
+        payload["last_season"] = {team: int(s) for team, s in last_season.items()}
     with open(resolved, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, sort_keys=True)
 
@@ -266,3 +325,16 @@ def load_ratings(
     except TypeError:
         config = EloConfig()
     return ratings, config
+
+
+def load_last_seasons(path: str = "models/elo_ratings.json") -> Dict[str, int]:
+    """
+    Sesongen hvert lag sist spilte i, fra ratings-fila. Tom dict hvis fila
+    mangler eller er skrevet før feltet fantes – da regresseres ingenting.
+    """
+    resolved = resolve_ratings_path(path)
+    if not resolved.is_file():
+        return {}
+    with open(resolved, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    return {team: int(s) for team, s in (payload.get("last_season") or {}).items()}

@@ -7,12 +7,14 @@ on:
 
 permissions:
   contents: write  # trengs for å pushe bet_history.csv
+  actions: read    # trengs for å finne forrige modellartefakt (uten den: 403, og modellen trenes hver dag)
 
 jobs:
   update-bets:
     runs-on: ubuntu-latest
+    # Samme gruppe som closing-odds.yml: begge skriver de samme loggfilene.
     concurrency:
-      group: daily-bet-update
+      group: bet-ledger
       cancel-in-progress: false
     env:
       REQUIREMENTS_FILE: NHL/requirements-api.txt
@@ -43,10 +45,11 @@ jobs:
       - name: Download latest model artifact (best effort)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Bumpet navn: det gamle "nhl-model"-artefaktet ble trent uten
-          # Elo-features (14 kolonner) og er inkompatibelt med dagens 18-kolonners
-          # pipeline. Nytt navn tvinger en fersk trening med Elo på første kjøring.
-          ARTIFACT_NAME: nhl-model-elo
+          # Bumpet navn: "nhl-model-elo" var Random Forest-en (18 features).
+          # Dagens modell er logistisk regresjon på 3 features. ensure_model.py
+          # sjekker versjonen uansett, men eget navn hindrer også at
+          # model-eval-jobben på en branch overskriver produksjonsmodellen.
+          ARTIFACT_NAME: nhl-model-logreg
         run: |
           set -euo pipefail
           mkdir -p NHL/models
@@ -83,14 +86,10 @@ jobs:
       - name: Ensure model artifact
         working-directory: NHL
         run: |
-          # Krev BÅDE modell og Elo-ratings. Mangler én av dem, tren på nytt
-          # slik at de er i sync (modellen forventer Elo-features).
-          if [ -f models/nhl_model.pkl ] && [ -f models/elo_ratings.json ]; then
-            echo "Existing model + Elo ratings found"
-          else
-            echo "Model or Elo ratings missing, training a fresh one..."
-            python train_model.py
-          fi
+          # Trener på nytt når modellen mangler, er inkompatibel eller er over
+          # en uke gammel (NHL_MODEL_MAX_AGE_DAYS). Feiler treningen, beholdes
+          # en kompatibel modell. Se ensure_model.py.
+          python ensure_model.py
 
       - name: Update Elo ratings from NHL API
         working-directory: NHL
@@ -103,7 +102,7 @@ jobs:
       - name: Upload model artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nhl-model-elo
+          name: nhl-model-logreg
           path: |
             NHL/models/nhl_model.pkl
             NHL/models/elo_ratings.json
@@ -186,6 +185,7 @@ jobs:
           fi
 
           git commit -m "chore: daily bet + predictions update"
+          git pull --rebase --autostash
           git push
 
       # Data kan bli stående på gårsdagens tall av tre grunner: testene feilet

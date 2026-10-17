@@ -2,15 +2,15 @@
 """
 Kalibrerer modellens OT/SO-sannsynlighet mot faktisk frekvens.
 
-Modellen overvurderer systematisk sjansen for at en kamp går til OT/SO. Siden
-EV = sannsynlighet * odds - 1, produserer det "value" som ikke finnes, og
-uavgjort-bets er den klart største tapsposten i bet-historikken.
+Den gamle Random Forest-modellen overvurderte sjansen for OT/SO. Siden
+EV = sannsynlighet * odds - 1, ga det "value" som ikke fantes, og uavgjort-bets
+var den største tapsposten i bet-historikken.
 
 `utils/value_utils.adjust_three_way_probs` skalerer draw-proben med
-NHL_DRAW_PROB_MULT (default 0.95) og renormaliserer. Dette scriptet finner
-hvilken multiplikator som faktisk kalibrerer modellen, målt på en kronologisk
-splitt (trener på tidlige sesonger, evaluerer på de siste) slik at tallene er
-lekkasjefrie.
+NHL_DRAW_PROB_MULT (default 1.0, altså ingen justering) og renormaliserer.
+Dette scriptet sjekker hvilken multiplikator som kalibrerer produksjonsmodellen,
+målt på en kronologisk splitt (trener på tidlige sesonger, evaluerer på de
+siste) slik at tallene er lekkasjefrie. Bruker bare game.csv, ikke nettverk.
 
 Kjøres fra NHL-mappa: `python calibrate_draw.py`
 """
@@ -20,16 +20,14 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import brier_score_loss, log_loss
 
-from utils.data_loader import load_and_prepare_games
-from utils.elo import EloConfig, compute_elo_history
-from utils.feature_engineering import (
-    DEFAULT_WINDOWS,
-    add_multiwindow_form,
-    build_team_long_df,
-    make_game_feature_frame,
-)
-from utils.model_utils import train_random_forest
-from utils.value_utils import adjust_three_way_probs
+from utils.elo import EloConfig
+from utils.feature_engineering import get_feature_columns
+from utils.game_history import build_feature_history, historical_frame
+from utils.model_utils import train_outcome_model
+from utils.value_utils import _DRAW_PROB_MULTIPLIER, adjust_three_way_probs
+
+# Samme treningsvindu som train_model.py.
+FIRST_TRAIN_SEASON = 20052006
 
 DRAW_CLASS = 1
 # Kandidatmultiplikatorer å søke over.
@@ -68,17 +66,15 @@ def summarise(name: str, probs: np.ndarray, y_true: np.ndarray) -> dict:
 
 def main() -> int:
     print("Laster data ...")
-    games, _, _ = load_and_prepare_games("data/game.csv", "data/team_info.csv")
-    long_df = add_multiwindow_form(build_team_long_df(games), windows=DEFAULT_WINDOWS)
-    elo_df, _ = compute_elo_history(games, EloConfig())
-    X, y, merged, _ = make_game_feature_frame(
-        games, long_df, windows=DEFAULT_WINDOWS, elo_df=elo_df
-    )
+    frame, _, _ = build_feature_history(historical_frame(), EloConfig())
+    merged = frame[frame["season"] >= FIRST_TRAIN_SEASON].reset_index(drop=True)
+    X = merged[get_feature_columns()]
+    y = merged["outcome_code"]
 
     X_train, X_test, y_train, y_test = chronological_split(merged, X, y)
     print(f"Trener på {len(X_train)} kamper, tester på {len(X_test)} (kronologisk splitt)")
 
-    model = train_random_forest(X_train, y_train)
+    model = train_outcome_model(X_train, y_train)
     raw = model.predict_proba(X_test)
     y_true = y_test.to_numpy()
 
@@ -115,10 +111,13 @@ def main() -> int:
     # ville passert terskelen før og etter.
     print("\n=== Effekt på bet-seleksjon (odds 3.90, EV-terskel 0.15) ===")
     threshold = 1.15 / 3.90
-    for label, probs in (("i dag (0.95)", apply_multiplier(raw, 0.95)),
+    for label, probs in ((f"i dag ({_DRAW_PROB_MULTIPLIER})", apply_multiplier(raw, _DRAW_PROB_MULTIPLIER)),
                          (f"anbefalt ({best_bias[0]})", apply_multiplier(raw, best_bias[0]))):
         picks = probs[:, DRAW_CLASS] >= threshold
-        hit = (y_true[picks] == DRAW_CLASS).mean() if picks.any() else 0.0
+        if not picks.any():
+            print(f"{label:18}     0 kamper over terskel")
+            continue
+        hit = (y_true[picks] == DRAW_CLASS).mean()
         roi = (hit * 3.90 - 1) * 100
         print(
             f"{label:18} {picks.sum():5} kamper over terskel "

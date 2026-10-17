@@ -5,6 +5,11 @@ from utils.elo import ELO_FEATURE_COLUMNS
 
 DEFAULT_WINDOWS: Sequence[int] = (5, 20)
 
+# Featurene produksjonsmodellen bruker. Elo-differansen bærer nesten alt: på
+# kronologisk test (2017–2020) ga form-featurene og lag-id-ene ingen bedring
+# utover den, mens back-to-back ga litt. Se evaluate_elo.py.
+MODEL_FEATURE_COLUMNS: List[str] = ["elo_diff", "home_b2b", "away_b2b"]
+
 
 def build_team_long_df(games: pd.DataFrame) -> pd.DataFrame:
     """
@@ -132,11 +137,19 @@ def _rename_form_cols(df: pd.DataFrame, prefix: str, windows: Sequence[int]):
     return df.rename(columns=cols)
 
 
-def get_feature_columns(
+def get_feature_columns() -> List[str]:
+    """Feature-kolonneorden delt mellom trening og prediksjon."""
+    return list(MODEL_FEATURE_COLUMNS)
+
+
+def get_legacy_feature_columns(
     windows: Sequence[int] = DEFAULT_WINDOWS,
     include_elo: bool = True,
 ) -> List[str]:
-    """Feature-kolonneorden delt mellom trening og prediksjon."""
+    """
+    Feature-settet til den gamle Random Forest-modellen (form + lag-id + Elo).
+    Brukes bare til sammenligning og re-prediksjon av logget historikk.
+    """
     feature_cols: List[str] = []
     for prefix in ("home", "away"):
         for metric in ("form_goals_for", "form_goals_against", "form_win_rate"):
@@ -155,8 +168,8 @@ def make_game_feature_frame(
     elo_df: Optional[pd.DataFrame] = None,
 ):
     """
-    Lager game-level featurer ved å ta form-statistikk for home/away
-    og merge tilbake til games. Hvis `elo_df` (fra elo.compute_elo_history)
+    Lager game-level featurer (det gamle Random Forest-settet) ved å ta
+    form-statistikk for home/away og merge tilbake til games. Hvis `elo_df` (fra elo.compute_elo_history)
     er gitt, merges pre-kamp Elo-features inn per game_id.
 
     Returnerer:
@@ -191,7 +204,7 @@ def make_game_feature_frame(
     if include_elo:
         merged = merged.merge(elo_df, on="game_id", how="left")
 
-    feature_cols = get_feature_columns(windows, include_elo=include_elo)
+    feature_cols = get_legacy_feature_columns(windows, include_elo=include_elo)
 
     X = merged[feature_cols]
     y = merged["outcome_code"]

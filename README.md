@@ -147,21 +147,45 @@ Frontenden («Blålinja») er en statisk Next.js-app med sju ruter. Detaljene st
 - FastAPI med CORS for frontend og caching av modell/lag-mapping.
 - Live data: henter NHL-kamper og odds fra Norsk Tipping, samt kampdata fra NHL API.
 - Bet-tracker som lagrer til `NHL/data/bet_history.csv` og beregner tidsserie + ROI til frontend.
-- Random Forest-modell (`models/nhl_model.pkl`) med treningsscript (`train_model.py`).
+- Logistisk regresjon (`models/nhl_model.pkl`) med treningsscript (`train_model.py`), se under.
+
+## 🎯 Modellen
+Multinomisk logistisk regresjon som gir sannsynlighet for hjemmeseier, OT/SO og
+borteseier etter ordinær tid. Tre features:
+
+| Feature | Hva |
+| --- | --- |
+| `elo_diff` | Hjemmelagets Elo minus bortelagets, før kampen |
+| `home_b2b` / `away_b2b` | Laget spilte grunnseriekamp dagen før (lokal dato) |
+
+- **Data:** `game.csv` (2000–2020) skjøtet med ferdigspilte grunnseriekamper fra
+  NHL-APIet (2020/21 til i dag), via `utils/game_history.py`. Elo kjøres over hele
+  historikken; treningen starter i 2005/06, etter at uavgjort forsvant.
+- **Hvorfor ikke Random Forest lenger:** på kronologisk test (trent t.o.m. 2016/17,
+  testet på 2017–2020) slo én Elo-variabel i logistisk regresjon skogen tydelig
+  (log loss 1,052 mot 1,064; basisratene gir 1,066). Form-featurene og lag-id-ene
+  ga ingen bedring utover Elo, og skogen var overkonfident i halene – der
+  value-spillene plukkes fra. `python evaluate_elo.py` kjører sammenligningen.
+- **Kalibrering:** sannsynlighetene treffer faktisk frekvens per utfall uten
+  justering, så draw-multiplikatoren står på 1,0 (`NHL_DRAW_PROB_MULT`).
+- **Trening:** `train_model.py` skriver først ut en kronologisk test mot siste
+  komplette sesong, trener så på alt og lagrer modell + ferske Elo-ratings.
+  `ensure_model.py` trener på nytt i den daglige jobben når modellen mangler, er
+  inkompatibel eller er over en uke gammel (`NHL_MODEL_MAX_AGE_DAYS`).
 
 ## ♟️ Elo-ratingsystem
-Modellen suppleres med et Elo-ratingsystem (`utils/elo.py`) som gir hvert lag en
-løpende styrkerating. Elo er nå de mest informative featurene i modellen.
+Elo-ratingsystemet (`utils/elo.py`) gir hvert lag en løpende styrkerating, og
+Elo-differansen er modellens viktigste feature.
 
 - **Kronologisk, lekkasjefritt:** hvert lags rating før en kamp bygger kun på
   tidligere kamper. Ratingene oppdateres kamp for kamp (zero-sum).
 - **Hjemmebanefordel:** legges til i forventet score (`home_advantage`).
 - **OT/SO som "myk" seier:** kamper avgjort i OT/SO svinger ratingen mindre enn
   ordinære seire (`ot_win_score`), siden de er nær myntkast.
-- **Sesongregresjon:** ratingene trekkes mot snittet mellom sesonger
-  (`season_regression`) for å reflektere roster-/formendringer.
-- **Fire features** mates inn i Random Forest: `home_elo_pre`, `away_elo_pre`,
-  `elo_diff` og `elo_expected_home`.
+- **Sesongregresjon:** ratingene trekkes mot snittet før lagets første kamp i
+  ny sesong (`season_regression`). `elo_ratings.json` lagrer sesongen hvert lag
+  sist spilte i (`last_season`), så live-prediksjonen regresserer på samme sted
+  som treningen. Før dette sto sesongåpningene på fjorårets uregresserte tall.
 
 Siste ratings lagres til `models/elo_ratings.json` (sporet i git) og brukes av
 live-prediksjonen.
@@ -175,17 +199,23 @@ ferske fila; `update-elo.yml` kan også kjøres på forespørsel. Live-API-et la
 fila på nytt automatisk når den endres. Nye franchiser (SEA) får cold-start på
 base-rating; Utah arver Arizonas historikk via alias.
 
-> Merk om alias: NHL-APIet bruker `UTA`, mens modellen bruker `ARI`. Form-
-> beregningen matcher derfor på visningsforkortelsen (den kampene faktisk
-> bruker), mens `team_id` og Elo slås opp kanonisk. Uten dette skillet ble
-> alle Utahs hjemmekamper regnet som bortekamper med mål for/mot byttet om.
-> `test_site_export.py` låser oppførselen mot et lag uten alias.
+> Merk om alias: NHL-APIet bruker `UTA`, mens modellen bruker `ARI`. Kampdata
+> og sesongprogram slås opp med visningsforkortelsen (den APIet bruker), mens
+> Elo slås opp kanonisk. Uten dette skillet ble alle Utahs hjemmekamper i sin
+> tid regnet som bortekamper. `test_site_export.py` låser oppførselen.
 
-Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning
-av baseline vs. +Elo på både tilfeldig og kronologisk splitt (accuracy, balanced
-accuracy, macro F1, log loss og Brier). Evalueringen kjøres også automatisk i
-GitHub Actions (`.github/workflows/model-eval.yml`), med resultatene i
-job-sammendraget.
+> Merk om formkamper: lagenes siste kamper (visningen «siste 5») hentes fra
+> lagets sesongprogram, bare grunnserie, og ruller inn i forrige sesong når årets
+> ikke har nok kamper. Tidligere ble de hentet fra scoreboardet uten filter på
+> kamptype, så i sesongstarten besto formen nesten bare av preseason-kamper.
+> Se PROBLEMS.md og `docs/repredict_2026-27.md`.
+
+Kjør `python evaluate_elo.py` for en lekkasjefri sammenligning av basisrater,
+den gamle Random Forest-en og logistisk regresjon på kronologisk splitt (log
+loss, Brier, accuracy, kalibrering og gevinst tidlig i sesongen). Evalueringen
+kjøres også automatisk i GitHub Actions (`.github/workflows/model-eval.yml`),
+med resultatene i job-sammendraget. `python backtest_season.py` gjør en
+walk-forward-test mot en hel sesong fra NHL-APIet (`season-backtest.yml`).
 
 > Merk: kildedataen (`data/game.csv`) inneholdt eksakte duplikat-rader (samme
 > `game_id`). Disse fjernes nå ved innlasting, noe som fjerner dobbelttelling i
@@ -207,8 +237,12 @@ Prediction Model/
 │   ├── predict.py              # CLI-prediksjon fra lag-id
 │   ├── predict_live.py         # CLI-prediksjon med live data
 │   ├── predict_with_odds.py    # CLI med odds/value
-│   ├── train_model.py          # Trener Random Forest (form + Elo)
-│   ├── evaluate_elo.py         # Lekkasjefri baseline vs. +Elo evaluering
+│   ├── train_model.py          # Trener logistisk regresjon (Elo + back-to-back)
+│   ├── ensure_model.py         # Trener på nytt når modellen er gammel/inkompatibel
+│   ├── evaluate_elo.py         # Lekkasjefri sammenligning av modellvarianter
+│   ├── backtest_season.py      # Walk-forward mot en hel sesong
+│   ├── repredict_season.py     # Re-prediksjon av sesongens loggede kamper
+│   ├── record_closing_odds.py  # Sluttodds (CLV) for åpne spill
 │   ├── requirements-api.txt
 │   ├── data/
 │   │   ├── bet_history.csv
@@ -224,6 +258,7 @@ Prediction Model/
 │   └── utils/
 │       ├── data_loader.py
 │       ├── elo.py              # Elo-ratingmotor
+│       ├── game_history.py     # game.csv + NHL-API som én kamphistorikk
 │       ├── feature_engineering.py
 │       └── model_utils.py
 └── nhl-frontend/
@@ -283,17 +318,29 @@ Prediction Model/
    Svarer ikke APIet, faller den tilbake på kalenderen: oktober–13. april
    spilles som normalt, resten av året ikke. `NHL_ALLOW_ALL_GAME_TYPES=1`
    skrur filteret av.
-8. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
-   ```json
-   { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.15, "max_odds": 4.0 }
-   ```
-9. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for
-   modell (trener ved behov), eksporterer statisk site-data og committer ny
-   `bet_history.csv` + `nhl-frontend/public/data/`. Den regenererer også
-   `docs/blalinja/stake_truth.json` rett etter `bet_tracker.py` — fasiten
-   `nhl-frontend/lib/analysis.test.mjs` måler seg mot er regnet fra
-   `bet_history.csv`, så uten det steget ville den råtnet fra første nye spill.
-   Aktiver Actions og sjekk at default branch er korrekt.
+8. **Ikke de første kampene i sesongen.** Har et av lagene spilt færre enn
+   `NHL_MIN_GAMES_PLAYED` (default 5) grunnseriekamper i sesongen, hoppes kampen
+   over (og havner ikke i skyggeloggen). Elo står da på fjorårets tall, mens
+   markedet har priset inn sommerens overganger; på kronologisk test slo
+   modellen ikke engang basisratene før begge lagene hadde fem kamper. `0` skrur
+   sperren av.
+9. **Sluttodds (CLV).** `record_closing_odds.py` henter Norsk Tipping-oddsen for
+   åpne spill og skyggespill som starter innen tre timer, og fører den i
+   `close_odds_home/draw/away`. Workflowen `closing-odds.yml` kjører fire ganger
+   i løpet av kvelden. Closing line value (oddsen vi fikk / sluttoddsen − 1) viser
+   mye raskere enn ROI om modellen finner priser markedet senere retter seg etter,
+   og vises i statuslinja øverst når det finnes data.
+10. **Tilpasninger**: juster stake/value/odds i `bet_tracker.update_daily_bets` eller i body til `/portfolio/update`:
+    ```json
+    { "days_ahead": 1, "stake_per_bet": 100, "min_value": 0.15, "max_odds": 4.0 }
+    ```
+11. **GitHub Actions**: `.github/workflows/daily-bet-update.yml` kjører daglig, sørger for
+    modell (`ensure_model.py`), eksporterer statisk site-data og committer ny
+    `bet_history.csv` + `nhl-frontend/public/data/`. Den regenererer også
+    `docs/blalinja/stake_truth.json` rett etter `bet_tracker.py` — fasiten
+    `nhl-frontend/lib/analysis.test.mjs` måler seg mot er regnet fra
+    `bet_history.csv`, så uten det steget ville den råtnet fra første nye spill.
+    Aktiver Actions og sjekk at default branch er korrekt.
 
 ## 🐛 Feilsøking
 - Backend: `pip install -r NHL/requirements-api.txt`, sjekk at `models/nhl_model.pkl` finnes og at serveren kjører på port 8000.

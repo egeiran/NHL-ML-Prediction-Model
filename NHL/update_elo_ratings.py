@@ -28,69 +28,21 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import List
 
 import pandas as pd
 
-from live.nhl_results import fetch_completed_games
-from utils.data_loader import load_and_prepare_games
-from utils.elo import EloConfig, compute_elo_history, save_ratings
-from utils.team_alias import to_canonical
+from utils.elo import EloConfig, compute_elo_state, save_ratings
+from utils.game_history import (
+    GAME_COLUMNS,
+    api_frame,
+    combine,
+    historical_frame,
+    seasons_to_fetch,
+)
 
-ELO_COLUMNS = [
-    "game_id", "date", "season", "home_team", "away_team",
-    "home_goals", "away_goals", "outcome_code",
-]
-
-
-def current_season_id(today: datetime) -> str:
-    """NHL-sesong-id (YYYYYYYY). Ny sesong regnes fra juli."""
-    year = today.year
-    start = year if today.month >= 7 else year - 1
-    return f"{start}{start + 1}"
-
-
-def seasons_to_fetch() -> List[str]:
-    explicit = os.environ.get("NHL_ELO_SEASONS")
-    if explicit:
-        return [s.strip() for s in explicit.split(",") if s.strip()]
-
-    start = os.environ.get("NHL_ELO_START_SEASON", "20202021")
-    start_year = int(start[:4])
-    end_year = int(current_season_id(datetime.now(timezone.utc))[:4])
-    return [f"{y}{y + 1}" for y in range(start_year, end_year + 1)]
-
-
-def historical_frame() -> pd.DataFrame:
-    """game.csv som Elo-klar frame (datoer normalisert til tz-naive)."""
-    games, _, _ = load_and_prepare_games("data/game.csv", "data/team_info.csv")
-    df = games[ELO_COLUMNS].copy()
-    df["date"] = pd.to_datetime(df["date"], utc=True).dt.tz_localize(None)
-    return df
-
-
-def api_frame(seasons: List[str]) -> pd.DataFrame:
-    """Ferdigspilte API-kamper som Elo-klar frame. Tom frame ved feil/ingen."""
-    rows = fetch_completed_games(seasons, include_playoffs=False)
-    if not rows:
-        return pd.DataFrame(columns=ELO_COLUMNS)
-
-    records = []
-    for g in rows:
-        records.append(
-            {
-                "game_id": g["id"],
-                "date": pd.to_datetime(g["date"]),
-                "season": int(g["season"]),
-                # Kanoniser så franchise-historikk videreføres (UTA -> ARI osv.).
-                "home_team": to_canonical(g["home"]),
-                "away_team": to_canonical(g["away"]),
-                "home_goals": g["home_goals"],
-                "away_goals": g["away_goals"],
-                "outcome_code": g["outcome_code"],
-            }
-        )
-    return pd.DataFrame.from_records(records, columns=ELO_COLUMNS)
+# Fem fulle sesonger siden 2020/21 gir ~7 500 kamper. Under dette er APIet nede
+# eller svarer bare delvis.
+MIN_API_GAMES = 1000
 
 
 def main() -> None:
@@ -100,18 +52,25 @@ def main() -> None:
     print(f"  historical games: {len(hist)}")
 
     if os.environ.get("NHL_ELO_SKIP_API") == "1":
-        api = pd.DataFrame(columns=ELO_COLUMNS)
+        api = pd.DataFrame(columns=GAME_COLUMNS)
         print("Skipping NHL API fetch (NHL_ELO_SKIP_API=1).")
     else:
         seasons = seasons_to_fetch()
         print(f"Fetching completed games from NHL API for seasons: {seasons}")
         api = api_frame(seasons)
         print(f"  API games fetched: {len(api)}")
+        if len(api) < MIN_API_GAMES:
+            # fetch_completed_games svelger feil per lag. Er APIet nede, kommer
+            # det tilbake tomt – og da ville vi skrevet 2020-ratings over de
+            # ferske. Bedre å feile og la workflowen beholde forrige fil.
+            raise SystemExit(
+                f"Fikk bare {len(api)} kamper fra NHL-APIet (krever {MIN_API_GAMES}). "
+                "Beholder eksisterende ratings."
+            )
 
-    combined = pd.concat([hist, api], ignore_index=True)
-    combined = combined.dropna(subset=["date"]).sort_values(["date", "game_id"])
+    combined = combine(hist, api)
 
-    _, ratings = compute_elo_history(combined, config)
+    _, ratings, last_season = compute_elo_state(combined, config)
     through = pd.to_datetime(combined["date"]).max()
     through_str = through.strftime("%Y-%m-%d") if pd.notna(through) else "unknown"
 
@@ -122,7 +81,9 @@ def main() -> None:
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "game.csv + api-web.nhle.com (club-schedule-season)",
     }
-    save_ratings(ratings, config, "models/elo_ratings.json", metadata=meta)
+    save_ratings(
+        ratings, config, "models/elo_ratings.json", metadata=meta, last_season=last_season
+    )
 
     print(f"\nElo ratings updated through {through_str} "
           f"({meta['n_games']} games, {meta['n_api_games']} from API).")
