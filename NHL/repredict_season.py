@@ -433,6 +433,48 @@ def _mean_abs(df: pd.DataFrame, a: str, b: str) -> float:
     return float(np.mean([np.abs(df[f"{a}_{o}"] - df[f"{b}_{o}"]).mean() for o in OUTCOMES]))
 
 
+def _log_loss(df: pd.DataFrame, prefix: str) -> float:
+    y = df["utfall"].map({o: i for i, o in enumerate(OUTCOMES)}).to_numpy()
+    probs = df[[f"{prefix}_{o}" for o in OUTCOMES]].to_numpy(dtype=float)
+    probs = probs / probs.sum(axis=1, keepdims=True)
+    picked = np.clip(probs[np.arange(len(y)), y], 1e-9, 1.0)
+    return float(-np.mean(np.log(picked)))
+
+
+def _accuracy_lines(df: pd.DataFrame) -> List[str]:
+    """Log loss på avgjorte kamper, med markedet (oddsen uten margin) som fasit."""
+    settled = df[df["utfall"].isin(OUTCOMES)].copy()
+    inverse = 1 / settled[["odds_home", "odds_draw", "odds_away"]].to_numpy(dtype=float)
+    fair = inverse / inverse.sum(axis=1, keepdims=True)
+    for i, o in enumerate(OUTCOMES):
+        settled[f"marked_{o}"] = fair[:, i]
+    rows = [
+        ("Logget (gammel modell, med preseason)", "logget"),
+        ("Gammel modell uten preseason", "uten_pre"),
+        ("Ny modell", "ny"),
+        ("Markedet (Norsk Tipping, uten margin)", "marked"),
+    ]
+    lines = [
+        "## Hvor treffsikre er sannsynlighetene?",
+        "",
+        f"Log loss på de {len(settled)} avgjorte kampene (lavere er bedre). "
+        "Dette måler alle kampene, ikke bare dem som ble spilt.",
+        "",
+        "| Sannsynligheter | Log loss |",
+        "| --- | ---: |",
+    ]
+    scores = {prefix: _log_loss(settled, prefix) for _, prefix in rows}
+    lines += [f"| {label} | {scores[prefix]:.4f} |" for label, prefix in rows]
+    lines.append("")
+    if min(scores, key=scores.get) == "marked":
+        lines += [
+            "Markedet er best. Det er derfor modellen skal spille sjelden: når den er langt fra "
+            "oddsen, er det som regel modellen som tar feil.",
+            "",
+        ]
+    return lines
+
+
 def render_report(df: pd.DataFrame, season: str) -> str:
     max_dev = float(np.max([np.abs(df[f"gjenskapt_{o}"] - df[f"logget_{o}"]).max() for o in OUTCOMES]))
     first_week = df[df["local_date"] <= (pd.to_datetime(df["local_date"]).min() + pd.Timedelta(days=6)).strftime("%Y-%m-%d")]
@@ -459,6 +501,7 @@ def render_report(df: pd.DataFrame, season: str) -> str:
         f"Snittavviket mellom «gjenskapt» og «uten preseason» er {_mean_abs(df, 'gjenskapt', 'uten_pre'):.3f} "
         "per utfall over hele perioden.",
         "",
+        *_accuracy_lines(df),
         "## Hva ville blitt spilt?",
         "",
         "Samme terskler som produksjonen: EV > "
