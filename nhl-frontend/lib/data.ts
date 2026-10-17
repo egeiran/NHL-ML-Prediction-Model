@@ -28,6 +28,7 @@ export const DATA_FILER = {
     meta: 'meta.json',
     valueReport: 'value-report.json',
     portfolio: 'portfolio.json',
+    portfolioAll: 'portfolio-all.json',
     matchups: 'matchups.json',
     elo: 'elo.json',
     shadow: 'shadow.json',
@@ -105,8 +106,18 @@ export function fetchValueReport(): Promise<ValueGame[]> {
     return memoisert<ValueGame[]>('valueReport', 'Kunne ikke hente value-rapporten');
 }
 
+/** Inneværende sesong (nyeste sesong med spill). */
 export function fetchPortfolio(): Promise<PortfolioResponse> {
     return memoisert<PortfolioResponse>('portfolio', 'Kunne ikke hente porteføljen');
+}
+
+/**
+ * Samme form som `portfolio.json`, men alle sesonger. Det er dette analysene
+ * på /modell og sammenligningen på /skygge skal regne på – ikke bare spillene
+ * i inneværende sesong.
+ */
+export function fetchPortfolioAll(): Promise<PortfolioResponse> {
+    return memoisert<PortfolioResponse>('portfolioAll', 'Kunne ikke hente porteføljehistorikken');
 }
 
 export function fetchMatchups(): Promise<MatchupsData> {

@@ -34,7 +34,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = resolve(HERE, '..');
 const REPO = resolve(FRONTEND, '..');
 
-const PORTFOLIO = join(FRONTEND, 'public', 'data', 'portfolio.json');
+// Hele historikken: stake_truth.json regnes fra alle avregnede spill i
+// bet_history.csv, og portfolio.json har bare inneværende sesong.
+const PORTFOLIO = join(FRONTEND, 'public', 'data', 'portfolio-all.json');
 const TRUTH = join(REPO, 'docs', 'blalinja', 'stake_truth.json');
 const MODULE = join(HERE, 'analysis.ts');
 

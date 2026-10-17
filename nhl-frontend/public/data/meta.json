@@ -4,6 +4,7 @@
   "files": [
     "elo.json",
     "matchups.json",
+    "portfolio-all.json",
     "portfolio.json",
     "shadow.json",
     "teams.json",

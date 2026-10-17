@@ -1,0 +1,50 @@
+name: Frontend Tests
+
+# Kjører nhl-frontend sine tester (analyse mot fasiten i stake_truth.json,
+# formatering og spill-logikk). De trenger bare Node, ingen npm-avhengigheter.
+#
+# Merk: den daglige jobben committer ny data med GITHUB_TOKEN, og slike pusher
+# starter ikke andre workflows. Derfor kjører daily-bet-update.yml de samme
+# testene selv etter eksporten.
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+    paths:
+      - "nhl-frontend/**"
+      - "docs/blalinja/stake_truth.json"
+      - "NHL/export_site_data.py"
+      - "NHL/analyze_stake_sizing.py"
+      - "NHL/bet_tracker.py"
+      - ".github/workflows/frontend-tests.yml"
+  pull_request:
+    paths:
+      - "nhl-frontend/**"
+      - "docs/blalinja/stake_truth.json"
+      - "NHL/export_site_data.py"
+      - "NHL/analyze_stake_sizing.py"
+      - "NHL/bet_tracker.py"
+      - ".github/workflows/frontend-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # spill.test.mjs bruker module.registerHooks (Node 22.15+).
+          node-version: "22"
+
+      - name: Run tests
+        working-directory: nhl-frontend
+        run: npm test

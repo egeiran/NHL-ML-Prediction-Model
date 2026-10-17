@@ -94,7 +94,8 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | --- | --- |
 | `teams.json` | Lagene som kan velges (kun lag med ferske data) |
 | `value-report.json` | Samme payload som `GET /value-report` |
-| `portfolio.json` | Samme payload som `GET /portfolio` |
+| `portfolio.json` | Samme payload som `GET /portfolio` (nyeste sesong med spill) |
+| `portfolio-all.json` | Samme payload for alle sesonger (`GET /portfolio?all_seasons=true`). Brukes av `/modell` og `/skygge`, som analyserer hele historikken |
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
 | `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
 | `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
@@ -110,6 +111,9 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
   gir identiske payloads.
 - `python test_site_export.py` kjører en offline-test av rapportlogikken og eksporten
   (stubber nettverk og modell, krever ingen trent `nhl_model.pkl`).
+- `cd nhl-frontend && npm test` sjekker blant annet at analysen på `/modell` gir
+  nøyaktig de samme tallene som fasiten i `docs/blalinja/stake_truth.json`. Testene
+  kjører i `frontend-tests.yml` og i den daglige jobben etter eksporten.
 
 ## 📋 API Endpoints
 - `GET /` – API info.

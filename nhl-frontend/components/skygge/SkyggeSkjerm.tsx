@@ -17,7 +17,7 @@
 
 import { useMemo, type CSSProperties } from 'react';
 import { ErrorState, Laster, SectionHeading } from '@/components/ui';
-import { kombiner, useMeta, usePortfolio, useShadow } from '@/lib/use-data';
+import { kombiner, useMeta, usePortfolioAll, useShadow } from '@/lib/use-data';
 import { krp, nf } from '@/lib/format';
 import type { BetEntry, ShadowEntry, SiteMeta } from '@/types';
 import { Panel } from './Panel';
@@ -63,7 +63,9 @@ function terskelsetning(meta: SiteMeta | null): string {
 /* -------------------------------------------------------------------------- */
 
 export function SkyggeSkjerm() {
-    const portefølje = usePortfolio();
+    // Skyggeloggen dekker alle sesonger, så porteføljen den stilles mot må
+    // også gjøre det. Med portfolio.json ble én sesong sammenlignet med alle.
+    const portefølje = usePortfolioAll();
     const skyggedata = useShadow();
     const meta = useMeta();
     const { loading, error, retry } = kombiner(portefølje, skyggedata);

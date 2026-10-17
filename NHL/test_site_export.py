@@ -222,6 +222,7 @@ def test_full_export(tmp: Path):
         "teams.json",
         "value-report.json",
         "portfolio.json",
+        "portfolio-all.json",
         "matchups.json",
         "elo.json",
         "shadow.json",
@@ -241,7 +242,18 @@ def test_full_export(tmp: Path):
     assert files["portfolio.json"]["summary"]["total_bets"] >= 0
 
     # Nye filer skal ligge i meta.json.files, ellers finner ikke frontend dem.
-    assert {"elo.json", "shadow.json"} <= set(files["meta.json"]["files"])
+    assert {"elo.json", "shadow.json", "portfolio-all.json"} <= set(files["meta.json"]["files"])
+
+    # portfolio.json er nyeste sesong; portfolio-all.json er hele historikken,
+    # som er det /modell og fasiten i stake_truth.json regner på.
+    import bet_tracker as bt
+
+    history = bt.load_history()
+    everything = files["portfolio-all.json"]
+    assert everything["season"] is None
+    assert len(everything["bets"]) == len(history)
+    current = files["portfolio.json"]
+    assert {b["season"] for b in current["bets"]} <= {current["season"]}
 
     # Innholdet i models/elo_ratings.json rulles framover hver natt, så her
     # sjekkes bare formen. Aliasing/rangering testes mot fixture i
