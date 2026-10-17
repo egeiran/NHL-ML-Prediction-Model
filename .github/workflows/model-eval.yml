@@ -1,8 +1,12 @@
 name: Model Evaluation (Elo)
 
-# Kjører den lekkasjefrie evalueringen av Elo-bidraget og trener et ferskt
+# Kjører den lekkasjefrie modellsammenligningen og trener et ferskt
 # modellartefakt. Resultatene legges i job-sammendraget slik at test-tallene
 # er synlige direkte i Actions-fanen og i PR-en.
+#
+# Artefaktet lastes opp som "nhl-model-eval", ikke under produksjonsnavnet:
+# denne jobben kjører på hver push til en claude/-branch, og den daglige jobben
+# på main skal ikke plukke opp en modell trent på kode som ikke er merget.
 
 on:
   push:
@@ -35,13 +39,13 @@ jobs:
           pip install --upgrade pip
           pip install -r "$REQUIREMENTS_FILE"
 
-      - name: Evaluate Elo contribution
+      - name: Compare models (chronological)
         working-directory: NHL
         run: |
           set -o pipefail
           python evaluate_elo.py | tee /tmp/elo_eval.txt
 
-      - name: Train production model (with Elo)
+      - name: Train production model
         working-directory: NHL
         run: |
           python train_model.py | tee /tmp/train.txt
@@ -50,14 +54,14 @@ jobs:
         if: always()
         run: |
           {
-            echo "## NHL Elo Model Evaluation"
+            echo "## NHL Model Evaluation"
             echo ""
-            echo "### Baseline vs +Elo (random & chronological splits)"
+            echo "### Modellsammenligning (kronologisk splitt)"
             echo '```'
             cat /tmp/elo_eval.txt
             echo '```'
             echo ""
-            echo "### Production training (headline metrics + feature importances)"
+            echo "### Produksjonstrening (kronologisk test + koeffisienter)"
             echo '```'
             tail -n 40 /tmp/train.txt
             echo '```'
@@ -66,7 +70,7 @@ jobs:
       - name: Upload model artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nhl-model-elo
+          name: nhl-model-eval
           path: |
             NHL/models/nhl_model.pkl
             NHL/models/elo_ratings.json

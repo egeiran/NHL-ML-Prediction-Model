@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Sequence
 import pandas as pd
 
 from live.form_engine import compute_stats_from_games, format_recent_games
-from live.live_feature_builder import build_live_features
+from live.live_feature_builder import build_live_features, local_game_date
 from live.nhl_api import get_team_recent_games
 from live.nt_odds import get_nhl_matches_range
 from live.team_cache import cache_team_games, get_cached_team_games
@@ -196,13 +196,8 @@ def build_prediction(
     home_canon = to_canonical(home_abbr)
     away_canon = to_canonical(away_abbr)
 
-    feature_row = build_live_features(
-        away_canon,
-        home_canon,
-        windows=DEFAULT_WINDOWS,
-        home_games=list(home_games),
-        away_games=list(away_games),
-    )
+    # Uten kampdato: en egendefinert matchup har ingen back-to-back.
+    feature_row = build_live_features(away_canon, home_canon)
 
     home_summary = build_team_summary(home_canon, home_games)
     away_summary = build_team_summary(away_canon, away_games)
@@ -230,7 +225,6 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
     if verbose:
         print(f"Hentet {len(games)} kamper for value-rapport (days={days})")
 
-    team_games_memo: Dict[str, Optional[List[Dict]]] = {}
     results: List[Dict[str, Any]] = []
     # Kamper vi faktisk kan forsøke å beregne (odds-feeden gir av og til kamper
     # vi ikke klarer å mappe til lag – de teller ikke som en feil hos oss).
@@ -245,21 +239,13 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
 
         considered += 1
 
-        home_games = get_team_games(home_abbr, memo=team_games_memo)
-        away_games = get_team_games(away_abbr, memo=team_games_memo)
-
-        if not home_games or not away_games:
-            if verbose:
-                print(f"  Hopper over {home_abbr} vs {away_abbr} (mangler kampdata)")
-            continue
-
         try:
+            # Back-to-back slås opp i lagenes sesongprogram hos NHL. Er APIet
+            # nede, feiler kampen her og telles mot terskelen nederst.
             feature_row = build_live_features(
                 to_canonical(away_abbr),
                 to_canonical(home_abbr),
-                windows=DEFAULT_WINDOWS,
-                home_games=home_games,
-                away_games=away_games,
+                game_date=local_game_date(game.get("startTime")),
             )
             probs = model.predict_proba(feature_row)[0]
         except Exception as exc:  # pragma: no cover - beskytter kallende kode
@@ -342,7 +328,7 @@ def build_value_report(days: int = 3, verbose: bool = False) -> List[Dict[str, A
         })
 
     if considered and len(results) * 2 < considered:
-        # Odds-APIet svarte, men vi mangler kampdata for de fleste kampene.
+        # Odds-APIet svarte, men vi fikk ikke beregnet de fleste kampene.
         # Da er rapporten mer villedende enn nyttig – la kalleren beholde
         # forrige versjon (og merke den som utdatert).
         raise RuntimeError(

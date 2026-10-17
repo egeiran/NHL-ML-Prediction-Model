@@ -4,13 +4,7 @@ import pandas as pd
 
 from utils.data_loader import load_and_prepare_games
 from utils.elo import EloConfig, compute_elo_history, build_elo_feature_values
-from utils.feature_engineering import (
-    DEFAULT_WINDOWS,
-    build_team_long_df,
-    add_multiwindow_form,
-    get_latest_team_form,
-    get_feature_columns,
-)
+from utils.feature_engineering import build_team_long_df, get_feature_columns
 from utils.model_utils import load_model
 
 
@@ -94,38 +88,16 @@ def display_last_5_games(long_df: pd.DataFrame, home_abbr: str, away_abbr: str):
 def build_feature_row(
     home_abbr: str,
     away_abbr: str,
-    games_df: pd.DataFrame,
-    long_df_with_form: pd.DataFrame,
-    abbr_to_id: dict,
     elo_ratings: dict,
     elo_config: EloConfig = EloConfig(),
-    windows=DEFAULT_WINDOWS,
 ):
     """
-    Lager én rad med features for en gitt matchup.
-    Bruker samme featurer som under trening (form + Elo).
+    Lager én rad med features for en gitt matchup, med samme kolonner som
+    under trening. Uten kampdato regnes ingen av lagene som back-to-back.
     """
-    home_form = get_latest_team_form(long_df_with_form, home_abbr, windows=windows)
-    away_form = get_latest_team_form(long_df_with_form, away_abbr, windows=windows)
-
-    row = {}
-    for w in windows:
-        row[f"home_form_goals_for_w{w}"] = home_form[f"form_goals_for_w{w}"]
-        row[f"home_form_goals_against_w{w}"] = home_form[f"form_goals_against_w{w}"]
-        row[f"home_form_win_rate_w{w}"] = home_form[f"form_win_rate_w{w}"]
-
-        row[f"away_form_goals_for_w{w}"] = away_form[f"form_goals_for_w{w}"]
-        row[f"away_form_goals_against_w{w}"] = away_form[f"form_goals_against_w{w}"]
-        row[f"away_form_win_rate_w{w}"] = away_form[f"form_win_rate_w{w}"]
-
-    row["home_team_id"] = abbr_to_id[home_abbr]
-    row["away_team_id"] = abbr_to_id[away_abbr]
-
-    row.update(
-        build_elo_feature_values(home_abbr, away_abbr, elo_ratings, elo_config)
-    )
-
-    return pd.DataFrame([row], columns=get_feature_columns(windows))
+    elo = build_elo_feature_values(home_abbr, away_abbr, elo_ratings, elo_config)
+    row = {"elo_diff": elo["elo_diff"], "home_b2b": 0, "away_b2b": 0}
+    return pd.DataFrame([row], columns=get_feature_columns())
 
 
 def predict_match(
@@ -140,9 +112,8 @@ def predict_match(
         game_path, team_path
     )
 
-    print("Building long dataframe and forms...")
+    print("Building long dataframe...")
     long_df = build_team_long_df(games_df)
-    long_df = add_multiwindow_form(long_df, windows=DEFAULT_WINDOWS)
 
     print("Computing Elo ratings...")
     elo_config = EloConfig()
@@ -155,16 +126,7 @@ def predict_match(
     model = load_model(model_path)
 
     print(f"Building feature row for {home_abbr} vs {away_abbr}...")
-    X_input = build_feature_row(
-        home_abbr,
-        away_abbr,
-        games_df,
-        long_df,
-        abbr_to_id,
-        elo_ratings,
-        elo_config,
-        windows=DEFAULT_WINDOWS,
-    )
+    X_input = build_feature_row(home_abbr, away_abbr, elo_ratings, elo_config)
 
     probs = model.predict_proba(X_input)[0]
     pred_class = probs.argmax()

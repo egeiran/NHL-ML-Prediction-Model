@@ -32,9 +32,10 @@ const FUNN: readonly Funn[] = [
             'Modellen forventer systematisk flere treff enn den får, mens markedet er godt kalibrert på ' +
             'den samme porteføljen — se de tre tallene øverst på skjermen, og hvor mange bøtter som ' +
             'ligger under diagonalen i kalibreringskurven. Det gjelder hvert spill vi legger inn, ikke ' +
-            'bare OT/SO, og er dermed et større problem enn uavgjort-seleksjonen. Sannsynlig retning: ' +
-            'kalibrer sannsynlighetene isotonisk eller med Platt på en kronologisk holdout før EV regnes ' +
-            'ut, i stedet for å bruke Random Forest-ens rå predict_proba.',
+            'bare OT/SO, og er dermed et større problem enn uavgjort-seleksjonen. Tiltak: Random ' +
+            'Forest-en er byttet ut med logistisk regresjon på Elo og back-to-back, som er kalibrert på ' +
+            'kronologisk test. Figurene over er fortsatt regnet fra spill den gamle modellen la inn, så ' +
+            'punktet står til porteføljen viser det samme.',
     },
     {
         nr: '02',

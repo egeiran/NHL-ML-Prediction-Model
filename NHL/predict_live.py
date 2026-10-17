@@ -2,7 +2,6 @@
 import argparse
 from utils.model_utils import load_model
 from live.live_feature_builder import build_live_features
-from utils.feature_engineering import DEFAULT_WINDOWS
 
 
 MODEL_PATH = "models/nhl_model.pkl"
@@ -11,12 +10,13 @@ MODEL_PATH = "models/nhl_model.pkl"
 def predict_live_match(away_abbr: str, home_abbr: str):
     """
     Lager live features for (away @ home), laster modellen og skriver ut sannsynligheter.
+    Uten kampdato regnes ingen av lagene som back-to-back.
     """
 
     print(f"\n=== Live prediction: {away_abbr} @ {home_abbr} ===")
 
-    # 1) Bygg feature-row basert på live form
-    X = build_live_features(away_abbr, home_abbr, windows=DEFAULT_WINDOWS)
+    # 1) Bygg feature-row (Elo fra ratings-fila)
+    X = build_live_features(away_abbr, home_abbr)
     print("\nInput-features til modellen:")
     print(X)
 
@@ -57,7 +57,7 @@ def predict_live_match(away_abbr: str, home_abbr: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Live NHL-kampprediksjon basert på nylig form."
+        description="Live NHL-kampprediksjon basert på Elo."
     )
     parser.add_argument("away", type=str, help="Bortelagets NHL-kode, f.eks. BOS")
     parser.add_argument("home", type=str, help="Hjemmelagets NHL-kode, f.eks. DET")

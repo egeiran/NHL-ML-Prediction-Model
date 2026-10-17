@@ -23,11 +23,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from live.live_feature_builder import build_live_features
+from live.live_feature_builder import build_live_features, local_game_date
 from live.nt_odds import get_nhl_matches_range
-from live.nhl_api import get_scoreboard
-from utils.feature_engineering import DEFAULT_WINDOWS
+from live.nhl_api import get_scoreboard, regular_season_games_played
 from utils.model_utils import load_model
+from utils.team_alias import to_canonical, to_display
 from utils.value_utils import (
     adjust_three_way_probs,
     expected_value,
@@ -74,6 +74,13 @@ ALLOW_DRAW_BETS = os.environ.get("NHL_ALLOW_DRAW_BETS", "1").strip().lower() in 
 ALLOWED_GAME_TYPES = {2}
 ALLOW_ALL_GAME_TYPES = os.environ.get("NHL_ALLOW_ALL_GAME_TYPES", "").strip().lower() in {"1", "true", "yes"}
 TYPE_NAMES = {1: "preseason", 2: "grunnserie", 3: "sluttspill"}
+
+# Ingen spill før begge lagene har spilt så mange grunnseriekamper i sesongen.
+# Tidlig i sesongen står Elo på fjorårets tall (regressert mot snittet), mens
+# markedet allerede har priset inn sommerens overganger. På kronologisk test
+# (evaluate_elo.py) slo modellen ikke engang basisratene når et av lagene hadde
+# spilt under fem kamper, mot en klar gevinst senere i sesongen. 0 skrur sperren av.
+MIN_GAMES_PLAYED = int(os.environ.get("NHL_MIN_GAMES_PLAYED", "5"))
 TEAM_ALIAS = {
     # Utah Mammoths -> fortsatt ARI i vår modell for bakoverkomp.
     "UTA": "ARI",
@@ -104,6 +111,12 @@ OUTCOME_FIELDS = [
     "value_away",
 ]
 
+# Oddsen rett før kampstart, hentet av record_closing_odds.py. Sammenlignet med
+# oddsen vi fikk (closing line value) viser de mye raskere enn ROI om modellen
+# finner priser markedet senere retter seg etter.
+CLOSING_ODDS_FIELDS = ["close_odds_home", "close_odds_draw", "close_odds_away"]
+CLOSING_FIELDS = [*CLOSING_ODDS_FIELDS, "close_odds_at"]
+
 BET_FIELDS = [
     "season",
     "date",
@@ -126,6 +139,7 @@ BET_FIELDS = [
     # Nye kolonner legges bakerst: gamle rader mangler dem og får tom verdi,
     # og kolonnerekkefølgen for de historiske feltene står urørt.
     *OUTCOME_FIELDS,
+    *CLOSING_FIELDS,
 ]
 
 
@@ -210,8 +224,9 @@ def _read_csv(path: Path) -> List[Dict[str, Any]]:
             row: Dict[str, Any] = dict(raw)
             # Utfallsfeltene mangler på historiske rader. De skal bli None
             # (ukjent), ikke 0.0 – 0.0 ville lest som "odds/EV var null".
-            for field in OUTCOME_FIELDS:
+            for field in (*OUTCOME_FIELDS, *CLOSING_ODDS_FIELDS):
                 row[field] = round_optional(row.get(field), 5)
+            row["close_odds_at"] = row.get("close_odds_at") or ""
             row["stake"] = float(row.get("stake") or 0.0)
             row["odds"] = float(row.get("odds") or 0.0)
             row["model_prob"] = float(row.get("model_prob") or 0.0)
@@ -235,7 +250,7 @@ def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
             formatted["implied_prob"] = round_optional(formatted.get("implied_prob"), 5)
             formatted["value"] = round_optional(formatted.get("value"), 5)
             # Manglende utfallsfelt (gamle rader) blir None -> tom celle.
-            for field in OUTCOME_FIELDS:
+            for field in (*OUTCOME_FIELDS, *CLOSING_ODDS_FIELDS):
                 formatted[field] = round_optional(formatted.get(field), 5)
             writer.writerow(formatted)
 
@@ -375,6 +390,36 @@ def is_bettable_game_type(
     return lookup_game_type(game_date, home_abbr, away_abbr) in ALLOWED_GAME_TYPES
 
 
+def games_played_before(entry: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+    """
+    (hjemmelag, bortelag): grunnseriekamper spilt i sesongen før kampen.
+    None hvis NHL-APIet ikke svarer.
+    """
+    game_date = local_game_date(entry.get("start_time")) or entry.get("date")
+    home, away = entry.get("home_abbr"), entry.get("away_abbr")
+    if not game_date or not home or not away:
+        return None
+    try:
+        return (
+            regular_season_games_played(to_display(to_canonical(home)), game_date),
+            regular_season_games_played(to_display(to_canonical(away)), game_date),
+        )
+    except Exception as exc:  # pragma: no cover - nettverksfeil
+        print(f"  [WARN] fant ikke antall kamper for {home}-{away}: {exc}")
+        return None
+
+
+def has_enough_games(entry: Dict[str, Any]) -> bool:
+    """
+    Om begge lagene har spilt minst MIN_GAMES_PLAYED grunnseriekamper denne
+    sesongen. Vet vi det ikke, spiller vi ikke – samme prinsipp som kamptypen.
+    """
+    if MIN_GAMES_PLAYED <= 0:
+        return True
+    played = games_played_before(entry)
+    return played is not None and min(played) >= MIN_GAMES_PLAYED
+
+
 def _lookup_result(game_date: str, home_abbr: str, away_abbr: str) -> Optional[Dict[str, Any]]:
     target_home = _canon(home_abbr)
     target_away = _canon(away_abbr)
@@ -487,7 +532,7 @@ def _build_value_report(days: int = 1) -> List[Dict[str, Any]]:
         feature_row = build_live_features(
             away_abbr,
             home_abbr,
-            windows=DEFAULT_WINDOWS,
+            game_date=local_game_date(game.get("startTime")),
         )
         probs = model.predict_proba(feature_row)[0]
         class_prob_map = dict(zip(model.classes_, probs))
@@ -653,6 +698,9 @@ def _build_bet_entry(
         "value_home": round_optional(value_lookup.get("home"), 5),
         "value_draw": round_optional(value_lookup.get("draw"), 5),
         "value_away": round_optional(value_lookup.get("away"), 5),
+        # Fylles av record_closing_odds.py rett før kampstart.
+        **{field: None for field in CLOSING_ODDS_FIELDS},
+        "close_odds_at": "",
     }
 
 
@@ -768,6 +816,65 @@ def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
     return updated
 
 
+def record_closing_odds(
+    rows: List[Dict[str, Any]],
+    games: Sequence[Dict[str, Any]],
+    now: datetime,
+    window_hours: float = 3.0,
+) -> int:
+    """
+    Fører oddsen fra `games` (Norsk Tipping, samme form som
+    get_nhl_matches_range) inn som sluttodds på åpne rader som starter innen
+    `window_hours`. Kjøres flere ganger før kampstart, overskrives verdien –
+    siste kjøring før start er den som står. Returnerer antall rader oppdatert.
+    """
+    by_event: Dict[str, Dict[str, Any]] = {}
+    for g in games:
+        if not odds_complete(g.get("odds_home"), g.get("odds_draw"), g.get("odds_away")):
+            continue
+        start = _parse_iso(g.get("startTime"))
+        date_str = start.strftime("%Y-%m-%d") if start else ""
+        key = normalize_event_id(
+            g.get("eventId"), g.get("home_abbr"), g.get("away_abbr"), g.get("startTime"), date_str
+        )
+        by_event[key] = g
+
+    updated = 0
+    for row in rows:
+        if row.get("status") != "pending":
+            continue
+        start = _parse_iso(row.get("start_time"))
+        if start is None or start.tzinfo is None:
+            continue
+        hours_left = (start - now).total_seconds() / 3600
+        if not 0 < hours_left <= window_hours:
+            continue
+        game = next((by_event[k] for k in _event_keys(row) if k in by_event), None)
+        if game is None:
+            continue
+        for outcome in ("home", "draw", "away"):
+            row[f"close_odds_{outcome}"] = round_optional(game.get(f"odds_{outcome}"), 5)
+        row["close_odds_at"] = now.isoformat()
+        updated += 1
+    return updated
+
+
+def closing_line_value(row: Dict[str, Any]) -> Optional[float]:
+    """
+    Oddsen vi fikk delt på sluttoddsen, minus 1. Positivt betyr at markedet
+    flyttet seg i vår retning etter at spillet ble lagt inn.
+    """
+    selection = str(row.get("selection") or "").lower()
+    close = row.get(f"close_odds_{selection}")
+    try:
+        odds, close = float(row.get("odds") or 0), float(close)
+    except (TypeError, ValueError):
+        return None
+    if odds <= 0 or close <= 0:
+        return None
+    return odds / close - 1.0
+
+
 def _event_keys(row: Dict[str, Any]) -> set:
     """
     Nøklene én kamp kan gjenkjennes på. Både den rå event_id-en og den
@@ -819,6 +926,8 @@ def record_new_bets(
     Kamptyper vi ikke spiller (sluttspill, preseason) hoppes helt over: de
     havner ikke i skyggeloggen heller, fordi det ikke er terskelen som
     diskvalifiserer dem, men at modellen mangler ferske Elo-ratings der.
+    Det samme gjelder kamper der et av lagene har spilt færre enn
+    MIN_GAMES_PLAYED grunnseriekamper i sesongen.
 
     Returnerer (antall ekte spill, antall skyggespill).
     """
@@ -864,6 +973,14 @@ def record_new_bets(
             print(
                 f"  [hopper over] {entry.get('date')} "
                 f"{entry.get('home_abbr')}-{entry.get('away_abbr')}: {grunn}"
+            )
+            continue
+
+        if not has_enough_games(entry):
+            print(
+                f"  [hopper over] {entry.get('date')} "
+                f"{entry.get('home_abbr')}-{entry.get('away_abbr')}: tidlig i sesongen "
+                f"(krever {MIN_GAMES_PLAYED} spilte grunnseriekamper per lag)"
             )
             continue
 

@@ -505,6 +505,7 @@ def update_readme_status() -> None:
     """
     from bet_tracker import (
         build_portfolio_payload,
+        closing_line_value,
         load_history,
         load_shadow,
     )
@@ -534,8 +535,14 @@ def update_readme_status() -> None:
         f"{summary['open_bets']} åpne spill · "
         f"totalt siden start {all_time.get('profit', 0):+.0f} kr "
         f"på {all_time.get('total_bets', 0)} spill.",
-        STATUS_END,
     ]
+    clv = [v for v in (closing_line_value(b) for b in payload["bets"]) if v is not None]
+    if clv:
+        lines.append(
+            f"Sluttodds (CLV): snitt {sum(clv) / len(clv) * 100:+.1f} % på {len(clv)} spill "
+            f"– positivt betyr at vi fikk bedre odds enn markedet endte på."
+        )
+    lines.append(STATUS_END)
 
     start = readme.index(STATUS_START)
     end = readme.index(STATUS_END) + len(STATUS_END)

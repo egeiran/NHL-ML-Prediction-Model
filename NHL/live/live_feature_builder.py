@@ -1,23 +1,40 @@
 # live/live_feature_builder.py
 import os
-import pandas as pd
-from typing import Dict, List, Optional, Sequence
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 
-from live.form_engine import (
-    compute_team_form,
-    compute_team_form_from_games,
+import pandas as pd
+
+from live.nhl_api import plays_on
+from utils.elo import (
+    build_elo_feature_values,
+    load_last_seasons,
+    load_ratings,
+    resolve_ratings_path,
+    season_id,
 )
-from utils.data_loader import load_team_mappings
-from utils.elo import build_elo_feature_values, load_ratings, resolve_ratings_path
-from utils.feature_engineering import DEFAULT_WINDOWS, get_feature_columns
+from utils.feature_engineering import get_feature_columns
 from utils.team_alias import to_canonical, to_display
 
 ELO_RATINGS_PATH = "models/elo_ratings.json"
 
+# Nordamerikanske kamper starter mellom ca. 12:00 og 22:30 lokal tid. Trekker vi
+# fem timer fra starttiden i UTC, havner alle på riktig lokal kampdato – også
+# vestkystkampene som starter etter midnatt UTC.
+_NA_OFFSET = timedelta(hours=5)
 
-def load_team_ids(team_info_path="data/team_info.csv"):
-    _, abbr_to_id = load_team_mappings(team_info_path)
-    return abbr_to_id
+
+def local_game_date(start_time: Optional[str]) -> Optional[str]:
+    """Nordamerikansk kampdato (YYYY-MM-DD) for en ISO-starttid, eller None."""
+    if not start_time:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return (dt.astimezone(timezone.utc) - _NA_OFFSET).strftime("%Y-%m-%d")
 
 
 # Elo-ratings caches, men lastes på nytt hvis fila er oppdatert (mtime endres)
@@ -46,85 +63,58 @@ def _get_elo():
             )
         _ELO_CACHE["ratings"] = ratings
         _ELO_CACHE["config"] = config
+        _ELO_CACHE["last_season"] = load_last_seasons(str(resolved))
         _ELO_CACHE["mtime"] = mtime
     return _ELO_CACHE["ratings"], _ELO_CACHE["config"]
+
+
+def _get_last_seasons():
+    _get_elo()
+    return _ELO_CACHE.get("last_season") or {}
 
 
 def build_live_features(
     away_abbr: str,
     home_abbr: str,
-    windows: Sequence[int] = DEFAULT_WINDOWS,
-    home_games: Optional[List[Dict]] = None,
-    away_games: Optional[List[Dict]] = None,
+    game_date: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Lager en rad med nøyaktig de samme features som treningsdataen brukte.
+
+    `game_date` er nordamerikansk kampdato (se local_game_date). Den avgjør
+    back-to-back (spilte laget grunnseriekamp dagen før?) og hvilken sesong
+    Elo-ratingen skal gjelde for. Uten dato (egendefinerte matchups) regnes
+    ingen av lagene som slitne, og sesongen er dagens.
     """
+    home_canon = to_canonical(home_abbr)
+    away_canon = to_canonical(away_abbr)
 
-    # 1. form-features
-    #
-    # Kampene kommer fra NHL-APIet og bruker visningsforkortelsen (UTA), mens
-    # resten av featurene slås opp på den kanoniske (ARI). Formberegningen
-    # avgjør hjemme/borte ved å sammenligne forkortelsen med kampens lag, så
-    # den må få den forkortelsen kampene faktisk bruker. Ellers regnes alle
-    # Utahs hjemmekamper som bortekamper – med mål for/mot byttet om.
-    home_match_abbr = to_display(to_canonical(home_abbr))
-    away_match_abbr = to_display(to_canonical(away_abbr))
-
-    if home_games is not None:
-        home_form = compute_team_form_from_games(
-            home_match_abbr, home_games, windows=windows
-        )
+    if game_date:
+        day = datetime.strptime(game_date[:10], "%Y-%m-%d").date()
+        previous_day = (day - timedelta(days=1)).isoformat()
+        # Sesongprogrammet i NHL-APIet bruker visningsforkortelsen (UTA).
+        home_b2b = int(plays_on(to_display(home_canon), previous_day))
+        away_b2b = int(plays_on(to_display(away_canon), previous_day))
+        season = season_id(day)
     else:
-        home_form = compute_team_form(home_match_abbr, windows=windows)
+        home_b2b = away_b2b = 0
+        season = season_id(datetime.now(timezone.utc).date())
 
-    if away_games is not None:
-        away_form = compute_team_form_from_games(
-            away_match_abbr, away_games, windows=windows
-        )
-    else:
-        away_form = compute_team_form(away_match_abbr, windows=windows)
-
-    # 2. team_id-features
-    abbr_to_id = load_team_ids()
-
-    def _resolve_team_id(abbr: str) -> int:
-        canonical = to_canonical(abbr)
-        if canonical in abbr_to_id:
-            return abbr_to_id[canonical]
-        if abbr in abbr_to_id:
-            return abbr_to_id[abbr]
-        raise ValueError(f"Mangler team_id for lag '{abbr}' (kanonisert: '{canonical}')")
-
-    home_id = _resolve_team_id(home_abbr)
-    away_id = _resolve_team_id(away_abbr)
-
-    row = {}
-    for w in windows:
-        row[f"home_form_goals_for_w{w}"] = home_form[f"form_goals_for_w{w}"]
-        row[f"home_form_goals_against_w{w}"] = home_form[f"form_goals_against_w{w}"]
-        row[f"home_form_win_rate_w{w}"] = home_form[f"form_win_rate_w{w}"]
-
-        row[f"away_form_goals_for_w{w}"] = away_form[f"form_goals_for_w{w}"]
-        row[f"away_form_goals_against_w{w}"] = away_form[f"form_goals_against_w{w}"]
-        row[f"away_form_win_rate_w{w}"] = away_form[f"form_win_rate_w{w}"]
-
-    # CRUCIAL: same as training
-    row["home_team_id"] = home_id
-    row["away_team_id"] = away_id
-
-    # Elo-features (samme rekkefølge som under trening). Bruker kanoniske
-    # lagforkortelser for oppslag i de lagrede ratingene.
+    # Elo slås opp på kanonisk forkortelse (ARI), og lag som ikke har spilt i
+    # kampens sesong ennå regresseres mot snittet – slik treningen gjør.
     elo_ratings, elo_config = _get_elo()
-    row.update(
-        build_elo_feature_values(
-            to_canonical(home_abbr),
-            to_canonical(away_abbr),
-            elo_ratings,
-            elo_config,
-        )
+    elo = build_elo_feature_values(
+        home_canon,
+        away_canon,
+        elo_ratings,
+        elo_config,
+        season=season,
+        last_season=_get_last_seasons(),
     )
 
-    feature_cols = get_feature_columns(windows)
-
-    return pd.DataFrame([row], columns=feature_cols)
+    row = {
+        "elo_diff": elo["elo_diff"],
+        "home_b2b": home_b2b,
+        "away_b2b": away_b2b,
+    }
+    return pd.DataFrame([row], columns=get_feature_columns())

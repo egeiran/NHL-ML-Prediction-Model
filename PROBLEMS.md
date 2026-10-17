@@ -70,8 +70,55 @@
   filteret av.
 
 
+- [x] **Formen i sesongstarten var bygget av preseason-kamper (t.o.m. 2026-10-17).**
+  `get_team_recent_games` hentet lagenes siste kamper fra scoreboardet, uten
+  filter på kamptype og bare 120 dager tilbake. Grunnserien 2026-27 startet
+  29. september, så de første ukene besto 5- og 20-kampersvinduene nesten bare av
+  preseason-kamper – ofte med farmerlag-tropper. Modellen var trent på grunnserie
+  alene og hadde aldri sett slike tall. Halvparten av sesongens spill (9 av 18
+  avgjorte) ble lagt inn før 6. oktober.
+
+  Fikset: kampene hentes nå fra lagets sesongprogram, bare `gameType 2`, og
+  vinduet ruller inn i forrige sesong slik treningen gjorde. Låst av
+  `test_site_export.py::form_regular_season`. Radene i loggen står urørt.
+
+  `repredict_season.py` gjenskaper de loggede sannsynlighetene (største avvik
+  0,0005 over 133 kamper, med Elo-fila fra commiten som la inn hver rad) og
+  regner dem ut på nytt. Første uke var 74 % av kampene i 5-kampersvinduet
+  preseason. Fullt resultat i `docs/repredict_2026-27.md`; per 17. oktober:
+
+  | Variant | Avgjorte spill | Treff | Resultat | Log loss, 119 kamper |
+  | --- | ---: | ---: | ---: | ---: |
+  | Logget (med preseason) | 18 | 2 | −1 350 kr | 1,068 |
+  | Samme modell uten preseason | 17 | 3 | −975 kr | 1,050 |
+  | Ny modell | 2 | 0 | −200 kr | 1,044 |
+  | Ny modell + tidligsesong-sperre | 0 | – | 0 kr | – |
+  | Markedet (uten margin) | – | – | – | 1,028 |
+
+  Feilen forklarer altså en del av tapet (cirka 375 kr), men ikke det meste: også
+  uten preseason spilte den gamle modellen nesten bare underdogs og tapte. Den nye
+  modellen er nærmere markedet og fant bare to spill på tre uker.
+
+- [x] **Elo ble ikke regressert før lagets første kamp i ny sesong i live.**
+  Treningen trekker ratingen mot snittet før lagets første kamp i en ny sesong,
+  men live-prediksjonen brukte fjorårets siste tall direkte. Sesongåpningene fikk
+  dermed større Elo-forskjeller enn modellen var trent på. Fikset:
+  `elo_ratings.json` lagrer `last_season` per lag, og `build_elo_feature_values`
+  regresserer på samme sted som treningen (`::elo_season_regression`).
+
+- [x] **Modellen ble aldri trent på nytt, og bare på data t.o.m. 2020.**
+  Treningen brukte `game.csv` (2000–2020) alene, og workflowen trente bare når
+  artefaktet manglet. Nå skjøtes NHL-APIets grunnseriekamper fra 2020/21 og fram
+  inn i treningen (`utils/game_history.py`), og `ensure_model.py` trener på nytt
+  når modellen er over en uke gammel eller inkompatibel. `update_elo_ratings.py`
+  skriver heller ikke lenger 2020-ratings over de ferske når APIet svarer tomt.
+
 ## Åpne funn (ikke fikset)
-- [ ] **OT/SO-spill har ingen påvist edge, men spilles igjen.** Modellen anslo i
+- [ ] **OT/SO-spill har ingen påvist edge, men spilles igjen.** *Oppdatering
+  oktober 2026:* den nye modellen anslår OT/SO til rundt 23 % i nesten alle kamper
+  (godt kalibrert, men med lite spredning). Med odds rundt 3,90 krever terskelen
+  over 33 %, så i praksis spilles det ikke lenger uavgjort. Teksten under gjelder
+  Random Forest-en. Modellen anslo i
   snitt 33 % sjanse for OT/SO på kampene den flagget som value; faktisk endte
   22 % slik. Det er ikke en generell skjevhet i modellen – på en kronologisk
   backtest treffer den 22,6 % faktisk mot 20,6 % predikert. Feilen ligger i
@@ -97,7 +144,11 @@
   Funnet står som åpent fordi tallene over ikke er motbevist – vi har hevet
   lista og måler videre i stedet for å slå dem av. `NHL_ALLOW_DRAW_BETS=0` tar
   dem helt ut.
-- [ ] **Modellen er globalt overkonfident.** På de 182 spillene i historikken
+- [ ] **Modellen er globalt overkonfident.** *Tiltak oktober 2026:* Random
+  Forest-en er byttet ut med logistisk regresjon på Elo og back-to-back. På
+  kronologisk test 2017–2020 treffer den faktisk frekvens per utfall (hjemme 42,9 %
+  mot 43,2 %, OT/SO 23,6 % mot 22,6 %), og log loss er 1,051 mot skogens 1,064.
+  Punktet står åpent til porteføljen viser det samme. Opprinnelig funn: på de 182 spillene i historikken
   forventet modellen 76,7 treff, markedet forventet 59,5, og 63 skjedde.
   Markedet er godt kalibrert på denne porteføljen; modellen ligger cirka 22 %
   for høyt. Det gjelder *hvert* spill vi legger inn, ikke bare OT/SO, og er
@@ -130,8 +181,14 @@
   full Kelly ender på −73 %, halv Kelly −12 %, kvart Kelly +23 %, mot flat +2,8 %.
   Konklusjon: behold flat innsats til sannsynlighetene er kalibrert.
 
-- [ ] **Loggene lagrer bare det valgte utfallet.** `model_prob` og
-  `implied_prob` finnes kun for utfallet vi spilte, ikke for alle tre. Det gir
-  seleksjonsskjevhet i all etteranalyse – vi kan ikke se hva modellen mente om
-  de to andre utfallene. Å logge alle tre per kamp ville fjernet den
-  begrensningen for framtidige undersøkelser.
+- [x] **Loggene lagrer bare det valgte utfallet.** Fikset for nye rader: odds,
+  modellsannsynlighet, implisert sannsynlighet og EV logges for alle tre utfall
+  (`OUTCOME_FIELDS` i `bet_tracker.py`). Eldre rader har bare det spilte utfallet.
+
+- [ ] **Modellen ser ikke markedet.** Den spår kampene fra Elo alene og spiller
+  når den er uenig med oddsen. Markedet vet om keepervalg, skader og rekker; når
+  de to er langt fra hverandre, er det oftest modellen som tar feil. Neste steg er
+  historiske odds, slik at markedssannsynligheten kan brukes som utgangspunkt og
+  modellen bare trenger å forklare avviket. Inntil da: sluttoddsen logges nå
+  (`record_closing_odds.py`), så closing line value viser om spillene våre i det
+  hele tatt slår markedet, lenge før ROI kan si det.

@@ -19,6 +19,10 @@ særlig feilmodusene som avgjør hva som havner på den statiske sida:
   - meta.json bærer pipelinens EV-/odds-terskler
   - alle tre utfall logges, og gamle rader uten kolonnene overlever
   - et brutt odds-kall retries, men reell nedetid boblar fortsatt opp
+  - formkampene er bare grunnserie og ruller inn i forrige sesong
+  - Elo regresseres før lagets første kamp i ny sesong, som i treningen
+  - back-to-back og lokal kampdato regnes likt i trening og live
+  - ingen spill før begge lagene har spilt nok kamper i sesongen
 
 Kjøres direkte: `cd NHL && python test_site_export.py`
 """
@@ -44,7 +48,7 @@ DEFUNCT = {"PHX", "ATL"}
 
 
 class FakeModel:
-    """Minimal stand-in for RandomForestClassifier."""
+    """Minimal stand-in for produksjonsmodellen."""
 
     classes_ = np.array([0, 1, 2])
 
@@ -118,7 +122,19 @@ def install_stubs(teams_with_data=None):
             return []
         return fake_games(team_abbr)[:limit]
 
+    def plays_on(team_abbr, game_date):
+        # Back-to-back slås opp i sesongprogrammet. Lag uten data oppfører seg
+        # som et nede NHL-API: oppslaget feiler.
+        if team_abbr in DEFUNCT or (
+            teams_with_data is not None and team_abbr not in teams_with_data
+        ):
+            raise RuntimeError(f"ingen kampdata for {team_abbr}")
+        return False
+
+    from live import live_feature_builder as lfb
+
     rs.get_team_recent_games = get_recent
+    lfb.plays_on = plays_on
     rs.get_nhl_matches_range = fake_odds
     # Diskcachen omgås så testen ikke plukker opp ekte data.
     rs.get_cached_team_games = lambda abbr: None
@@ -314,30 +330,200 @@ def test_export_rejects_when_most_pairs_fail(tmp: Path):
     assert json.loads((tmp / "teams.json").read_text()) == stale_teams
 
 
-def test_utah_alias_gets_same_form_as_a_team_without_alias():
+def test_utah_uses_canonical_elo_and_display_schedule():
     """
-    Utah heter UTA i NHL-APIet, men ARI i modellen. Formberegningen må matche
-    på forkortelsen kampene bruker, ellers telles alle hjemmekampene som
-    bortekamper med mål for/mot byttet om.
+    Utah heter UTA i NHL-APIet, men ARI i modellen. Elo slås opp kanonisk
+    (ARI), mens back-to-back slås opp i sesongprogrammet med forkortelsen
+    APIet bruker (UTA). Feil retning på aliaset ga tidligere Utah korrupt form.
     """
-    from live.live_feature_builder import build_live_features
+    from live import live_feature_builder as lfb
 
     install_stubs()
-    control = build_live_features(
-        "MTL", "BOS", home_games=fake_games("BOS"), away_games=fake_games("MTL")
+    asked = []
+
+    def plays_on(team_abbr, game_date):
+        asked.append(team_abbr)
+        return team_abbr == "UTA"
+
+    lfb.plays_on = plays_on
+    uta = lfb.build_live_features("MTL", "UTA", game_date="2026-12-10")
+    ari = lfb.build_live_features("MTL", "ARI", game_date="2026-12-10")
+
+    assert uta.equals(ari)
+    assert list(uta.columns) == ["elo_diff", "home_b2b", "away_b2b"]
+    assert uta["home_b2b"].iloc[0] == 1 and uta["away_b2b"].iloc[0] == 0
+    assert set(asked) == {"UTA", "MTL"}
+    assert uta["elo_diff"].iloc[0] != 0  # ARI har en ekte rating, ikke base
+
+    # Uten kampdato (egendefinert matchup) er ingen av lagene slitne.
+    no_date = lfb.build_live_features("MTL", "UTA")
+    assert no_date[["home_b2b", "away_b2b"]].iloc[0].tolist() == [0, 0]
+
+
+def _schedule_game(gid, date, game_type, home="BOS", away="MTL", state="OFF", hg=3, ag=2):
+    game = {
+        "id": gid,
+        "gameDate": date,
+        "gameType": game_type,
+        "gameState": state,
+        "homeTeam": {"abbrev": home},
+        "awayTeam": {"abbrev": away},
+    }
+    if state in {"OFF", "FINAL"}:
+        game["homeTeam"]["score"] = hg
+        game["awayTeam"]["score"] = ag
+    return game
+
+
+def _fake_schedules():
+    """BOS: preseason + to spilte og én kommende grunnseriekamp i 2026/27,
+    30 grunnseriekamper og to sluttspillkamper i 2025/26."""
+    this_season = [
+        _schedule_game(1, "2026-09-22", 1),
+        _schedule_game(2, "2026-09-25", 1, home="MTL", away="BOS"),
+        _schedule_game(3, "2026-09-29", 2),
+        _schedule_game(4, "2026-10-01", 2, home="MTL", away="BOS", hg=1, ag=4),
+        _schedule_game(5, "2026-10-03", 2, state="FUT"),
+    ]
+    last_season = [
+        _schedule_game(100 + i, f"2026-02-{i + 1:02d}", 2) for i in range(28)
+    ] + [
+        _schedule_game(200, "2026-03-01", 2),
+        _schedule_game(201, "2026-03-02", 2),
+        _schedule_game(300, "2026-04-20", 3),
+        _schedule_game(301, "2026-04-22", 3),
+    ]
+    return {("BOS", "20262027"): this_season, ("BOS", "20252026"): last_season}
+
+
+def _with_fake_schedule(call):
+    from live import nhl_api
+
+    schedules = _fake_schedules()
+    original = nhl_api.get_club_schedule
+    nhl_api.get_club_schedule = lambda team, season: list(schedules.get((team, str(season)), []))
+    nhl_api._recent_games_cache.clear()
+    try:
+        return call(nhl_api)
+    finally:
+        nhl_api.get_club_schedule = original
+        nhl_api._recent_games_cache.clear()
+
+
+def test_form_games_are_regular_season_and_roll_into_last_season():
+    """
+    Formkampene var tidligere de siste kampene på scoreboardet, 120 dager
+    tilbake og uten filter på kamptype. I sesongstarten var de da nesten bare
+    preseason. Nå: bare grunnserie, og vinduet fylles opp fra forrige sesong –
+    slik treningen bygde formen.
+    """
+    def run(nhl_api):
+        games = nhl_api.get_team_recent_games("BOS", limit=20, before="2026-10-02")
+        ids = [g["id"] for g in games]
+        assert len(games) == 20
+        assert ids[:2] == [4, 3]  # nyeste først, årets grunnserie
+        assert not {1, 2, 5} & set(ids)  # preseason og uspilte kamper er ute
+        assert not {300, 301} & set(ids)  # sluttspill er ute
+        assert games[0]["home"] == "MTL" and games[0]["away_goals"] == 4
+
+        # `before` er punkt-i-tid: kampen 1. oktober er ikke spilt 1. oktober.
+        early = nhl_api.get_team_recent_games("BOS", limit=5, before="2026-10-01")
+        assert [g["id"] for g in early][0] == 3
+
+        assert nhl_api.regular_season_games_played("BOS", "2026-10-05") == 2
+        assert nhl_api.regular_season_games_played("BOS", "2026-09-30") == 1
+        # Kommende grunnseriekamper teller for back-to-back, preseason gjør ikke.
+        assert nhl_api.plays_on("BOS", "2026-10-03") is True
+        assert nhl_api.plays_on("BOS", "2026-09-25") is False
+
+    _with_fake_schedule(run)
+
+
+def test_elo_is_regressed_before_a_teams_first_game_of_the_season():
+    """
+    Treningen regresserer et lags rating mot snittet før lagets første kamp i
+    ny sesong. Live-prediksjonen gjorde det ikke, så sesongåpningene sto på
+    fjorårets uregresserte tall. Feature-verdien skal være identisk begge steder.
+    """
+    import pandas as pd
+    from utils.elo import EloConfig, build_elo_feature_values, compute_elo_state
+
+    def game(gid, day, season, home, away, hg, ag):
+        return {
+            "game_id": gid, "date": pd.Timestamp(day), "season": season,
+            "home_team": home, "away_team": away,
+            "home_goals": hg, "away_goals": ag, "outcome_code": 0 if hg > ag else 2,
+        }
+
+    first = [
+        game(1, "2025-10-10", 20252026, "BOS", "MTL", 5, 1),
+        game(2, "2025-10-12", 20252026, "BOS", "MTL", 4, 2),
+        game(3, "2026-01-12", 20252026, "MTL", "BOS", 1, 3),
+    ]
+    opener = game(4, "2026-10-08", 20262027, "BOS", "MTL", 2, 3)
+
+    config = EloConfig()
+    _, ratings, last_season = compute_elo_state(pd.DataFrame(first), config)
+    full, _, _ = compute_elo_state(pd.DataFrame(first + [opener]), config)
+    trained = full.set_index("game_id").loc[4]
+
+    live = build_elo_feature_values(
+        "BOS", "MTL", ratings, config, season=20262027, last_season=last_season
     )
-    utah = build_live_features(
-        "MTL", "UTA", home_games=fake_games("UTA"), away_games=fake_games("MTL")
+    assert abs(live["elo_diff"] - trained["elo_diff"]) < 1e-9
+    assert abs(live["home_elo_pre"] - trained["home_elo_pre"]) < 1e-9
+
+    # Uten sesongopplysninger: fjorårets tall, altså en større differanse.
+    stale = build_elo_feature_values("BOS", "MTL", ratings, config)
+    assert abs(stale["elo_diff"]) > abs(live["elo_diff"])
+
+
+def test_local_game_date_and_back_to_back_match_training():
+    """
+    Live bruker starttid minus 5 timer som nordamerikansk kampdato; treningen
+    bruker GMT-tid minus 5 timer for game.csv. Back-to-back er en kamp dagen før.
+    """
+    import pandas as pd
+    from live.live_feature_builder import local_game_date
+    from utils.game_history import add_back_to_back
+
+    assert local_game_date("2026-10-15T01:30:00+02:00") == "2026-10-14"  # ET-kveld
+    assert local_game_date("2026-10-17T19:00:00+02:00") == "2026-10-17"  # matiné
+    assert local_game_date("2026-10-18T04:00:00+02:00") == "2026-10-17"  # vestkyst
+    assert local_game_date("2026-10-18T02:00:00Z") == "2026-10-17"
+    assert local_game_date(None) is None and local_game_date("tull") is None
+
+    games = pd.DataFrame([
+        {"game_id": 1, "home_team": "BOS", "away_team": "MTL", "local_date": pd.Timestamp("2026-10-10")},
+        {"game_id": 2, "home_team": "TOR", "away_team": "BOS", "local_date": pd.Timestamp("2026-10-11")},
+        {"game_id": 3, "home_team": "MTL", "away_team": "TOR", "local_date": pd.Timestamp("2026-10-13")},
+    ])
+    b2b = add_back_to_back(games).set_index("game_id")
+    assert (b2b.loc[2, "home_b2b"], b2b.loc[2, "away_b2b"]) == (0, 1)
+    assert (b2b.loc[3, "home_b2b"], b2b.loc[3, "away_b2b"]) == (0, 0)
+
+
+def test_model_version_check():
+    """ensure_model.py trener på nytt når artefaktet ikke matcher dagens modell."""
+    import pandas as pd
+    from utils.feature_engineering import get_feature_columns
+    from utils.model_utils import (
+        model_age_days,
+        model_is_current,
+        train_outcome_model,
+        train_random_forest,
     )
 
-    form_cols = [c for c in control.columns if c.startswith("home_form_")]
-    assert control[form_cols].iloc[0].equals(utah[form_cols].iloc[0])
-    # Kampene i fixturen er 20 seire. Med feil alias-oppslag ble raten 0.5.
-    assert utah["home_form_win_rate_w20"].iloc[0] == 1.0
+    cols = get_feature_columns()
+    rng = np.random.RandomState(0)
+    X = pd.DataFrame(rng.normal(size=(90, len(cols))), columns=cols)
+    y = np.tile([0, 1, 2], 30)
 
-    # Id og Elo skal fortsatt slås opp kanonisk (ARI), ikke på visningsnavnet.
-    _, abbr_to_id = rs.load_team_mappings(str(rs.TEAM_INFO_PATH))
-    assert utah["home_team_id"].iloc[0] == abbr_to_id["ARI"]
+    model = train_outcome_model(X, y)
+    assert model_is_current(model, cols)
+    assert model_age_days(model) < 1
+    assert not model_is_current(model, cols + ["home_team_id"])
+    assert not model_is_current(train_random_forest(X, y), cols)
 
 
 def _report_game(**overrides):
@@ -365,18 +551,23 @@ def _report_game(**overrides):
 
 
 def _classify(report, **kwargs):
-    """record_new_bets uten nettverk: kamptypen stubbes til grunnserie."""
+    """
+    record_new_bets uten nettverk: kamptypen stubbes til grunnserie og
+    tidligsesong-sperren til «nok kamper spilt».
+    """
     import bet_tracker as bt
 
     history, shadow = kwargs.pop("history", []), kwargs.pop("shadow", [])
-    original = bt.is_bettable_game_type
+    original_type, original_games = bt.is_bettable_game_type, bt.has_enough_games
     bt.is_bettable_game_type = kwargs.pop("game_type_ok", lambda *_: True)
+    bt.has_enough_games = kwargs.pop("enough_games", lambda *_: True)
     try:
         created, shadowed = bt.record_new_bets(
             history, prefetched_report=report, shadow=shadow, min_value=0.15, **kwargs
         )
     finally:
-        bt.is_bettable_game_type = original
+        bt.is_bettable_game_type = original_type
+        bt.has_enough_games = original_games
     return history, shadow, created, shadowed
 
 
@@ -515,6 +706,80 @@ def test_playoff_games_are_skipped_entirely():
     )
     assert (created, shadowed) == (0, 0)
     assert history == [] and shadow == []
+
+
+def test_no_bets_before_both_teams_have_played_enough_games():
+    """
+    Tidlig i sesongen står Elo på fjorårets tall, mens markedet har priset inn
+    sommerens overganger. Kampen hoppes helt over – den havner ikke i
+    skyggeloggen, siden det ikke er terskelen som stopper den.
+    """
+    import bet_tracker as bt
+
+    history, shadow, created, shadowed = _classify(
+        [_report_game()], enough_games=lambda *_: False
+    )
+    assert (created, shadowed) == (0, 0)
+    assert history == [] and shadow == []
+
+    entry = {"start_time": "2026-10-02T01:00:00+02:00", "home_abbr": "NJD", "away_abbr": "UTA"}
+    original_count, original_min = bt.regular_season_games_played, bt.MIN_GAMES_PLAYED
+    asked = []
+
+    def count(team, game_date):
+        asked.append((team, game_date))
+        return {"NJD": 7, "UTA": 4}[team]
+
+    bt.regular_season_games_played = count
+    try:
+        bt.MIN_GAMES_PLAYED = 5
+        assert bt.has_enough_games(entry) is False  # Utah har bare 4
+        # Utah slås opp med APIets forkortelse og nordamerikansk kampdato.
+        assert asked == [("NJD", "2026-10-01"), ("UTA", "2026-10-01")]
+        bt.MIN_GAMES_PLAYED = 4
+        assert bt.has_enough_games(entry) is True
+        bt.MIN_GAMES_PLAYED = 0  # sperren av: ingen oppslag i det hele tatt
+        bt.regular_season_games_played = lambda *_: 1 / 0
+        assert bt.has_enough_games(entry) is True
+
+        # Svarer ikke APIet, spiller vi ikke.
+        bt.MIN_GAMES_PLAYED = 5
+        assert bt.has_enough_games(entry) is False
+    finally:
+        bt.regular_season_games_played = original_count
+        bt.MIN_GAMES_PLAYED = original_min
+
+
+def test_closing_odds_are_recorded_just_before_start():
+    """
+    Sluttoddsen føres bare på åpne rader som starter innen vinduet, og CLV er
+    oddsen vi fikk delt på sluttoddsen. Ferdige og fjerne kamper røres ikke.
+    """
+    import bet_tracker as bt
+
+    now = datetime(2026, 10, 17, 22, 40, tzinfo=timezone.utc)
+    soon = {
+        "event_id": "WPG-CAR-2026-10-18", "home_abbr": "WPG", "away_abbr": "CAR",
+        "start_time": "2026-10-18T01:00:00+02:00", "date": "2026-10-18",
+        "status": "pending", "selection": "home", "odds": 3.05,
+    }
+    later = dict(soon, event_id="VGK-PIT-2026-10-18", home_abbr="VGK", away_abbr="PIT",
+                 start_time="2026-10-18T04:00:00+02:00")
+    settled = dict(soon, status="lost")
+    games = [
+        {"eventId": None, "startTime": "2026-10-18T01:00:00+02:00", "home_abbr": "WPG",
+         "away_abbr": "CAR", "odds_home": 2.80, "odds_draw": 4.1, "odds_away": 2.15},
+        {"eventId": None, "startTime": "2026-10-18T04:00:00+02:00", "home_abbr": "VGK",
+         "away_abbr": "PIT", "odds_home": 1.60, "odds_draw": 4.3, "odds_away": 3.9},
+    ]
+    rows = [soon, later, settled]
+    assert bt.record_closing_odds(rows, games, now, window_hours=3) == 1
+    assert soon["close_odds_home"] == 2.8 and soon["close_odds_at"] == now.isoformat()
+    assert "close_odds_home" not in later and "close_odds_home" not in settled
+
+    # 3.05 mot sluttodds 2.80: markedet gikk vår vei.
+    assert abs(bt.closing_line_value(soon) - (3.05 / 2.80 - 1)) < 1e-9
+    assert bt.closing_line_value(later) is None
 
 
 def test_unknown_game_type_is_never_played():
@@ -802,10 +1067,16 @@ def test_bet_entry_logs_all_three_outcomes(tmp: Path):
     assert set(entry) == set(bt.BET_FIELDS)
 
 
+def _new_fields() -> set:
+    import bet_tracker as bt
+
+    return set(bt.OUTCOME_FIELDS) | set(bt.CLOSING_FIELDS)
+
+
 def write_legacy_history(path: Path) -> list[dict]:
     """
-    Skriver en `bet_history.csv` slik den så ut FØR utfallskolonnene kom:
-    headeren er `BET_FIELDS` minus `OUTCOME_FIELDS`.
+    Skriver en `bet_history.csv` slik den så ut FØR utfalls- og
+    sluttoddskolonnene kom: headeren er `BET_FIELDS` minus begge.
 
     Fixturen bygges her og leses aldri fra `data/bet_history.csv`. Den ekte fila
     skrives om med den nye headeren første gang pipelinen kjører `save_history`,
@@ -815,7 +1086,7 @@ def write_legacy_history(path: Path) -> list[dict]:
 
     import bet_tracker as bt
 
-    legacy_fields = [f for f in bt.BET_FIELDS if f not in set(bt.OUTCOME_FIELDS)]
+    legacy_fields = [f for f in bt.BET_FIELDS if f not in _new_fields()]
     rows = [
         {
             "season": "2025-26",
@@ -899,15 +1170,16 @@ def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
     written = write_legacy_history(legacy_path)
 
     old_header = legacy_path.read_text(encoding="utf-8").splitlines()[0].split(",")
-    assert set(old_header).isdisjoint(bt.OUTCOME_FIELDS)
-    assert old_header == [f for f in bt.BET_FIELDS if f not in set(bt.OUTCOME_FIELDS)]
+    assert set(old_header).isdisjoint(_new_fields())
+    assert old_header == [f for f in bt.BET_FIELDS if f not in _new_fields()]
 
     rows = bt.load_history(legacy_path)
     assert len(rows) == len(written)
     # Ukjent er ikke null: 0.0 ville lest som "oddsen/EVen var faktisk null".
     for row in rows:
-        for field in bt.OUTCOME_FIELDS:
+        for field in (*bt.OUTCOME_FIELDS, *bt.CLOSING_ODDS_FIELDS):
             assert row[field] is None, field
+        assert row["close_odds_at"] == ""
 
     # Verdiene fra fila skal være der, typekonvertert men uendret.
     first, last = rows[0], rows[-1]
@@ -926,9 +1198,9 @@ def test_legacy_rows_survive_a_read_write_round_trip(tmp: Path):
     lines = legacy_path.read_text(encoding="utf-8").splitlines()
     assert lines[0].split(",") == bt.BET_FIELDS
     # De nye kolonnene skrives som tomme celler, ikke som 0.
-    n_outcome = len(bt.OUTCOME_FIELDS)
+    n_new = len(_new_fields())
     for line in lines[1:]:
-        assert line.split(",")[-n_outcome:] == [""] * n_outcome, line
+        assert line.split(",")[-n_new:] == [""] * n_new, line
 
     reread = bt.load_history(legacy_path)
     assert len(reread) == len(rows)
@@ -1095,7 +1367,13 @@ def main() -> int:
             ("value_report", test_value_report, False),
             ("value_report_raises", test_value_report_raises_when_most_games_lack_data, False),
             ("elo_guard", test_elo_guard_rejects_empty_ratings, False),
-            ("utah_alias_form", test_utah_alias_gets_same_form_as_a_team_without_alias, False),
+            ("utah_alias", test_utah_uses_canonical_elo_and_display_schedule, False),
+            ("form_regular_season", test_form_games_are_regular_season_and_roll_into_last_season, False),
+            ("elo_season_regression", test_elo_is_regressed_before_a_teams_first_game_of_the_season, False),
+            ("b2b_and_local_date", test_local_game_date_and_back_to_back_match_training, False),
+            ("model_version", test_model_version_check, False),
+            ("early_season_skip", test_no_bets_before_both_teams_have_played_enough_games, False),
+            ("closing_odds", test_closing_odds_are_recorded_just_before_start, False),
             ("rejected_shadow_ledger", test_rejected_bets_go_to_the_shadow_ledger, False),
             ("draw_threshold", test_draws_need_a_higher_ev_threshold_than_home_and_away, False),
             ("draw_does_not_block_home", test_a_failing_draw_does_not_drag_down_a_good_home_bet, False),

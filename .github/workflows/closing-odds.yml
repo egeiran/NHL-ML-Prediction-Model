@@ -1,0 +1,63 @@
+name: Closing Odds
+
+# Henter Norsk Tipping-oddsen rett før kampstart for åpne spill og
+# skyggespill, og fører den inn som sluttodds (close_odds_*). Grunnlaget for
+# closing line value: om markedet beveger seg mot eller fra spillene våre.
+#
+# Fire kjøringer dekker kampstarter fra ca. 16:40 til 04:40 UTC. Hver kjøring
+# oppdaterer rader som starter innen tre timer, så siste kjøring før start står.
+# GitHub kan forsinke planlagte kjøringer; da blir oddsen hentet nærmere start,
+# eller ikke i det hele tatt for kampen som allerede har startet.
+
+on:
+  schedule:
+    - cron: "40 16 * * *"
+    - cron: "40 19 * * *"
+    - cron: "40 22 * * *"
+    - cron: "40 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # trengs for å pushe bet_history.csv / bet_shadow.csv
+
+jobs:
+  closing-odds:
+    runs-on: ubuntu-latest
+    # Samme gruppe som den daglige jobben: begge skriver de samme loggfilene.
+    concurrency:
+      group: bet-ledger
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: NHL/requirements-api.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r NHL/requirements-api.txt
+
+      - name: Record closing odds
+        working-directory: NHL
+        env:
+          NHL_CLOSING_WINDOW_HOURS: "3"
+        run: python record_closing_odds.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add NHL/data/bet_history.csv NHL/data/bet_shadow.csv
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: sluttodds for kveldens kamper"
+          git pull --rebase --autostash
+          git push

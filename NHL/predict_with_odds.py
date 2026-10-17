@@ -1,8 +1,7 @@
 # predict_with_odds.py
 from live.nt_odds import get_nhl_matches_range
-from live.live_feature_builder import build_live_features
+from live.live_feature_builder import build_live_features, local_game_date
 from utils.model_utils import load_model
-from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.value_utils import adjust_three_way_probs, expected_value, implied_probability
 
 MODEL_PATH = "models/nhl_model.pkl"
@@ -15,13 +14,13 @@ def normalize_probs(*probs):
     return tuple(p / total for p in clean)
 
 
-def predict_match(model, home_abbr, away_abbr):
+def predict_match(model, home_abbr, away_abbr, game_date=None):
     """
     Lager feature-row og får prediksjon fra ML-modellen.
     Returnerer et dict med sannsynligheter.
     """
 
-    X = build_live_features(away_abbr, home_abbr, windows=DEFAULT_WINDOWS)
+    X = build_live_features(away_abbr, home_abbr, game_date=game_date)
     probs = model.predict_proba(X)[0]
     class_probs = dict(zip(model.classes_, probs))
 
@@ -64,7 +63,9 @@ def make_report(days=3):
             print(f"[ADVARSEL] Mangler mapping for {home} eller {away}")
             continue
 
-        pred = predict_match(model, home_abbr, away_abbr)
+        pred = predict_match(
+            model, home_abbr, away_abbr, game_date=local_game_date(g.get("startTime"))
+        )
 
         odds_home = g["odds_home"]
         odds_draw = g["odds_draw"]

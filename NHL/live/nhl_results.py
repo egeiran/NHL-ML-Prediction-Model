@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from typing import Dict, List, Optional
 
-from live.nhl_api import BASE, get_json
+from live.nhl_api import get_club_schedule
 
 # De 32 nåværende NHL-lagene (API-forkortelser).
 CURRENT_TEAMS = [
@@ -61,13 +61,11 @@ def normalize_game(g: Dict) -> Optional[Dict]:
 
 def fetch_club_schedule(team: str, season: str) -> List[Dict]:
     """Rå kampliste for ett lag i én sesong (tom liste ved feil)."""
-    url = f"{BASE}/club-schedule-season/{team}/{season}"
     try:
-        data = get_json(url)
+        return get_club_schedule(team, season)
     except Exception as exc:
         print(f"  [WARN] {team} {season}: {exc}")
         return []
-    return data.get("games", [])
 
 
 def fetch_completed_games(

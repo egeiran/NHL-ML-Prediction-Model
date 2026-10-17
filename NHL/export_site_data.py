@@ -50,7 +50,6 @@ from report_service import (
     list_teams,
     predict_rows,
 )
-from utils.feature_engineering import DEFAULT_WINDOWS
 from utils.team_alias import to_canonical, to_display
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -128,13 +127,7 @@ def build_matchups(teams: List[Dict[str, str]]) -> Dict[str, Any]:
                 continue
             try:
                 feature_rows.append(
-                    build_live_features(
-                        to_canonical(away),
-                        to_canonical(home),
-                        windows=DEFAULT_WINDOWS,
-                        home_games=team_games[home],
-                        away_games=team_games[away],
-                    )
+                    build_live_features(to_canonical(away), to_canonical(home))
                 )
             except Exception as exc:  # pragma: no cover - hopper over ett lagpar
                 # Feilen er som regel den samme for alle par (f.eks. manglende
