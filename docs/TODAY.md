@@ -1,10 +1,10 @@
-# Value Bets for 2026-10-19
+# Value Bets for 2026-10-20
 
-Generated at 2026-10-18 12:37 UTC
-Data window: 2026-10-19 (days_ahead=3)
+Generated at 2026-10-19 15:32 UTC
+Data window: 2026-10-20 (days_ahead=3)
 Min EV threshold: 0.15
 Max odds: 4.00
-Games scanned: 2 | Value bets: 0
+Games scanned: 4 | Value bets: 0
 Source: Norsk Tipping odds + NHL model (same logic as /value-report).
 
 Note: primary window empty; used fallback horizon (3 days ahead).
