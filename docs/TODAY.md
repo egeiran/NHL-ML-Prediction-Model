@@ -1,7 +1,7 @@
-# Value Bets for 2026-10-24
+# Value Bets for 2026-10-25
 
-Generated at 2026-10-24 12:39 UTC
-Data window: 2026-10-24 (days_ahead=0)
+Generated at 2026-10-25 13:11 UTC
+Data window: 2026-10-25 (days_ahead=0)
 Min EV threshold: 0.15
 Max odds: 4.00
 Games scanned: 2 | Value bets: 0
