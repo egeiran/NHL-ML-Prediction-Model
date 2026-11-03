@@ -96,10 +96,6 @@
     "id": "55"
   },
   {
-    "abbreviation": "SJS",
-    "id": "28"
-  },
-  {
     "abbreviation": "STL",
     "id": "19"
   },
@@ -110,5 +106,9 @@
   {
     "abbreviation": "VAN",
     "id": "23"
+  },
+  {
+    "abbreviation": "VGK",
+    "id": "54"
   }
 ]
