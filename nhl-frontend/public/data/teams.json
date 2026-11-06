@@ -96,6 +96,10 @@
     "id": "55"
   },
   {
+    "abbreviation": "SJS",
+    "id": "28"
+  },
+  {
     "abbreviation": "STL",
     "id": "19"
   },
@@ -104,11 +108,23 @@
     "id": "14"
   },
   {
+    "abbreviation": "TOR",
+    "id": "10"
+  },
+  {
     "abbreviation": "VAN",
     "id": "23"
   },
   {
     "abbreviation": "VGK",
     "id": "54"
+  },
+  {
+    "abbreviation": "WPG",
+    "id": "52"
+  },
+  {
+    "abbreviation": "WSH",
+    "id": "15"
   }
 ]
