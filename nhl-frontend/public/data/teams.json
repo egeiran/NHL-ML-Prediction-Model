@@ -104,8 +104,16 @@
     "id": "19"
   },
   {
+    "abbreviation": "TBL",
+    "id": "14"
+  },
+  {
     "abbreviation": "TOR",
     "id": "10"
+  },
+  {
+    "abbreviation": "VAN",
+    "id": "23"
   },
   {
     "abbreviation": "VGK",
@@ -114,5 +122,9 @@
   {
     "abbreviation": "WPG",
     "id": "52"
+  },
+  {
+    "abbreviation": "WSH",
+    "id": "15"
   }
 ]
