@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T16:47:14.710955+00:00",
+  "generated_at": "2026-11-13T16:07:46.280022+00:00",
   "days_ahead": 3,
   "files": [
     "elo.json",
@@ -7,10 +7,11 @@
     "portfolio-all.json",
     "portfolio.json",
     "shadow.json",
-    "teams.json",
-    "value-report.json"
+    "teams.json"
   ],
-  "failed": [],
+  "failed": [
+    "value-report"
+  ],
   "value_min": 0.15,
   "draw_value_min": 0.3,
   "max_odds": 4.0,
