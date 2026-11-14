@@ -43,3 +43,7 @@ jobs:
       - name: Run tests
         working-directory: NHL
         run: python test_site_export.py
+
+      - name: Run market/strategy tests
+        working-directory: NHL
+        run: python test_market.py

@@ -49,11 +49,22 @@ jobs:
           NHL_CLOSING_WINDOW_HOURS: "3"
         run: python record_closing_odds.py
 
+      # Tidsserie for alle NT-markeder + Pinnacle gjennom kvelden. Grunnlaget
+      # for sluttodds/CLV i skyggestrategien og for å avgjøre om den daglige
+      # kjøringen bør flyttes (docs/market_analysis.md).
+      - name: Log market snapshot
+        id: market_shadow
+        working-directory: NHL
+        continue-on-error: true
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python market_shadow.py --job closing
+
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv NHL/data/bet_shadow.csv
+          git add NHL/data/bet_history.csv NHL/data/bet_shadow.csv NHL/data/odds
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
@@ -61,3 +72,9 @@ jobs:
           git commit -m "chore: sluttodds for kveldens kamper"
           git pull --rebase --autostash
           git push
+
+      - name: Fail if market snapshot crashed
+        if: steps.market_shadow.outcome == 'failure'
+        run: |
+          echo "::error::market_shadow.py --job closing krasjet. Sluttoddsen for porteføljen er ført."
+          exit 1

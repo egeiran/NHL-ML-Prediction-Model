@@ -114,6 +114,20 @@ jobs:
         run: |
           python bet_tracker.py
 
+      # Logger alle relevante NT-markeder (vinner inkl. OT, totals, OT ja/nei …)
+      # og Pinnacle-odds fra The Odds API, og kjører skyggestrategien på vinner
+      # inkl. OT (data/strategy_ml.csv). Må gå etter bet_tracker.py: strategien
+      # leser modellsannsynlighetene fra bet-loggene. Uten ODDS_API_KEY logges
+      # NT-markedene likevel. Rører aldri bet_history.csv/bet_shadow.csv, og et
+      # krasj her skal ikke stoppe resten av jobben – sluttsteget gjør den rød.
+      - name: Log markets and run moneyline shadow strategy
+        id: market_shadow
+        working-directory: NHL
+        continue-on-error: true
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python market_shadow.py --job daily
+
       # stake_truth.json er fasiten nhl-frontend/lib/analysis.test.mjs måler seg
       # mot, og den er regnet fra bet_history.csv. Uten dette steget råtner den
       # fra første nye spill: testen sammenligner fersk portfolio.json mot
@@ -193,7 +207,7 @@ jobs:
           # (site-dataen er utracket første gang den genereres).
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/data/bet_shadow.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png docs/blalinja/stake_truth.json README.md nhl-frontend/public/data/*.json
+          git add NHL/data/bet_history.csv NHL/data/bet_below_threshold.csv NHL/data/bet_shadow.csv NHL/models/elo_ratings.json docs/predictions.png docs/TODAY.md docs/portfolio.png docs/daily_profit.png docs/elo.png docs/blalinja/stake_truth.json README.md nhl-frontend/public/data/*.json NHL/data/odds NHL/data/strategy_ml.csv
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -210,7 +224,7 @@ jobs:
       # gjennom, så dagens historikk er lagret uansett — det er bare stillheten
       # vi ikke vil ha.
       - name: Fail if generated data is stale
-        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success' || steps.stake_truth.outcome != 'success' || steps.frontend_tests.outcome == 'failure'
+        if: steps.export_tests.outcome != 'success' || steps.export.outcome != 'success' || steps.stake_truth.outcome != 'success' || steps.frontend_tests.outcome == 'failure' || steps.market_shadow.outcome == 'failure'
         run: |
           if [ "${{ steps.export_tests.outcome }}" != "success" ]; then
             echo "::error::Eksporttestene feilet – site-dataen ble ikke oppdatert."
@@ -222,6 +236,10 @@ jobs:
           if [ "${{ steps.frontend_tests.outcome }}" = "failure" ]; then
             echo "::error::Frontend-testene feilet: analysen på /modell stemmer ikke med"
             echo "::error::stake_truth.json, eller formaterings-/spilltestene røk. Se steget over."
+          fi
+          if [ "${{ steps.market_shadow.outcome }}" = "failure" ]; then
+            echo "::error::Markedsloggen/skyggestrategien (market_shadow.py) krasjet. Se steget"
+            echo "::error::over og NHL/data/odds/runs.csv. Porteføljen er ikke berørt."
           fi
           if [ "${{ steps.stake_truth.outcome }}" != "success" ]; then
             echo "::error::stake_truth.json ble ikke regenerert. Den er nå ute av takt"

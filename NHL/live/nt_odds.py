@@ -1,4 +1,5 @@
 import time
+import unicodedata
 
 import requests
 import pandas as pd
@@ -53,7 +54,14 @@ def _get(url, params=None):
 
 
 def _normalize(name: str) -> str:
-    return "".join(ch for ch in name.upper() if ch.isalnum())
+    """
+    Store bokstaver og bare alfanumeriske tegn, uten aksenter. The Odds API
+    skriver «Montréal Canadiens»; uten NFKD-strippingen ville «É» blitt stående
+    og aldri truffet «MONTREAL» fra team_info.csv.
+    """
+    stripped = unicodedata.normalize("NFKD", name)
+    stripped = "".join(ch for ch in stripped if not unicodedata.combining(ch))
+    return "".join(ch for ch in stripped.upper() if ch.isalnum())
 
 
 def load_team_map():
@@ -64,6 +72,7 @@ def load_team_map():
         "UTAHMAMMOTH": "UTA",  # bruker UTA som visningsnavn, kanoniseres senere ved behov
         "UTAH": "UTA",
         "UTA": "UTA",
+        "UTAHHOCKEYCLUB": "UTA",  # navnet før Mammoth (The Odds API, 2024-25)
         "NEWYORKISLANDERS": "NYI",  # NT bruker ofte fulle bynavn
         "NEWYORKRANGERS": "NYR",
     }
@@ -168,6 +177,52 @@ def _parse_start_time(start: str):
         return None
 
 
+def _nhl_event(ev: dict):
+    """
+    Én NT-event som kampdict (samme form som get_nhl_matches_range gir), eller
+    None når eventen ikke er NHL eller mangler starttid.
+
+    Delt med live/nt_markets.py, så hovedmarkedet og fullmarkeds-loggen mapper
+    lag og odds likt. Spesial-eventer (langtidsspill) har ingen deltakere og
+    kommer gjennom her med home_abbr=None – det har de alltid gjort, og
+    kallerne filtrerer dem selv.
+    """
+    # vi skal kun ha NHL
+    tournament_name = ev.get("tournament", {}).get("name", "")
+    if "NHL" not in tournament_name.upper():
+        return None
+
+    start_time = _parse_start_time(ev.get("startTime"))
+    if not start_time:
+        return None
+
+    market = ev.get("mainMarket", {}) or {}
+    selections = market.get("selections", []) or []
+
+    # Odds kan mangle (ikke prissatt ennå). Vi lar dem stå som None.
+    odds = {}
+    for s in selections:
+        try:
+            odds[s["selectionValue"]] = float(s["selectionOdds"])
+        except Exception:
+            continue
+
+    home, home_abbr = _map_team(ev, "homeParticipant", "homeParticipantShortName")
+    away, away_abbr = _map_team(ev, "awayParticipant", "awayParticipantShortName")
+
+    return {
+        "eventId": ev.get("eventId"),
+        "startTime": ev.get("startTime"),
+        "home": home,
+        "away": away,
+        "home_abbr": home_abbr,
+        "away_abbr": away_abbr,
+        "odds_home": odds.get("H"),
+        "odds_draw": odds.get("D"),
+        "odds_away": odds.get("A"),
+    }
+
+
 def get_nhl_matches_range(days=3):
     """
     Returnerer NHL-kamper fra Norsk Tipping for intervallet [i dag, i dag + days].
@@ -180,44 +235,13 @@ def get_nhl_matches_range(days=3):
     nhl_games = []
 
     for ev in events:
-        # vi skal kun ha NHL
-        tournament_name = ev.get("tournament", {}).get("name", "")
-        if "NHL" not in tournament_name.upper():
+        game_info = _nhl_event(ev)
+        if game_info is None:
             continue
 
-        start_time = _parse_start_time(ev.get("startTime"))
-        if not start_time:
-            continue
-
-        start_date = start_time.date()
+        start_date = _parse_start_time(game_info["startTime"]).date()
         if start_date < today or start_date > max_date:
             continue
-
-        market = ev.get("mainMarket", {}) or {}
-        selections = market.get("selections", []) or []
-
-        # Odds kan mangle (ikke prissatt ennå). Vi lar dem stå som None.
-        odds = {}
-        for s in selections:
-            try:
-                odds[s["selectionValue"]] = float(s["selectionOdds"])
-            except Exception:
-                continue
-
-        home, home_abbr = _map_team(ev, "homeParticipant", "homeParticipantShortName")
-        away, away_abbr = _map_team(ev, "awayParticipant", "awayParticipantShortName")
-
-        game_info = {
-            "eventId": ev.get("eventId"),
-            "startTime": ev.get("startTime"),
-            "home": home,
-            "away": away,
-            "home_abbr": home_abbr,
-            "away_abbr": away_abbr,
-            "odds_home": odds.get("H"),
-            "odds_draw": odds.get("D"),
-            "odds_away": odds.get("A"),
-        }
 
         nhl_games.append(game_info)
 
