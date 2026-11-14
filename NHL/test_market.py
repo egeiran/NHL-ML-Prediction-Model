@@ -585,6 +585,29 @@ def test_market_shadow_main_logs_and_leaves_bet_ledgers_alone():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_strategy_export_payload():
+    """strategy-ml.json: nyeste kamp først, bare eksportfeltene, status fra siste kjøring med skarp status."""
+    import strategy_ml as s
+
+    rows = []
+    s.decide_new(rows, [_nt_record()], {"BOS-MIN-2026-11-15": _match()}, NOW)
+    later = _nt_record(key="TOR-EDM-2026-11-15", start="2026-11-15T02:00:00Z")
+    s.decide_new(rows, [later], {}, NOW)
+    runs = [
+        {"run_at": "2026-11-14T08:00:00Z", "job": "daily", "sharp_status": "ok", "sharp_matched": "1",
+         "nt_events": "2", "quota_remaining": "480"},
+        {"run_at": "2026-11-14T16:40:00Z", "job": "closing", "sharp_status": "", "quota_remaining": ""},
+    ]
+    payload = s.export_payload(rows, "2026-11-14T08:05:00Z", runs, None)
+    assert [r["game_key"] for r in payload["rows"]] == ["TOR-EDM-2026-11-15", "BOS-MIN-2026-11-15"]
+    assert set(payload["rows"][0]) == set(s.EXPORT_FIELDS)
+    assert payload["rows"][1]["status"] == "pending" and payload["rows"][0]["skip_reason"] == "no_sharp"
+    assert payload["status"]["last_job"] == "closing" and payload["status"]["sharp_status"] == "ok"
+    assert payload["status"]["quota_remaining"] == 480 and payload["status"]["first_decision"] == "2026-11-15"
+    assert payload["summary"]["bets"] == 1 and payload["params"]["target_bets"] == s.TARGET_BETS
+    json.dumps(payload)  # må kunne serialiseres
+
+
 def test_analyze_market_report():
     """Rapporten bygges uten pandas, også med tomme snapshot- og strategilogger."""
     import analyze_market as am
@@ -645,6 +668,7 @@ def main() -> int:
         ("strategy_csv", test_strategy_csv_round_trip),
         ("snapshot_log", test_snapshot_log_round_trip),
         ("market_shadow_main", test_market_shadow_main_logs_and_leaves_bet_ledgers_alone),
+        ("strategy_export", test_strategy_export_payload),
         ("analyze_market_report", test_analyze_market_report),
         ("bet_fields_frozen", test_bet_fields_are_frozen),
     ]

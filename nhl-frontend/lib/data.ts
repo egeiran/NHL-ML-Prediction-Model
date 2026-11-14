@@ -15,6 +15,7 @@ import type {
     PredictionResponse,
     ShadowEntry,
     SiteMeta,
+    StrategiData,
     Team,
     ValueGame,
 } from '@/types';
@@ -32,6 +33,7 @@ export const DATA_FILER = {
     matchups: 'matchups.json',
     elo: 'elo.json',
     shadow: 'shadow.json',
+    strategyMl: 'strategy-ml.json',
 } as const;
 
 export type DataNøkkel = keyof typeof DATA_FILER;
@@ -131,6 +133,11 @@ export function fetchElo(): Promise<EloData> {
 /** Skyggeloggen. `[]` i dag; Skyggelogg-skjermen faller da tilbake på portfolio. */
 export function fetchShadow(): Promise<ShadowEntry[]> {
     return memoisert<ShadowEntry[]>('shadow', 'Kunne ikke hente skyggeloggen');
+}
+
+/** Skyggestrategien på vinner inkl. OT mot Pinnacle (`/marked`). */
+export function fetchStrategyMl(): Promise<StrategiData> {
+    return memoisert<StrategiData>('strategyMl', 'Kunne ikke hente skyggestrategien');
 }
 
 /* -------------------------------------------------------------------------- */

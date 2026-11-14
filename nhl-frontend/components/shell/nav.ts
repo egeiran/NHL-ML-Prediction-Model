@@ -2,7 +2,7 @@
  * Navigasjonen — én kilde for begge navene.
  *
  * Rekkefølgen er bindende: Oversikt · Verdi i dag · Kampanalyse — skille —
- * Historikk · Elo · Modell · Skyggelogg.
+ * Historikk · Elo · Modell · Skyggelogg · Markedet.
  */
 
 export interface NavRute {
@@ -67,9 +67,16 @@ export const RUTER = {
         skjermtittel: 'Skyggelogg',
         beskrivelse: 'Kampene som røk på en terskel',
     },
+    marked: {
+        href: '/marked',
+        tittel: 'Markedet',
+        kort: 'Marked',
+        skjermtittel: 'Markedet',
+        beskrivelse: 'Vinner inkl. overtid mot Pinnacle, i skygge',
+    },
 } as const satisfies Record<string, NavRute>;
 
-/** De sju rutene i navrekkefølge. */
+/** Rutene i navrekkefølge. */
 export const NAV_RUTER: readonly NavRute[] = [
     RUTER.oversikt,
     RUTER.verdi,
@@ -78,6 +85,7 @@ export const NAV_RUTER: readonly NavRute[] = [
     RUTER.elo,
     RUTER.modell,
     RUTER.skygge,
+    RUTER.marked,
 ];
 
 /** Skillelinja står etter Kampanalyse, altså etter indeks 2. */
@@ -92,7 +100,7 @@ export const BUNNNAV_RUTER: readonly NavRute[] = [
 ];
 
 /** Analysevisningene som ikke får plass i bunnbaren — lenkes fra Oversikt. */
-export const ANALYSE_RUTER: readonly NavRute[] = [RUTER.elo, RUTER.modell, RUTER.skygge];
+export const ANALYSE_RUTER: readonly NavRute[] = [RUTER.elo, RUTER.modell, RUTER.skygge, RUTER.marked];
 
 /** Aktiv rute: eksakt treff på `/`, prefikstreff ellers. */
 export function erAktiv(pathname: string, href: string): boolean {

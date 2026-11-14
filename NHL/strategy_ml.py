@@ -453,3 +453,69 @@ def summarize(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "progress": round(min(1.0, clv_sharp["n"] / TARGET_BETS), 4),
         "promotable": promotable,
     }
+
+
+# --- eksport til frontend (strategy-ml.json) -----------------------------------
+
+EXPORT_FIELDS = [
+    "date", "game_key", "start_time", "home_abbr", "away_abbr", "decided_at", "status",
+    "selection", "odds", "ev", "ev_home", "ev_away", "stake", "skip_reason", "nt_ml_home", "nt_ml_away",
+    "sharp_source", "sharp_ml_home", "sharp_ml_away", "p_fair_home", "p_nt_home",
+    "p_model_ml_home", "ml_outcome", "reg_outcome", "profit", "clv_sharp", "clv_nt",
+    "close_nt_ml_home", "close_nt_ml_away", "p_fair_close_home",
+]
+
+
+def _export_value(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 5)
+    return value if value not in ("",) else None
+
+
+def export_payload(
+    rows: Sequence[Dict[str, Any]],
+    generated_at: str,
+    runs: Sequence[Dict[str, Any]] = (),
+    portfolio_same_period: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Alt /marked trenger: parametere, sammendrag, siste kjøring og radene
+    (nyeste kamp først). Sammenligningen med dagens portefølje regnes av
+    kalleren, som har bet-loggene.
+    """
+    last = dict(runs[-1]) if runs else {}
+    last_sharp = next((dict(r) for r in reversed(runs) if r.get("sharp_status")), {})
+
+    def as_int(value: Any) -> Optional[int]:
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return None
+
+    ordered = sorted(rows, key=lambda r: (r.get("start_time") or "", r.get("game_key") or ""), reverse=True)
+    return {
+        "generated_at": generated_at,
+        "strategy": STRATEGY,
+        "params": {
+            "ev_min": EV_MIN,
+            "max_odds": MAX_ODDS,
+            "stake": STAKE,
+            "target_bets": TARGET_BETS,
+            "ci_level": CI_LEVEL,
+            "devig": DEFAULT_METHOD,
+            "sharp_sources": list(SHARP_SOURCES),
+            "max_deviation": MAX_DEVIATION,
+        },
+        "summary": summarize(rows),
+        "portfolio_same_period": portfolio_same_period,
+        "status": {
+            "last_run_at": last.get("run_at") or None,
+            "last_job": last.get("job") or None,
+            "sharp_status": last_sharp.get("sharp_status") or None,
+            "sharp_matched": as_int(last_sharp.get("sharp_matched")),
+            "nt_events": as_int(last_sharp.get("nt_events")),
+            "quota_remaining": as_int(last_sharp.get("quota_remaining")),
+            "first_decision": min((r.get("date") or "" for r in rows), default="") or None,
+        },
+        "rows": [{k: _export_value(r.get(k)) for k in EXPORT_FIELDS} for r in ordered],
+    }

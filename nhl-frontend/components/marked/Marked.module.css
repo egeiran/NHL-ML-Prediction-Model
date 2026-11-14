@@ -1,0 +1,277 @@
+/*
+ * Markedet (/marked). Alt her er lokalt for skjermen.
+ *
+ * Samme formspråk som Skyggelogg og Historikk: ingen border-radius, ingen
+ * box-shadow, ingen transition, bare tokens fra globals.css. Panelene bruker
+ * den delte `.split`, som stabler seg selv under 768px.
+ */
+
+/* ========================================================================== *
+ * Hode og statuslinjer
+ * ========================================================================== */
+
+.kilde {
+  display: block;
+  margin-top: 12px;
+  max-width: 68ch;
+}
+
+.kilde.kilde {
+  line-height: 1.6;
+}
+
+.statusLinje {
+  padding: 28px 0 40px;
+}
+
+.melding {
+  margin: 0;
+  padding: 14px 16px;
+  max-width: 74ch;
+  background: var(--tint);
+  color: var(--body);
+}
+
+/* ========================================================================== *
+ * Panelene
+ * ========================================================================== */
+
+.paneler {
+  border-bottom: 1px solid var(--rule);
+}
+
+.panel {
+  padding: 36px 0;
+  min-width: 0;
+}
+
+.panelTint {
+  background: var(--tint);
+}
+
+.panelTittel {
+  display: block;
+}
+
+.panel .panelTittel {
+  line-height: 1.4;
+}
+
+.figur {
+  display: block;
+  margin-top: 14px;
+  font: 400 clamp(48px, 5.4vw, 72px) / 0.9 var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.stolpe {
+  margin-top: 12px;
+  height: 5px;
+  background: var(--rule-light);
+}
+
+.stolpeFyll {
+  height: 5px;
+  background: var(--teal);
+}
+
+.undertekst {
+  margin: 12px 0 0;
+  max-width: 46ch;
+}
+
+.rader {
+  margin: 22px 0 0;
+}
+
+.rad {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.panelTint .rad {
+  border-bottom-color: var(--tint-rule);
+}
+
+.rad:last-child {
+  border-bottom: 0;
+}
+
+.radNokkel {
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.radVerdi {
+  margin: 0;
+  font: 400 14px/1 var(--mono);
+  text-align: right;
+}
+
+/* ========================================================================== *
+ * Tabellblokkene
+ * ========================================================================== */
+
+.blokk {
+  padding-top: 40px;
+}
+
+.blokkTittel {
+  margin: 0;
+  font: 400 24px/1.35 var(--serif);
+  color: var(--ink);
+}
+
+.blokkIngress {
+  margin: 8px 0 0;
+  max-width: 74ch;
+}
+
+.tabellRam {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.tabell {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.kKort {
+  width: 88px;
+}
+
+.kOdds {
+  width: 84px;
+}
+
+.kProsent {
+  width: 96px;
+}
+
+.kBeslutning {
+  width: 210px;
+}
+
+.hoderad th {
+  padding: 12px 12px 10px 0;
+  text-align: left;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+.hoderad th:last-child {
+  padding-right: 0;
+}
+
+/* `.hoderad th` (klasse + element) slår `.hoyre` alene, så tallkolonnenes
+ * overskrifter må høyrestilles eksplisitt for å stå over tallene. */
+.hoderad th.hoyre {
+  text-align: right;
+}
+
+.rad2 td {
+  padding: 12px 12px 12px 0;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.rad2 td:last-child {
+  padding-right: 0;
+}
+
+.rad2:hover td {
+  background: var(--tint);
+}
+
+.hoyre {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dato {
+  font: 400 11px/1.3 var(--mono);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.kamp {
+  font: 400 13.5px/1.3 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.beslutning {
+  font: 400 12.5px/1.3 var(--sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resultat {
+  font: 500 9.5px/1.3 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.netto {
+  font: 400 13px/1.3 var(--mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ========================================================================== *
+ * Forklaring
+ * ========================================================================== */
+
+.forklaring {
+  padding-top: 48px;
+}
+
+.forklaringTittel {
+  margin: 0;
+  font: 400 24px/1.35 var(--serif);
+  color: var(--ink);
+  max-width: 34ch;
+}
+
+.forklaringTekst {
+  margin: 14px 0 0;
+  max-width: 60ch;
+  font: 400 14px/1.7 var(--sans);
+  color: var(--body);
+  text-wrap: pretty;
+}
+
+/* ========================================================================== *
+ * Mobil — ett brytepunkt, som resten av appen
+ * ========================================================================== */
+
+@media (max-width: 767px) {
+  .panel {
+    padding: 28px 0;
+  }
+
+  .figur {
+    font: 400 44px/0.9 var(--serif);
+    letter-spacing: -0.02em;
+  }
+
+  .blokk,
+  .forklaring {
+    padding-top: 32px;
+  }
+}
