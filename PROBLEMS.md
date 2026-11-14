@@ -185,7 +185,15 @@
   modellsannsynlighet, implisert sannsynlighet og EV logges for alle tre utfall
   (`OUTCOME_FIELDS` i `bet_tracker.py`). Eldre rader har bare det spilte utfallet.
 
-- [ ] **Modellen ser ikke markedet.** Den spår kampene fra Elo alene og spiller
+- [ ] **Modellen ser ikke markedet.** *Oppdatering november 2026:* På 177 kamper
+  etter modellbyttet er modellen på nivå med NT-markedet (log loss 1,018 mot
+  1,016, ikke signifikant), og den beste blandingsvekten på modellen er 0. Med
+  ~12 % margin på HUB kan en modell på markedsnivå ikke tjene penger. Tiltak:
+  alle NT-markeder og Pinnacle-odds logges nå (`market_shadow.py`), og en
+  skyggestrategi spiller vinner inkl. OT (~7 % margin) når NT-oddsen slår
+  Pinnacles margin-frie pris (`strategy_ml.py`, `/marked`). Den får ekte
+  innsats først ved positiv CLV over 150 spill. Se `docs/market_analysis.md` og
+  `docs/model_eval.md`. Opprinnelig tekst: Den spår kampene fra Elo alene og spiller
   når den er uenig med oddsen. Markedet vet om keepervalg, skader og rekker; når
   de to er langt fra hverandre, er det oftest modellen som tar feil. Neste steg er
   historiske odds, slik at markedssannsynligheten kan brukes som utgangspunkt og

@@ -100,6 +100,7 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
 | `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
 | `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
+| `strategy-ml.json` | Skyggestrategien på vinner inkl. OT (`data/strategy_ml.csv`), sammendrag og siste kjøring |
 | `meta.json` | Når dataen ble generert, hvilke seksjoner som feilet, og tersklene pipelinen kjørte med |
 
 - Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
@@ -142,6 +143,7 @@ Frontenden («Blålinja») er en statisk Next.js-app med sju ruter. Detaljene st
 | `/elo` | Ligaen rangert etter Elo, med parametere og datagrunnlag |
 | `/modell` | Kalibrering, EV-/odds-kvartiler, innsatssimulator og åpne funn |
 | `/skygge` | Skyggeloggen mot den faktiske porteføljen |
+| `/marked` | Skyggestrategien på vinner inkl. OT mot Pinnacle (CLV, fremdrift mot 150 spill) |
 
 - Tallene på skjermene regnes fra `public/data/*.json` ved lasting. Terskler
   (`value_min`, `draw_value_min`, `max_odds`) leses fra `meta.json` — Python er
@@ -177,6 +179,46 @@ borteseier etter ordinær tid. Tre features:
   komplette sesong, trener så på alt og lagrer modell + ferske Elo-ratings.
   `ensure_model.py` trener på nytt i den daglige jobben når modellen mangler, er
   inkompatibel eller er over en uke gammel (`NHL_MODEL_MAX_AGE_DAYS`).
+
+## 📈 Markedsdata og skyggestrategi (vinner inkl. OT)
+Elo-modellen er omtrent på nivå med Norsk Tipping-markedet, ikke bedre
+(`docs/market_analysis.md`). På HUB (1X2) tar NT ~12 % margin, på
+«Vinner (inkludert overtid/straffer)» ~7 %. Derfor logges nå alle relevante
+NT-markeder, og en egen skyggestrategi spiller vinner inkl. OT når NT-oddsen er
+bedre enn Pinnacles margin-frie pris. Dagens portefølje (HUB) går uendret.
+
+- **`market_shadow.py --job daily|closing`** kjøres av den daglige jobben og av
+  `closing-odds.yml`. Logger HUB, vinner inkl. OT, «Blir det overtid?»,
+  «Uavgjort tilbakebetales», over/under og handikap (daglig også lagtotaler og
+  korrekt resultat) til `data/odds/nt_YYYY-MM.jsonl`, Pinnacle/Betfair til
+  `sharp_YYYY-MM.jsonl` og én rad per kjøring i `runs.csv`.
+- **Pinnacle-odds** hentes fra [The Odds API](https://the-odds-api.com)
+  (gratisnivå, ~180 av 500 kreditter i måneden). Krever repo-secreten
+  `ODDS_API_KEY` (Settings → Secrets and variables → Actions, eller
+  `gh secret set ODDS_API_KEY`). Uten nøkkel logges NT-markedene likevel, og
+  strategien fører kampene som «Ingen Pinnacle-pris». Nøkkelen skrubbes fra alt
+  som skrives til loggene.
+- **Strategien `ml-sharp-v1`** (`strategy_ml.py`, logg i `data/strategy_ml.csv`):
+  én låst rad per kamp ved første daglige kjøring der kampen starter innen 24
+  timer. Spill når EV mot Pinnacles margin-frie pris (power-devig) er over 3 % og
+  oddsen under 4,0 (`NHL_ML_EV_MIN`, `NHL_ML_MAX_ODDS`). Hovedmålet er CLV mot
+  Pinnacle ved kampstart. **Strategien får ekte innsats først ved positiv CLV
+  over minst 150 spill, med nedre grense i et 90 %-intervall over null.**
+- **`analyze_market.py`** (kun stdlib) skriver `docs/market_analysis.md` ukentlig
+  (`market-analysis.yml`): modell mot marked, margin per NT-marked, NT mot
+  Pinnacle, og om den daglige kjøringen bør flyttes (krever ≥ 300 kamper og et
+  intervall som utelukker null).
+- `python test_market.py` dekker markedsloggen og strategien offline.
+
+## 🧪 Modellkandidater
+`evaluate_models.py` sammenligner kandidater walk-forward per sesong (test
+2015/16–2025/26, Elo tunet på 2010–2014). Resultatet står i
+`docs/model_eval.md` og oppdateres månedlig (`model-candidates.yml`). Kort:
+tunet Elo og hvile/reise gir nesten ingenting, og gradient boosting er dårligere.
+Rullerende xG, skuddandel og keeperdata fra [MoneyPuck.com](https://moneypuck.com)
+(fri for ikke-kommersiell bruk) gir den eneste tydelige forbedringen: −0,0036 i
+log loss på vinner inkl. OT, bedre i 11 av 11 sesonger. Produksjonsmodellen er
+ikke byttet; det er en egen beslutning.
 
 ## ♟️ Elo-ratingsystem
 Elo-ratingsystemet (`utils/elo.py`) gir hvert lag en løpende styrkerating, og
@@ -248,6 +290,10 @@ Prediction Model/
 │   ├── backtest_season.py      # Walk-forward mot en hel sesong
 │   ├── repredict_season.py     # Re-prediksjon av sesongens loggede kamper
 │   ├── record_closing_odds.py  # Sluttodds (CLV) for åpne spill
+│   ├── market_shadow.py        # Logger alle NT-markeder + Pinnacle, kjører skyggestrategien
+│   ├── strategy_ml.py          # Skyggestrategien på vinner inkl. OT (ml-sharp-v1)
+│   ├── analyze_market.py       # Markedsdiagnose → docs/market_analysis.md
+│   ├── evaluate_models.py      # Modellkandidater walk-forward → docs/model_eval.md
 │   ├── requirements-api.txt
 │   ├── data/
 │   │   ├── bet_history.csv
