@@ -13,6 +13,7 @@ Dekker:
     og CLV hentes fra snapshot-loggen, utsatte kamper annulleres
   - snapshot-loggen: månedsfiler, flatten, kvote per måned
   - market_shadow.main skriver logger og rører aldri bet-loggene
+  - analyze_market.py bygger rapporten også med tomme logger
   - BET_FIELDS er frosset (frontend og stake_truth leser bet_history.csv)
 
 Krever verken nettverk eller trent modell. `cd NHL && python test_market.py`
@@ -584,6 +585,32 @@ def test_market_shadow_main_logs_and_leaves_bet_ledgers_alone():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_analyze_market_report():
+    """Rapporten bygges uten pandas, også med tomme snapshot- og strategilogger."""
+    import analyze_market as am
+    import strategy_ml as s
+
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        empty = am.build_report(directory=tmp, strategy_path=tmp / "none.csv")
+        assert "## A." in empty and "## B." in empty and "## C." in empty
+        assert "Ikke nok data ennå (n=0" in empty and "Ingen kamper vurdert" in empty
+
+        rows = []
+        s.decide_new(rows, [_nt_record()], {"BOS-MIN-2026-11-15": _match()}, NOW)
+        s.save(rows, tmp / "strategy_ml.csv")
+        report = am.build_report(directory=tmp, strategy_path=tmp / "strategy_ml.csv")
+        assert "1 kamper vurdert, 1 med Pinnacle-pris. 1 spill (1 åpne)" in report, report
+
+        base = am.base_rates()
+        assert abs(sum(base.values()) - 1) < 1e-9 and 0.42 < base["home"] < 0.44
+        diffs = [0.1] * 50
+        lo, hi = am.bootstrap_ci(diffs, rounds=200)
+        assert abs(lo - 0.1) < 1e-12 and abs(hi - 0.1) < 1e-12
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_bet_fields_are_frozen():
     """bet_history.csv leses av frontend og stake_truth. Endres skjemaet, skal det være bevisst."""
     import bet_tracker as bt
@@ -618,6 +645,7 @@ def main() -> int:
         ("strategy_csv", test_strategy_csv_round_trip),
         ("snapshot_log", test_snapshot_log_round_trip),
         ("market_shadow_main", test_market_shadow_main_logs_and_leaves_bet_ledgers_alone),
+        ("analyze_market_report", test_analyze_market_report),
         ("bet_fields_frozen", test_bet_fields_are_frozen),
     ]
     failures = 0
