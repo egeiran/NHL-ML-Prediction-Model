@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T14:58:50.213076+00:00",
+  "generated_at": "2026-11-15T15:36:30.506500+00:00",
   "days_ahead": 3,
   "files": [
     "elo.json",
@@ -7,6 +7,7 @@
     "portfolio-all.json",
     "portfolio.json",
     "shadow.json",
+    "strategy-ml.json",
     "teams.json",
     "value-report.json"
   ],
