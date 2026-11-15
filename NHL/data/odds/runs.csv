@@ -1,3 +1,4 @@
 run_at,job,nt_status,nt_events,nt_markets_ok,nt_markets_failed,nt_unclassified,sharp_status,sharp_events,sharp_matched,quota_remaining,quota_used,strategy_decided,strategy_bets,strategy_settled,note
 2026-11-15T15:35:50Z,daily,ok,5,5,0,419,ok,5,5,498,2,5,0,0,
 2026-11-15T21:13:26Z,closing,ok,5,5,0,437,ok,5,5,497,3,,,,
+2026-11-15T23:31:20Z,closing,ok,5,5,0,448,ok,5,5,496,4,,,,
