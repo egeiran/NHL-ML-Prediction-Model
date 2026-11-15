@@ -6,7 +6,7 @@
  * utvalg og etiketter, så skjermen aldri regner sine egne tall.
  */
 
-import type { StrategiData, StrategiRad, StrategiSammendrag } from '@/types';
+import type { StrategiData, StrategiRad, StrategiSammendrag, StrategiTavleRad } from '@/types';
 
 /** Spill = rader med innsats. `nobet` er vurdert, men ikke spilt. */
 export function erSpill(r: StrategiRad): boolean {
@@ -94,4 +94,29 @@ export function datastatus(d: StrategiData): string | null {
         default:
             return null;
     }
+}
+
+/** Åpne spill i strategien, tidligst start først. Det Oversikt viser som «i dag». */
+export function åpneSpill(rader: readonly StrategiRad[]): StrategiRad[] {
+    return rader
+        .filter((r) => r.status === 'pending')
+        .sort((a, b) => a.start_time.localeCompare(b.start_time) || a.game_key.localeCompare(b.game_key));
+}
+
+/** Tavla, også fra filer skrevet før den fantes. */
+export function tavle(d: StrategiData | null): StrategiTavleRad[] {
+    return d?.board ?? [];
+}
+
+/**
+ * Hva strategien gjorde med en kamp på tavla. `spill` styrer fargen.
+ * Kamper lenger fram enn 24 timer er ikke besluttet ennå.
+ */
+export function tavleBeslutning(r: StrategiTavleRad): { tekst: string; spill: boolean } {
+    const d = r.decision;
+    if (!d) return { tekst: 'Besluttes neste morgen', spill: false };
+    if (d.status === 'nobet') return { tekst: grunnTekst(d.skip_reason), spill: false };
+    const side = d.selection === 'home' ? `Hjemme (${r.home_abbr})` : `Borte (${r.away_abbr})`;
+    const odds = d.odds === null ? '' : ` @ ${d.odds.toFixed(2).replace('.', ',')}`;
+    return { tekst: `Spill ${side}${odds}`, spill: true };
 }

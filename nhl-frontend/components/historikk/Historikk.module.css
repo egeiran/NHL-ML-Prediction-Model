@@ -117,6 +117,12 @@
   padding-right: 0;
 }
 
+/* `.hoderad th` (klasse + element) slår `.hoyre` alene, så overskriftene over
+ * tallkolonnene (odds, modell, marked, EV, netto) må høyrestilles eksplisitt. */
+.hoderad th.hoyre {
+  text-align: right;
+}
+
 .rad td {
   padding: 12px 12px;
   padding-left: 0;

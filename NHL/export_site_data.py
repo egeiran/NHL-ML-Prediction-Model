@@ -236,7 +236,10 @@ def build_strategy_ml(generated_at: str) -> Dict[str, Any]:
             "clv_nt": round(sum(clv) / len(clv), 5) if clv else None,
             "clv_n": len(clv),
         }
-    return strategy_ml.export_payload(rows, generated_at, odds_log.read_runs(), same_period)
+    board = strategy_ml.market_board(
+        odds_log.iter_records("nt"), odds_log.iter_records("sharp"), rows, datetime.now(timezone.utc)
+    )
+    return strategy_ml.export_payload(rows, generated_at, odds_log.read_runs(), same_period, board)
 
 
 def main() -> int:

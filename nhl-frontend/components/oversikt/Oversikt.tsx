@@ -6,7 +6,8 @@
  *
  * Heroen fyller viewporten: overskriften sier tilstanden, venstre kolonne sier
  * hva som er å spille på, høyre kolonne sier hvordan det har gått. Alt annet —
- * kurvelabben, de siste avgjorte, analyselenkene — ligger under folden.
+ * skyggestrategien på vinner inkl. OT, kurvelabben, de siste avgjorte,
+ * analyselenkene — ligger under folden.
  *
  * Dagens ekte tilstand er tom: `value-report.json` er `[]`. Tomtilstanden er
  * derfor hovedtilstanden, ikke et unntak.
@@ -21,6 +22,7 @@ import { finnSpill } from './beregninger';
 import { DagensSpill } from './DagensSpill';
 import { HeroKurve } from './HeroKurve';
 import { Kurvelab } from './Kurvelab';
+import { MarkedStatus } from './MarkedStatus';
 import { SisteAvgjorte } from './SisteAvgjorte';
 import styles from './Oversikt.module.css';
 
@@ -113,6 +115,7 @@ export function Oversikt() {
 
             {error === null ? (
                 <>
+                    <MarkedStatus />
                     <Kurvelab timeseries={timeseries} laster={loading} />
                     <SisteAvgjorte bets={bets} laster={loading} />
                 </>

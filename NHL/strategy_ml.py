@@ -472,11 +472,84 @@ def _export_value(value: Any) -> Any:
     return value if value not in ("",) else None
 
 
+BOARD_HORIZON_HOURS = 48.0
+
+
+def market_board(
+    nt_records: Iterable[Dict[str, Any]],
+    sharp_records: Iterable[Dict[str, Any]],
+    rows: Sequence[Dict[str, Any]],
+    now: datetime,
+    horizon_hours: float = BOARD_HORIZON_HOURS,
+) -> List[Dict[str, Any]]:
+    """
+    Tavla for «Verdi i dag»: hver kamp som starter innen `horizon_hours`, med
+    siste NT-pris på vinner inkl. OT, Pinnacle fra *samme* kjøring, EV per side
+    mot Pinnacles margin-frie pris og strategiens beslutning når den finnes.
+
+    Samme regel for EV som `decide()`, men uten sperrer og terskel: tavla viser
+    prisene, beslutningen står i `decision`. Kamper som ikke er besluttet ennå
+    (starter mer enn 24 t fram) får `decision = None`.
+    """
+    decided = {r.get("game_key"): r for r in rows}
+    sharp_by = odds_log.by_key(sharp_records)
+    limit = now + timedelta(hours=horizon_hours)
+    out = []
+    for key, recs in odds_log.by_key(nt_records).items():
+        latest = recs[-1]
+        start = _parse(latest.get("start"))
+        if start is None or not now < start <= limit:
+            continue
+        markets = latest.get("m") or {}
+        ml = _two_way(markets.get("ML"))
+        hub = markets.get("HUB") or {}
+        hub_odds = [hub.get(k) for k in ("home", "draw", "away")]
+        same_run = next(
+            (s for s in reversed(sharp_by.get(key, []))
+             if s.get("at") == latest.get("at") and s.get("match") == "ok"),
+            None,
+        )
+        source, sharp = sharp_price(same_run)
+        p_home = devig([sharp["home"], sharp["away"]])[0] if sharp else None
+        row = {
+            "game_key": key,
+            "start_time": latest.get("start"),
+            "home_abbr": latest.get("home"),
+            "away_abbr": latest.get("away"),
+            "priced_at": latest.get("at"),
+            "nt_ml_home": ml["home"] if ml else None,
+            "nt_ml_away": ml["away"] if ml else None,
+            "nt_ml_margin": (1 / ml["home"] + 1 / ml["away"] - 1) if ml else None,
+            "nt_hub_margin": (sum(1 / o for o in hub_odds) - 1) if all(hub_odds) else None,
+            "sharp_source": source,
+            "sharp_ml_home": sharp["home"] if sharp else None,
+            "sharp_ml_away": sharp["away"] if sharp else None,
+            "p_fair_home": p_home,
+            "ev_home": (p_home * ml["home"] - 1) if (ml and p_home is not None) else None,
+            "ev_away": ((1 - p_home) * ml["away"] - 1) if (ml and p_home is not None) else None,
+            "decision": None,
+        }
+        d = decided.get(key)
+        if d:
+            row["decision"] = {
+                "status": d.get("status"),
+                "selection": d.get("selection") or None,
+                "odds": d.get("odds"),
+                "ev": d.get("ev"),
+                "skip_reason": d.get("skip_reason") or None,
+                "decided_at": d.get("decided_at"),
+            }
+        out.append({k: (round(v, 5) if isinstance(v, float) else v) for k, v in row.items()})
+    out.sort(key=lambda r: (r["start_time"] or "", r["game_key"]))
+    return out
+
+
 def export_payload(
     rows: Sequence[Dict[str, Any]],
     generated_at: str,
     runs: Sequence[Dict[str, Any]] = (),
     portfolio_same_period: Optional[Dict[str, Any]] = None,
+    board: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Alt /marked trenger: parametere, sammendrag, siste kjøring og radene
@@ -518,4 +591,5 @@ def export_payload(
             "first_decision": min((r.get("date") or "" for r in rows), default="") or None,
         },
         "rows": [{k: _export_value(r.get(k)) for k in EXPORT_FIELDS} for r in ordered],
+        "board": board or [],
     }

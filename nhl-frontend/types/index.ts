@@ -355,4 +355,40 @@ export interface StrategiData {
     };
     /** Nyeste kamp først. */
     rows: StrategiRad[];
+    /**
+     * Prisene for kampene de neste 48 timene: NT mot Pinnacle fra samme kjøring.
+     * Mangler i filer skrevet før tavla fantes.
+     */
+    board?: StrategiTavleRad[];
+}
+
+/** Én kamp på tavla i «Verdi i dag» → «Vinner inkl. OT». */
+export interface StrategiTavleRad {
+    game_key: string;
+    start_time: string;
+    home_abbr: string;
+    away_abbr: string;
+    /** Når prisene ble hentet (UTC). */
+    priced_at: string | null;
+    nt_ml_home: number | null;
+    nt_ml_away: number | null;
+    /** NTs margin på vinner inkl. OT, som brøk (0,07 = 7 %). */
+    nt_ml_margin: number | null;
+    /** NTs margin på HUB for samme kamp. */
+    nt_hub_margin: number | null;
+    sharp_source: string | null;
+    sharp_ml_home: number | null;
+    sharp_ml_away: number | null;
+    p_fair_home: number | null;
+    ev_home: number | null;
+    ev_away: number | null;
+    /** `null` før kampen er besluttet (første morgenkjøring innen 24 t før start). */
+    decision: {
+        status: StrategiStatus;
+        selection: 'home' | 'away' | null;
+        odds: number | null;
+        ev: number | null;
+        skip_reason: string | null;
+        decided_at: string | null;
+    } | null;
 }
