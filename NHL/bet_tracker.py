@@ -27,6 +27,7 @@ from live.live_feature_builder import build_live_features, local_game_date
 from live.nt_odds import get_nhl_matches_range
 from live.nhl_api import get_scoreboard, regular_season_games_played
 from utils.model_utils import load_model
+from utils.seasons import season_of  # noqa: F401  (re-eksport: bet_tracker.season_of)
 from utils.team_alias import to_canonical, to_display
 from utils.value_utils import (
     adjust_three_way_probs,
@@ -194,20 +195,6 @@ def normalize_event_id(
         return f"{home_abbr}-{away_abbr}-{start_time}"
 
     return raw_str or str(raw_event_id or "").strip()
-
-
-def season_of(date_str: Optional[str]) -> str:
-    """
-    NHL-sesongen en dato hører til, f.eks. "2025-26". Sesongen går fra oktober
-    til juni, så vi deler på 1. juli: alt fra juli og ut året tilhører sesongen
-    som starter det året, alt før juli tilhører sesongen som startet året før.
-    """
-    try:
-        d = datetime.strptime(str(date_str)[:10], "%Y-%m-%d").date()
-    except Exception:
-        return ""
-    start_year = d.year if d.month >= 7 else d.year - 1
-    return f"{start_year}-{(start_year + 1) % 100:02d}"
 
 
 def current_season() -> str:

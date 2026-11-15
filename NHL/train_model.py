@@ -37,6 +37,9 @@ from utils.model_utils import (
 )
 
 FIRST_TRAIN_SEASON = 20052006
+# 3-mot-3 i OT fra 2015/16. Før det var OT 4-mot-4 og langt flere kamper gikk
+# til straffer, så hvem som vinner OT/SO fulgte en annen mekanikk.
+FIRST_OT_SEASON = 20152016
 # Fem fulle sesonger siden 2020/21 gir ~7 500 kamper. Får vi under dette, er
 # APIet nede, og da skal vi ikke stille trene på 2020-data.
 MIN_API_GAMES = 1000
@@ -77,6 +80,39 @@ def chronological_report(frame, feature_cols) -> dict:
         "test_log_loss": round(float(ll_model), 4),
         "test_base_log_loss": round(float(ll_base), 4),
     }
+
+
+def fit_ot_home_share(model, frame, feature_cols) -> dict:
+    """
+    q = P(hjemmelaget vinner | OT/SO), logistisk på s = log(pH / pA) fra
+    3-veis-modellen. Gir P(vinner inkl. overtid) = pH + pOT · q (se
+    utils/value_utils.ml_from_three_way). Lagres i modellmetadata, så
+    MODEL_VERSION og feature-settet er uendret.
+    """
+    from sklearn.linear_model import LogisticRegression
+
+    ot = frame[(frame["outcome_code"] == 1) & (frame["season"] >= FIRST_OT_SEASON)]
+    ot = ot[ot["home_goals"] != ot["away_goals"]]
+    if len(ot) < 200:
+        print(f"For få OT/SO-kamper ({len(ot)}) til å tilpasse q – bruker basisraten.")
+        return {}
+    proba = model.predict_proba(ot[feature_cols])
+    classes = list(model.classes_)
+    s = np.log(proba[:, classes.index(0)] / proba[:, classes.index(2)]).reshape(-1, 1)
+    y = (ot["home_goals"] > ot["away_goals"]).astype(int).to_numpy()
+    fit = LogisticRegression(C=1e6, max_iter=1000).fit(s, y)
+    params = {
+        "intercept": round(float(fit.intercept_[0]), 5),
+        "slope": round(float(fit.coef_[0][0]), 5),
+        "n": int(len(ot)),
+        "home_win_rate": round(float(y.mean()), 4),
+        "first_season": FIRST_OT_SEASON,
+    }
+    print(
+        f"OT/SO-vinner (q): {len(ot)} kamper fra {FIRST_OT_SEASON}, hjemmeseier {y.mean():.3f}, "
+        f"intercept {params['intercept']:+.3f}, slope {params['slope']:+.3f}"
+    )
+    return params
 
 
 def main() -> int:
@@ -120,6 +156,10 @@ def main() -> int:
             **report,
         },
     )
+
+    ot_home = fit_ot_home_share(model, frame, feature_cols)
+    if ot_home:
+        model.nhl_meta_["ot_home"] = ot_home
 
     print("\nKoeffisient-størrelse (standardiserte features):")
     for feat, imp in get_feature_importances(model, feature_cols):

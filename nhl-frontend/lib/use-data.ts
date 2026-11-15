@@ -22,6 +22,7 @@ import {
     fetchPortfolio,
     fetchPortfolioAll,
     fetchShadow,
+    fetchStrategyMl,
     fetchTeams,
     fetchValueReport,
     invalider,
@@ -34,6 +35,7 @@ import type {
     PortfolioResponse,
     ShadowEntry,
     SiteMeta,
+    StrategiData,
     Team,
     ValueGame,
 } from '@/types';
@@ -122,6 +124,10 @@ export function useElo(): DataState<EloData> {
 
 export function useShadow(): DataState<ShadowEntry[]> {
     return useDatasett('shadow', fetchShadow);
+}
+
+export function useStrategyMl(): DataState<StrategiData> {
+    return useDatasett('strategyMl', fetchStrategyMl);
 }
 
 /* -------------------------------------------------------------------------- */

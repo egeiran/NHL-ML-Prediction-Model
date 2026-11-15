@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-11-14T21:06:25.054769+00:00",
+  "strategy": "ml-sharp-v1",
+  "params": {
+    "ev_min": 0.03,
+    "max_odds": 4.0,
+    "stake": 100.0,
+    "target_bets": 150,
+    "ci_level": 0.9,
+    "devig": "power",
+    "sharp_sources": [
+      "pinnacle",
+      "betfair_ex_eu"
+    ],
+    "max_deviation": 0.12
+  },
+  "summary": {
+    "games": 0,
+    "games_with_sharp": 0,
+    "bets": 0,
+    "open": 0,
+    "settled": 0,
+    "won": 0,
+    "staked": 0,
+    "profit": 0,
+    "roi": null,
+    "clv_sharp": {
+      "n": 0,
+      "mean": null,
+      "ci_low": null,
+      "ci_high": null,
+      "positive_share": null
+    },
+    "clv_nt": {
+      "n": 0,
+      "mean": null,
+      "ci_low": null,
+      "ci_high": null,
+      "positive_share": null
+    },
+    "skip_reasons": {},
+    "target_bets": 150,
+    "progress": 0.0,
+    "promotable": false
+  },
+  "portfolio_same_period": null,
+  "status": {
+    "last_run_at": null,
+    "last_job": null,
+    "sharp_status": null,
+    "sharp_matched": null,
+    "nt_events": null,
+    "quota_remaining": null,
+    "first_decision": null
+  },
+  "rows": []
+}

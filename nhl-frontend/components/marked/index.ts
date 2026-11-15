@@ -1,0 +1,1 @@
+export { MarkedSkjerm } from './MarkedSkjerm';

@@ -45,6 +45,16 @@ jobs:
           set -o pipefail
           python evaluate_elo.py | tee /tmp/elo_eval.txt
 
+      # Rask røyktest av kandidat-evalueringen (game.csv, uten Elo-tuning):
+      # fanger brudd i evaluate_models.py på hver push. Full kjøring med
+      # NHL-APIet og MoneyPuck ligger i model-candidates.yml.
+      - name: Model candidates (quick)
+        working-directory: NHL
+        continue-on-error: true
+        env:
+          NHL_MODEL_EVAL_MD: /tmp/model_eval_quick.md
+        run: python evaluate_models.py --skip-tuning
+
       - name: Train production model
         working-directory: NHL
         run: |

@@ -209,6 +209,36 @@ def build_shadow() -> List[Dict[str, Any]]:
     return load_shadow()
 
 
+def build_strategy_ml(generated_at: str) -> Dict[str, Any]:
+    """
+    Skyggestrategien på vinner inkl. OT (strategy_ml.py), med dagens portefølje
+    i samme periode ved siden av, så /marked kan stille dem mot hverandre.
+    """
+    import strategy_ml
+    from bet_tracker import closing_line_value
+    from utils import odds_log
+
+    rows = strategy_ml.load()
+    first = min((r.get("date") or "" for r in rows), default="")
+    same_period = None
+    if first:
+        history = [b for b in load_history() if (b.get("date") or "") >= first]
+        settled = [b for b in history if b.get("status") in {"won", "lost"}]
+        staked = sum(float(b.get("stake") or 0) for b in settled)
+        profit = sum(float(b.get("profit") or 0) for b in settled)
+        clv = [v for v in (closing_line_value(b) for b in history) if v is not None]
+        same_period = {
+            "from": first,
+            "bets": len(history),
+            "settled": len(settled),
+            "profit": round(profit, 2),
+            "roi": round(profit / staked, 5) if staked else None,
+            "clv_nt": round(sum(clv) / len(clv), 5) if clv else None,
+            "clv_n": len(clv),
+        }
+    return strategy_ml.export_payload(rows, generated_at, odds_log.read_runs(), same_period)
+
+
 def main() -> int:
     output_dir = _output_dir()
     days = _days_ahead()
@@ -266,6 +296,7 @@ def main() -> int:
     )
     run("elo", "elo.json", lambda: build_elo(generated_at))
     run("shadow", "shadow.json", build_shadow)
+    run("strategy-ml", "strategy-ml.json", lambda: build_strategy_ml(generated_at))
 
     write_json(
         output_dir / "meta.json",

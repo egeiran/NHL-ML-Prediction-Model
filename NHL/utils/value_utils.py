@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Optional, Tuple
 
@@ -49,3 +50,39 @@ def round_optional(value: Optional[float], decimals: int = 5) -> Optional[float]
         return round(float(value), decimals)
     except (TypeError, ValueError):
         return None
+
+
+# --- Vinner inkl. overtid (ML) fra 3-veis-modellen ---------------------------
+#
+# P(hjemme vinner inkl. OT) = P(hjemme ordinær tid) + P(OT/SO) · q, der q er
+# sjansen for at hjemmelaget vinner en kamp som går til OT/SO. q trenes i
+# train_model.py (logistisk på den relative styrken s = logit(pH / (pH + pA))
+# fra 3-veis-modellen, OT/SO-kamper fra 2015/16, 3-mot-3-æraen) og lagres i
+# modellmetadata under "ot_home". Eldre artefakter uten feltet faller tilbake
+# på basisraten: hjemmelaget vinner 50,7 % av OT/SO-kampene i game.csv.
+OT_HOME_BASE_RATE = 0.507
+
+
+def ot_home_share(p_home: float, p_away: float, meta: Optional[dict] = None) -> float:
+    """q: P(hjemmelaget vinner | kampen går til OT/SO)."""
+    params = (meta or {}).get("ot_home") if isinstance(meta, dict) else None
+    if not params or p_home is None or p_away is None or p_home <= 0 or p_away <= 0:
+        return OT_HOME_BASE_RATE
+    try:
+        s = math.log(p_home / p_away)
+        z = float(params["intercept"]) + float(params["slope"]) * s
+    except (KeyError, TypeError, ValueError):
+        return OT_HOME_BASE_RATE
+    return 1.0 / (1.0 + math.exp(-z))
+
+
+def ml_from_three_way(
+    p_home: float, p_draw: float, p_away: float, q_home: float = OT_HOME_BASE_RATE
+) -> Tuple[float, float]:
+    """(P(hjemme inkl. OT), P(borte inkl. OT)) fra 3-veis-sannsynligheter."""
+    total = p_home + p_draw + p_away
+    if total <= 0:
+        return 0.5, 0.5
+    p_home, p_draw = p_home / total, p_draw / total
+    ml_home = p_home + p_draw * q_home
+    return ml_home, 1.0 - ml_home

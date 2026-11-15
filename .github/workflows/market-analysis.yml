@@ -1,0 +1,57 @@
+name: Market Analysis
+
+# Ukentlig markedsdiagnose: modellen mot NT-markedet, margin per NT-marked,
+# NT mot Pinnacle, når den daglige kjøringen bør gå, og fremdriften til
+# skyggestrategien på vinner inkl. OT. Skriver docs/market_analysis.md.
+#
+# Kun stdlib – ingen pip install. Samme concurrency-gruppe som jobbene som
+# skriver loggene, så rapporten aldri leser en halvskrevet fil.
+
+on:
+  schedule:
+    - cron: "30 9 * * 1"  # mandager, etter den daglige jobben
+  workflow_dispatch:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "NHL/analyze_market.py"
+      - ".github/workflows/market-analysis.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: bet-ledger
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run market analysis
+        working-directory: NHL
+        run: python analyze_market.py
+
+      - name: Commit report
+        # Bare fra main: på en branch er rapporten et forhåndsvisnings-artefakt
+        # i job-sammendraget, ikke noe som skal pushes.
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/market_analysis.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: ukentlig markedsanalyse"
+          git pull --rebase --autostash
+          git push

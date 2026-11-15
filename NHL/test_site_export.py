@@ -226,6 +226,7 @@ def test_full_export(tmp: Path):
         "matchups.json",
         "elo.json",
         "shadow.json",
+        "strategy-ml.json",
         "meta.json",
     }
 
@@ -242,7 +243,15 @@ def test_full_export(tmp: Path):
     assert files["portfolio.json"]["summary"]["total_bets"] >= 0
 
     # Nye filer skal ligge i meta.json.files, ellers finner ikke frontend dem.
-    assert {"elo.json", "shadow.json", "portfolio-all.json"} <= set(files["meta.json"]["files"])
+    assert {"elo.json", "shadow.json", "portfolio-all.json", "strategy-ml.json"} <= set(files["meta.json"]["files"])
+
+    # Skyggestrategien på vinner inkl. OT: formen /marked leser. Innholdet i
+    # data/strategy_ml.csv rulles hver dag, så bare formen sjekkes her.
+    strategy = files["strategy-ml.json"]
+    assert strategy["strategy"] == "ml-sharp-v1"
+    assert strategy["params"]["target_bets"] == 150
+    assert {"summary", "status", "rows", "portfolio_same_period"} <= set(strategy)
+    assert isinstance(strategy["rows"], list)
 
     # portfolio.json er nyeste sesong; portfolio-all.json er hele historikken,
     # som er det /modell og fasiten i stake_truth.json regner på.

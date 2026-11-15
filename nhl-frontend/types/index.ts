@@ -240,3 +240,119 @@ export interface EloData {
     display_keys: boolean;
     ratings: Record<string, number>;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Skyggestrategien på vinner inkl. OT (strategy-ml.json)                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `nobet` = kampen ble vurdert, men ikke spilt (grunnen står i `skip_reason`).
+ * `void` = utsatt kamp, innsatsen tilbake.
+ */
+export type StrategiStatus = 'pending' | 'won' | 'lost' | 'nobet' | 'void';
+
+/** Én kamp i `data/strategy_ml.csv`, låst ved første daglige kjøring innen 24 t. */
+export interface StrategiRad {
+    date: string;
+    game_key: string;
+    /** UTC, `...Z`. */
+    start_time: string;
+    home_abbr: string;
+    away_abbr: string;
+    decided_at: string;
+    status: StrategiStatus;
+    selection: 'home' | 'away' | '' | null;
+    odds: number | null;
+    ev: number | null;
+    ev_home: number | null;
+    ev_away: number | null;
+    stake: number | null;
+    skip_reason: string | null;
+    nt_ml_home: number | null;
+    nt_ml_away: number | null;
+    sharp_source: string | null;
+    sharp_ml_home: number | null;
+    sharp_ml_away: number | null;
+    /** Pinnacles margin-frie P(hjemme vinner inkl. OT) ved beslutning. */
+    p_fair_home: number | null;
+    /** NTs egen margin-frie P(hjemme). */
+    p_nt_home: number | null;
+    /** Elo-modellens P(hjemme inkl. OT). Logges, styrer ikke spillene. */
+    p_model_ml_home: number | null;
+    ml_outcome: 'home' | 'away' | null;
+    reg_outcome: string | null;
+    profit: number | null;
+    /** Oddsen vi fikk × Pinnacles margin-frie sannsynlighet ved start − 1. Hovedmålet. */
+    clv_sharp: number | null;
+    /** Oddsen vi fikk / NTs sluttodds − 1. */
+    clv_nt: number | null;
+    close_nt_ml_home: number | null;
+    close_nt_ml_away: number | null;
+    p_fair_close_home: number | null;
+}
+
+export interface ClvStat {
+    n: number;
+    mean: number | null;
+    ci_low: number | null;
+    ci_high: number | null;
+    positive_share: number | null;
+}
+
+export interface StrategiSammendrag {
+    games: number;
+    games_with_sharp: number;
+    bets: number;
+    open: number;
+    settled: number;
+    won: number;
+    staked: number;
+    profit: number;
+    roi: number | null;
+    clv_sharp: ClvStat;
+    clv_nt: ClvStat;
+    skip_reasons: Record<string, number>;
+    target_bets: number;
+    /** 0–1, andel av `target_bets` med CLV. */
+    progress: number;
+    /** ≥ target_bets spill og nedre grense i CI-et over null. */
+    promotable: boolean;
+}
+
+export interface StrategiData {
+    generated_at: string;
+    strategy: string;
+    params: {
+        ev_min: number;
+        max_odds: number;
+        stake: number;
+        target_bets: number;
+        ci_level: number;
+        devig: string;
+        sharp_sources: string[];
+        max_deviation: number;
+    };
+    summary: StrategiSammendrag;
+    /** Dagens portefølje (HUB) fra strategiens første dag. `null` før første kamp. */
+    portfolio_same_period: {
+        from: string;
+        bets: number;
+        settled: number;
+        profit: number;
+        roi: number | null;
+        clv_nt: number | null;
+        clv_n: number;
+    } | null;
+    status: {
+        last_run_at: string | null;
+        last_job: string | null;
+        /** `ok` · `no_key` · `low_quota` · `no_games` · `error`. */
+        sharp_status: string | null;
+        sharp_matched: number | null;
+        nt_events: number | null;
+        quota_remaining: number | null;
+        first_decision: string | null;
+    };
+    /** Nyeste kamp først. */
+    rows: StrategiRad[];
+}
