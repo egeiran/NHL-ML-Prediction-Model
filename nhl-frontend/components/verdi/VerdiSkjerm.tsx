@@ -12,8 +12,14 @@
  *
  * EV-terskelen leses fra `useEvTerskel()` og ingen andre steder (DECISIONS).
  * Den styrer både kickeren, SPILL/NEI-taggingen og «Bare value»-filteret.
+ *
+ * To faner: «HUB · porteføljen» er Elo-modellen mot NTs 1X2 (det porteføljen
+ * spiller), «Vinner inkl. OT · Pinnacle» er NT mot Pinnacles pris uten margin
+ * (skyggestrategien, se `VinnerOtTavle`). HUB-visningen har en merknad om at
+ * modellens EV ikke er påvist kant.
  */
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Button,
@@ -23,7 +29,9 @@ import {
     Laster,
     PillGroup,
     SectionHeading,
+    Tabs,
     type PillOption,
+    type TabOption,
 } from '@/components/ui';
 import { useEvTerskel } from '@/lib/config';
 import { dl, nf, pc } from '@/lib/format';
@@ -33,10 +41,17 @@ import { KampDetalj } from './KampDetalj';
 import { KampRad } from './KampRad';
 import { MobilKort } from './MobilKort';
 import { TomTilstand } from './TomTilstand';
+import { VinnerOtTavle } from './VinnerOtTavle';
 import { useErMobil } from '@/lib/use-er-mobil';
 import styles from './Verdi.module.css';
 
 type Filter = 'value' | 'alle';
+type Visning = 'hub' | 'ml';
+
+const VISNINGER: readonly TabOption<Visning>[] = [
+    { value: 'hub', label: 'HUB · porteføljen' },
+    { value: 'ml', label: 'Vinner inkl. OT · Pinnacle' },
+];
 
 const FILTERVALG: readonly PillOption<Filter>[] = [
     { value: 'value', label: 'Bare value' },
@@ -67,6 +82,7 @@ export function VerdiSkjerm() {
     const { evTerskel } = useEvTerskel();
 
     const [filter, setFilter] = useState<Filter>('alle');
+    const [visning, setVisning] = useState<Visning>('hub');
     const [valgtId, setValgtId] = useState<string | null>(null);
     const erMobil = useErMobil();
 
@@ -111,12 +127,15 @@ export function VerdiSkjerm() {
     }, [valgtId]);
 
     const fotnote = fotnoteTekst(allowDrawBets, drawEvTerskel);
-    const kicker = `Value-rapport · terskel EV ≥ ${pc(evTerskel, 0)}`;
+    const kicker =
+        visning === 'hub'
+            ? `Value-rapport · terskel EV ≥ ${pc(evTerskel, 0)}`
+            : 'Vinner inkl. overtid · NT mot Pinnacle';
     const tittel = dl(kamper[0]?.dato ?? meta.data?.generated_at);
 
     const valgt = valgtId === null ? null : (kamper.find((k) => k.id === valgtId) ?? null);
 
-    if (erMobil && valgt !== null) {
+    if (erMobil && valgt !== null && visning === 'hub') {
         return (
             <KampDetalj
                 kamp={valgt}
@@ -130,9 +149,19 @@ export function VerdiSkjerm() {
 
     return (
         <>
-            <SectionHeading kicker={kicker} title={tittel} right={<EvTerskelSlider />} />
+            <SectionHeading
+                kicker={kicker}
+                title={tittel}
+                right={visning === 'hub' ? <EvTerskelSlider /> : undefined}
+            />
 
-            {tilstand.loading ? (
+            <div className={styles.fanerad}>
+                <Tabs label="Marked" options={VISNINGER} value={visning} onChange={setVisning} />
+            </div>
+
+            {visning === 'ml' ? (
+                <VinnerOtTavle />
+            ) : tilstand.loading ? (
                 <div className={styles.kroppLaster}>
                     <Laster />
                 </div>
@@ -162,6 +191,20 @@ export function VerdiSkjerm() {
                             {`${nf(viste.length)} av ${nf(kamper.length)} ${kamper.length === 1 ? 'kamp' : 'kamper'} · ${nf(antallSpill)} spill over terskel`}
                         </span>
                     </div>
+
+                    <p className={`t-body-small ${styles.merknad}`}>
+                        EV her er Elo-modellens anslag mot NT-oddsen. Modellen er omtrent like god som markedet,
+                        ikke bedre, og HUB har rundt 12 % margin. Høy EV betyr derfor oftere at modellen tar feil
+                        enn at oddsen er feil.{' '}
+                        <button type="button" className={styles.merknadLenke} onClick={() => setVisning('ml')}>
+                            Se prisene mot Pinnacle
+                        </button>{' '}
+                        eller{' '}
+                        <Link href="/modell" className={styles.merknadLenke}>
+                            funnene på Modell
+                        </Link>
+                        .
+                    </p>
 
                     {ingenTreff ? (
                         <div className={styles.ingenTreff}>

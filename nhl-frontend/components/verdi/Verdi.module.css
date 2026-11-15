@@ -102,6 +102,134 @@
 }
 
 /* ========================================================================== *
+ * Fanene HUB / vinner inkl. OT, og merknaden på HUB-visningen
+ * ========================================================================== */
+
+.fanerad {
+  padding-top: 22px;
+}
+
+.merknad {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  max-width: 74ch;
+  background: var(--tint);
+  color: var(--body);
+}
+
+/* «Se prisene mot Pinnacle» bytter fane, så det er en knapp som ser ut som en lenke. */
+button.merknadLenke {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.merknadLenke,
+.otLenke {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 3px;
+}
+
+/* ========================================================================== *
+ * Vinner inkl. OT · Pinnacle (VinnerOtTavle)
+ * ========================================================================== */
+
+.otListe {
+  padding: 22px 0 0;
+}
+
+.otIngress {
+  margin: 0;
+  max-width: 74ch;
+}
+
+.otTabellRam {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.otTabell {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.otKTid {
+  width: 64px;
+}
+
+.otKOdds {
+  width: 76px;
+}
+
+.otKProsent {
+  width: 96px;
+}
+
+.otKBeslutning {
+  width: 210px;
+}
+
+.otHoderad th {
+  padding: 12px 12px 10px 0;
+  text-align: left;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+/* Klasse + element slår `.otHoyre` alene; tallkolonnenes overskrifter må stå over tallene. */
+.otHoderad th.otHoyre {
+  text-align: right;
+}
+
+.otRad td {
+  padding: 12px 12px 12px 0;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--rule-light);
+}
+
+.otRad td:last-child,
+.otHoderad th:last-child {
+  padding-right: 0;
+}
+
+.otRad:hover td {
+  background: var(--tint);
+}
+
+.otHoyre {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.otTid {
+  font: 400 11px/1.3 var(--mono);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.otKamp {
+  font: 400 13.5px/1.3 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.otBeslutning {
+  font: 400 12.5px/1.3 var(--sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========================================================================== *
  * Kamprad
  * ========================================================================== */
 

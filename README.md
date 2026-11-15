@@ -100,7 +100,7 @@ python export_site_data.py    # skriver til ../nhl-frontend/public/data/
 | `matchups.json` | Forhåndsberegnet prediksjon for alle lagkombinasjoner + siste 5 kamper pr. lag |
 | `elo.json` | Elo-ratings for de aktive lagene (visningsforkortelser) + parametere og datagrunnlag |
 | `shadow.json` | Skyggeloggen – kampene som røk på EV-terskelen eller oddstaket |
-| `strategy-ml.json` | Skyggestrategien på vinner inkl. OT (`data/strategy_ml.csv`), sammendrag og siste kjøring |
+| `strategy-ml.json` | Skyggestrategien på vinner inkl. OT (`data/strategy_ml.csv`), sammendrag, siste kjøring og tavla (`board`: NT mot Pinnacle de neste 48 timene) |
 | `meta.json` | Når dataen ble generert, hvilke seksjoner som feilet, og tersklene pipelinen kjørte med |
 
 - Miljøvariabler: `NHL_EXPORT_DAYS` (dager frem, default 3) og `NHL_EXPORT_DIR` (annen output-mappe).
@@ -137,7 +137,7 @@ Frontenden («Blålinja») er en statisk Next.js-app med sju ruter. Detaljene st
 | Rute | Viser |
 | --- | --- |
 | `/` | Dagens spill, porteføljekurven og de siste avgjorte |
-| `/verdi` | Value-rapporten for kampprogrammet, med justerbar EV-terskel |
+| `/verdi` | Value-rapporten for kampprogrammet (HUB, justerbar EV-terskel) og fanen «Vinner inkl. OT · Pinnacle» med NT mot Pinnacle de neste 48 timene |
 | `/kamp` | Egendefinert matchup: sannsynligheter, siste 5 kamper, nøkkeltall |
 | `/historikk` | Beslutningsloggen — hvert spill som er lagt inn |
 | `/elo` | Ligaen rangert etter Elo, med parametere og datagrunnlag |

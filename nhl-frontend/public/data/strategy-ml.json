@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T21:06:25.054769+00:00",
+  "generated_at": "2026-11-15T10:11:28.220279+00:00",
   "strategy": "ml-sharp-v1",
   "params": {
     "ev_min": 0.03,
@@ -53,5 +53,6 @@
     "quota_remaining": null,
     "first_decision": null
   },
-  "rows": []
+  "rows": [],
+  "board": []
 }

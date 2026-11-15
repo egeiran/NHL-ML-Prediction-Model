@@ -101,6 +101,26 @@ sjekk('no_key forklarer nøkkelen', (m.datastatus(data('no_key')) ?? '').include
 sjekk('ok gir ingen melding', m.datastatus(data('ok')) === null);
 sjekk('ingen kjøringer', (m.datastatus(data(null)) ?? '').startsWith('Ingen kjøringer'));
 
+/* --- tavle og åpne spill ---------------------------------------------------- */
+
+const tavlerad = (decision) => ({
+    game_key: 'BOS-MIN-2026-11-15', start_time: '2026-11-15T00:00:00Z', home_abbr: 'BOS', away_abbr: 'MIN',
+    priced_at: null, nt_ml_home: 2.2, nt_ml_away: 1.7, nt_ml_margin: 0.04, nt_hub_margin: 0.12,
+    sharp_source: 'pinnacle', sharp_ml_home: 2.0, sharp_ml_away: 1.87, p_fair_home: 0.48,
+    ev_home: 0.06, ev_away: -0.18, decision,
+});
+sjekk('ubesluttet kamp', m.tavleBeslutning(tavlerad(null)).tekst === 'Besluttes neste morgen');
+sjekk('nobet viser grunnen', m.tavleBeslutning(tavlerad({ status: 'nobet', selection: null, odds: null, ev: null, skip_reason: 'no_sharp', decided_at: null })).tekst === 'Ingen Pinnacle-pris');
+const spilt = m.tavleBeslutning(tavlerad({ status: 'pending', selection: 'home', odds: 2.2, ev: 0.06, skip_reason: null, decided_at: null }));
+sjekk('spill med side og odds', spilt.spill && spilt.tekst === 'Spill Hjemme (BOS) @ 2,20', spilt.tekst);
+sjekk('tavle fra gammel fil', m.tavle({ rows: [] }).length === 0 && m.tavle(null).length === 0);
+const åpne = m.åpneSpill([
+    rad({ game_key: 'X', status: 'pending', start_time: '2026-11-15T03:00:00Z' }),
+    rad({ game_key: 'Y', status: 'won' }),
+    rad({ game_key: 'Z', status: 'pending', start_time: '2026-11-15T00:00:00Z' }),
+]);
+sjekk('åpne spill, tidligst først', åpne.map((r) => r.game_key).join() === 'Z,X', åpne.map((r) => r.game_key).join());
+
 if (feil) {
     console.log(`\n${feil} sjekk(er) feilet`);
     process.exit(1);

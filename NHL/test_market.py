@@ -608,6 +608,39 @@ def test_strategy_export_payload():
     json.dumps(payload)  # må kunne serialiseres
 
 
+def test_market_board():
+    """Tavla: siste NT-pris, Pinnacle fra samme kjøring, EV per side og beslutningen om den finnes."""
+    import strategy_ml as s
+    from utils.devig import power
+
+    morning = _nt_record(ml=(2.10, 1.80))
+    evening = dict(_nt_record(ml=(2.20, 1.70)), at="2026-11-14T16:40:00Z", job="closing")
+    later = _nt_record(key="TOR-EDM-2026-11-15", start="2026-11-15T02:00:00Z")
+    gone = _nt_record(key="LAK-CGY-2026-11-14", start="2026-11-14T03:00:00Z")  # startet
+    far = _nt_record(key="DAL-BUF-2026-11-18", start="2026-11-18T00:00:00Z")  # utenfor 48 t
+    sharp_morning = _match()["sharp"]
+    sharp_evening = dict(_match(pin=(1.95, 1.92))["sharp"], at="2026-11-14T16:40:00Z")
+    swapped = dict(_match(match="swapped", key="TOR-EDM-2026-11-15")["sharp"])
+    rows = []
+    s.decide_new(rows, [morning], {"BOS-MIN-2026-11-15": _match()}, NOW)
+
+    board = s.market_board([morning, evening, later, gone, far],
+                           [sharp_morning, sharp_evening, swapped], rows,
+                           NOW + timedelta(hours=9))
+    assert [b["game_key"] for b in board] == ["BOS-MIN-2026-11-15", "TOR-EDM-2026-11-15"], board
+    bos, tor = board
+    assert bos["nt_ml_home"] == 2.20 and bos["priced_at"] == "2026-11-14T16:40:00Z", "siste NT-pris"
+    p = power([1.95, 1.92])[0]
+    assert abs(bos["ev_home"] - round(p * 2.20 - 1, 5)) < 1e-9, "Pinnacle fra samme kjøring"
+    assert abs(bos["nt_ml_margin"] - round(1 / 2.2 + 1 / 1.7 - 1, 5)) < 1e-9
+    assert bos["decision"]["status"] == "nobet" and bos["decision"]["skip_reason"] == "below_ev"
+    assert tor["p_fair_home"] is None and tor["ev_home"] is None, "byttet hjemme/borte gir ingen pris"
+    assert tor["decision"] is None
+    payload = s.export_payload(rows, "x", [], None, board)
+    assert payload["board"] == board
+    json.dumps(payload)
+
+
 def test_analyze_market_report():
     """Rapporten bygges uten pandas, også med tomme snapshot- og strategilogger."""
     import analyze_market as am
@@ -669,6 +702,7 @@ def main() -> int:
         ("snapshot_log", test_snapshot_log_round_trip),
         ("market_shadow_main", test_market_shadow_main_logs_and_leaves_bet_ledgers_alone),
         ("strategy_export", test_strategy_export_payload),
+        ("market_board", test_market_board),
         ("analyze_market_report", test_analyze_market_report),
         ("bet_fields_frozen", test_bet_fields_are_frozen),
     ]

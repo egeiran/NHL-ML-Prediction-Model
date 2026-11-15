@@ -16,12 +16,15 @@
  * ved siden av den. `Kalibrering.tsx` sier det der.
  */
 
+import Link from 'next/link';
 import styles from './Modell.module.css';
 
 interface Funn {
     nr: string;
     tittel: string;
     tekst: string;
+    /** Videre lesning på en annen skjerm. */
+    lenke?: { href: string; tekst: string };
 }
 
 const FUNN: readonly Funn[] = [
@@ -49,6 +52,18 @@ const FUNN: readonly Funn[] = [
             'den å måle mot. Med sammensatt bankrull er ekte Kelly dessuten direkte farlig så lenge ' +
             'modellen er overkonfident. Behold flat innsats til sannsynlighetene er kalibrert.',
     },
+    {
+        nr: '03',
+        tittel: 'Modellen slår ikke markedet, og HUB har rundt 12 % margin',
+        tekst:
+            'Etter modellbyttet er modellen omtrent like god som Norsk Tipping-markedet, men ikke bedre: ' +
+            'den beste blandingen av modell og marked gir modellen null vekt (docs/market_analysis.md). En ' +
+            'modell på markedsnivå taper omtrent marginen over tid, uansett terskel, og NT tar rundt 12 % på ' +
+            'HUB mot rundt 7 % på vinner inkl. overtid. Tiltak: alle NT-markeder og Pinnacle-odds logges nå, ' +
+            'og en skyggestrategi spiller vinner inkl. overtid når NT gir bedre odds enn Pinnacles pris uten ' +
+            'margin. Den får ekte innsats først ved positiv CLV over minst 150 spill.',
+        lenke: { href: '/marked', tekst: 'Se skyggestrategien på Markedet' },
+    },
 ];
 
 export function Funn() {
@@ -69,6 +84,11 @@ export function Funn() {
                     <div>
                         <h3 className={styles.funnTittel}>{f.tittel}</h3>
                         <p className={styles.funnTekst}>{f.tekst}</p>
+                        {f.lenke ? (
+                            <Link href={f.lenke.href} className={styles.funnLenke}>
+                                {f.lenke.tekst} →
+                            </Link>
+                        ) : null}
                     </div>
                 </div>
             ))}
