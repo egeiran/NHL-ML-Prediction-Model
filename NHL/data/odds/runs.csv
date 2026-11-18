@@ -15,3 +15,4 @@ run_at,job,nt_status,nt_events,nt_markets_ok,nt_markets_failed,nt_unclassified,s
 2026-11-18T03:51:01Z,closing,ok,0,0,0,0,no_games,0,0,,,,,,
 2026-11-18T09:05:56Z,closing,ok,3,3,0,181,ok,3,3,484,16,,,,
 2026-11-18T17:10:32Z,daily,ok,3,3,0,196,ok,3,3,482,18,3,0,11,
+2026-11-18T23:05:24Z,closing,ok,3,3,0,207,ok,3,3,481,19,,,,
