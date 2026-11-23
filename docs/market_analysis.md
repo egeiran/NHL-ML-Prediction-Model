@@ -1,51 +1,51 @@
 # Markedsanalyse
 
-_Generert 2026-11-16 19:45 UTC av `NHL/analyze_market.py`. Kun stdlib; tallene kan gjenskapes lokalt._
+_Generert 2026-11-23 21:37 UTC av `NHL/analyze_market.py`. Kun stdlib; tallene kan gjenskapes lokalt._
 
 Basisrater (grunnserie 2005/06–2019/20): hjemme 43,0 %, OT/SO 23,3 %, borte 33,7 %.
 
 ## A. Modellen mot NT-markedet (HUB, bet-loggene)
 
-329 avgjorte kamper med full 3-veis NT-odds (2026-09-28 – 2026-11-15).
+376 avgjorte kamper med full 3-veis NT-odds (2026-09-28 – 2026-11-22).
 
-**NT-margin på HUB:** snitt 11,6 %, median 12,1 %. Spiller man alt flatt, er det marginen man taper.
+**NT-margin på HUB:** snitt 11,5 %, median 12,0 %. Spiller man alt flatt, er det marginen man taper.
 
 ### Log loss (lavere er bedre)
 
 | Utvalg | n | Basisrater | NT-marked | Modell | Modell − marked (95 % CI) |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Alle | 329 | 1,0752 | 1,0231 | 1,0408 | 0,0177 [0,0042, 0,0308] – modellen dårligere |
+| Alle | 376 | 1,0736 | 1,0269 | 1,0426 | 0,0156 [0,0037, 0,0280] – modellen dårligere |
 | Før 2026-10-18 (Random Forest) | 133 | 1,0766 | 1,0233 | 1,0623 | 0,0390 [0,0127, 0,0648] – modellen dårligere |
-| Fra 2026-10-18 (logistisk, dagens) | 196 | 1,0742 | 1,0230 | 1,0262 | 0,0032 [-0,0103, 0,0165] – ikke signifikant |
+| Fra 2026-10-18 (logistisk, dagens) | 243 | 1,0720 | 1,0289 | 1,0317 | 0,0028 [-0,0094, 0,0150] – ikke signifikant |
 
 ### Blanding: p ∝ marked^(1−w) · modell^w (i utvalget, ikke ut-av-utvalg)
 
 | w | Log loss |
 | ---: | ---: |
-| 0,0 | 1,0231 |
-| 0,1 | 1,0241 |
-| 0,2 | 1,0253 |
-| 0,3 | 1,0266 |
-| 0,5 | 1,0298 |
-| 0,7 | 1,0337 |
-| 1,0 | 1,0408 |
+| 0,0 | 1,0269 |
+| 0,1 | 1,0278 |
+| 0,2 | 1,0288 |
+| 0,3 | 1,0299 |
+| 0,5 | 1,0327 |
+| 0,7 | 1,0362 |
+| 1,0 | 1,0426 |
 
 Beste vekt på modellen: **w = 0,0**. Markedet alene er best – modellen tilfører ikke informasjon utover oddsen.
 
 ### Linjebevegelse fra beslutning til sluttodds (HUB)
 
-190 kamper med sluttodds. Snitt |Δp(hjemme)| = 0,82 %. Korrelasjon mellom modellens uenighet med markedet og retningen markedet beveger seg: **0,042**. Nær null betyr at markedet ikke beveger seg mot modellen.
+234 kamper med sluttodds. Snitt |Δp(hjemme)| = 0,82 %. Korrelasjon mellom modellens uenighet med markedet og retningen markedet beveger seg: **0,059**. Nær null betyr at markedet ikke beveger seg mot modellen.
 
 ### ROI ved å spille alle utfall flatt, per oddsbøtte
 
 | Odds | n | ROI |
 | --- | ---: | ---: |
-| < 1,70 | 37 | +26,9 % |
-| 1,70–2,10 | 158 | -5,0 % |
-| 2,10–2,60 | 259 | -13,6 % |
-| 2,60–3,30 | 148 | -19,6 % |
-| ≥ 3,30 | 56 | -51,1 % |
-| Uavgjort | 329 | -10,0 % |
+| < 1,70 | 41 | +18,6 % |
+| 1,70–2,10 | 179 | -2,1 % |
+| 2,10–2,60 | 300 | -13,8 % |
+| 2,60–3,30 | 170 | -20,1 % |
+| ≥ 3,30 | 62 | -41,7 % |
+| Uavgjort | 376 | -10,4 % |
 
 Favoritt/longshot-skjevhet: NT tar mer margin på underdogs enn på favoritter.
 
@@ -53,44 +53,59 @@ Favoritt/longshot-skjevhet: NT tar mer margin på underdogs enn på favoritter.
 
 | Kilde | Lav | Midt | Høy |
 | --- | --- | --- | --- |
-| NT-marked | 32,6 % / 24,8 % | 40,9 % / 33,6 % | 51,1 % / 59,1 % |
-| Modell | 35,0 % / 30,3 % | 42,5 % / 35,5 % | 51,4 % / 51,8 % |
+| NT-marked | 32,8 % / 24,8 % | 41,0 % / 36,0 % | 51,0 % / 57,9 % |
+| Modell | 35,0 % / 30,4 % | 42,4 % / 36,8 % | 51,3 % / 51,6 % |
 
 ## B. Snapshot-loggen (alle NT-markeder + Pinnacle)
 
-6 kjøringer, 19 NT-snapshots, 19 skarpe snapshots.
+41 kjøringer, 268 NT-snapshots, 300 skarpe snapshots.
 
 ### NT-margin per marked (siste snapshot per kamp)
 
 | Marked | Kamper | Snittmargin |
 | --- | ---: | ---: |
-| HUB (1X2) | 7 | 11,4 % |
-| Vinner inkl. OT | 7 | 7,9 % |
-| Uavgjort tilbakebetales | 7 | 7,8 % |
-| Blir det overtid? | 7 | 7,2 % |
-| Over/under 3.5 | 3 | 8,0 % |
-| Over/under 4.5 | 7 | 7,9 % |
-| Over/under 5.5 | 7 | 7,8 % |
-| Over/under 6.5 | 7 | 8,1 % |
-| Over/under 7.5 | 7 | 8,1 % |
-| Over/under 8.5 | 4 | 8,2 % |
+| HUB (1X2) | 59 | 11,8 % |
+| Vinner inkl. OT | 59 | 8,0 % |
+| Uavgjort tilbakebetales | 59 | 8,0 % |
+| Blir det overtid? | 59 | 7,2 % |
+| Over/under 3.5 | 36 | 8,0 % |
+| Over/under 4.5 | 59 | 8,1 % |
+| Over/under 5.5 | 59 | 8,0 % |
+| Over/under 6.5 | 59 | 8,0 % |
+| Over/under 7.5 | 59 | 8,4 % |
+| Over/under 8.5 | 23 | 8,1 % |
 
 ### NT vinner inkl. OT: bevegelse fra morgen (08 UTC) til siste snapshot før start
 
-_Ikke nok data ennå (n=5, trenger 30)._
+58 kamper. Snitt |Δp(hjemme)| = 1,17 %, andel kamper som flyttet seg > 1 pp: 50 %.
 
 ### NT vinner inkl. OT mot Pinnacle (samme kjøring)
 
-_Ikke nok data ennå (n=18, trenger 30)._
+241 parvise snapshots. Pinnacles margin: 2,7 %. NT − Pinnacle i margin-fri P(hjemme): snitt -0,10 %, sd 0,70 %.
+
+Beste side hos NT har EV > 0 mot Pinnacle i **0,0 %** av tilfellene, EV > 3 % i 0,0 %. Snitt beste-EV: -5,5 %.
 
 ### Når bør den daglige kjøringen gå? (beslutning 3)
 
-_Ikke nok data ennå (n=7, trenger 300)._ Regelen: flytt bare hvis et senere tidspunkt gir høyere EV mot Pinnacle-close, med 95 %-CI som utelukker 0, på minst 300 kamper.
+| Tidspunkt (UTC) | Kamper | Spill | Snitt EV mot close per kamp | Senere − 08 (95 % CI) |
+| --- | ---: | ---: | ---: | --- |
+| 08:xx | 59 | 0 | +0,00 % | – |
+| 09:xx | 30 | 0 | +0,00 % | +0,00 % [+0,00 %, +0,00 %] (n=30) |
+| 21:xx | 21 | 0 | +0,00 % | – |
+| 22:xx | 2 | 0 | +0,00 % | – |
+| 23:xx | 41 | 0 | +0,00 % | +0,00 % [+0,00 %, +0,00 %] (n=41) |
+| 00:xx | 20 | 0 | +0,00 % | – |
+| 01:xx | 6 | 0 | +0,00 % | – |
+| 02:xx | 11 | 0 | +0,00 % | – |
+| 03:xx | 21 | 0 | +0,00 % | – |
+| 04:xx | 11 | 0 | +0,00 % | – |
+
+Ingen senere kjøring slår 08 UTC signifikant på ≥ 300 kamper ennå – behold 08.
 
 ## C. Skyggestrategien ml-sharp-v1 (vinner inkl. OT mot Pinnacle)
 
-7 kamper vurdert, 7 med Pinnacle-pris. 0 spill (0 åpne), 0 av 0 avgjorte vunnet, resultat +0 kr (ROI –).
+59 kamper vurdert, 59 med Pinnacle-pris. 0 spill (0 åpne), 0 av 0 avgjorte vunnet, resultat +0 kr (ROI –).
 
 **CLV mot Pinnacle-close:** snitt – på 0 spill, 90 %-CI [–, –]. Fremdrift mot 150 spill: 0 %. Kriteriet er ikke oppfylt ennå.
 
-Grunner til å la være: below_ev 7.
+Grunner til å la være: below_ev 59.
