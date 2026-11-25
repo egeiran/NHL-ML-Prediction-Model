@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-24T19:30:45.044020+00:00",
+  "generated_at": "2026-11-25T18:38:32.691364+00:00",
   "config": {
     "base_rating": 1500.0,
     "home_advantage": 50.0,
@@ -9,11 +9,11 @@
     "season_regression": 0.7
   },
   "meta": {
-    "n_api_games": 7812,
-    "n_games": 29990,
+    "n_api_games": 7813,
+    "n_games": 29991,
     "source": "game.csv + api-web.nhle.com (club-schedule-season)",
-    "through": "2026-11-23",
-    "updated_at": "2026-11-24T19:29:50Z"
+    "through": "2026-11-24",
+    "updated_at": "2026-11-25T18:37:31Z"
   },
   "display_keys": true,
   "ratings": {
@@ -23,8 +23,8 @@
     "TBL": 1545.8486990690906,
     "DAL": 1540.736678100223,
     "OTT": 1534.6950372692497,
-    "EDM": 1531.3998384533345,
-    "VGK": 1523.0188429293828,
+    "EDM": 1527.9004279484363,
+    "VGK": 1526.518253434281,
     "BOS": 1521.0421708228364,
     "MTL": 1519.1585837945188,
     "BUF": 1519.1363552650969,
