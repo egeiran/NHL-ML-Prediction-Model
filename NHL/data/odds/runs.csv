@@ -59,3 +59,4 @@ run_at,job,nt_status,nt_events,nt_markets_ok,nt_markets_failed,nt_unclassified,s
 2026-11-27T04:29:57Z,closing,ok,12,12,0,318,ok,12,12,444,56,,,,
 2026-11-27T10:07:21Z,closing,ok,15,15,0,916,ok,15,15,443,57,,,,
 2026-11-27T13:19:04Z,daily,ok,15,15,0,953,ok,15,15,439,61,15,0,14,
+2026-11-27T18:06:21Z,daily,ok,12,12,0,781,ok,15,12,437,63,0,0,0,
