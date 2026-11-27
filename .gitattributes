@@ -1,0 +1,7 @@
+# Oddsloggene skrives bare til, aldri om (NHL/utils/odds_log.py), og både
+# daily-bet-update.yml og closing-odds.yml legger til linjer. To jobber som
+# legger til nederst i samme fil gir ellers alltid konflikt i `git pull
+# --rebase`. union beholder begge sidenes linjer; leserne sorterer selv på
+# tidspunkt (`at` / `run_at`), så rekkefølgen i fila betyr ingenting.
+NHL/data/odds/*.jsonl merge=union
+NHL/data/odds/runs.csv merge=union

@@ -12,6 +12,13 @@ RETRY_PAUSE = 0.4
 MAX_RETRIES = 3
 HTTP_TIMEOUT = 5
 
+# 429 er APIet som ber oss vente, ikke et brudd. 0,4 + 0,8 s holdt ikke: 26. nov
+# hadde Elo-steget rett før brukt opp kvoten, og avregningen døde på første kall.
+# Retry-After følges når den finnes, ellers dobles pausen (3, 6, 12, 24 s).
+RATE_LIMIT_RETRIES = 4
+RATE_LIMIT_PAUSE = 3.0
+RATE_LIMIT_MAX_WAIT = 30.0
+
 
 def _parse_dt(date_str: str):
     try:
@@ -20,22 +27,35 @@ def _parse_dt(date_str: str):
         return None
 
 
+def _rate_limit_wait(response, attempt: int) -> float:
+    """Sekunder å vente etter 429 nr. `attempt` (1, 2, …)."""
+    try:
+        wait = float(response.headers.get("Retry-After", ""))
+    except (AttributeError, TypeError, ValueError):
+        wait = RATE_LIMIT_PAUSE * (2 ** (attempt - 1))
+    return max(0.0, min(wait, RATE_LIMIT_MAX_WAIT))
+
+
 def get_json(url):
-    last_exc = None
-    for attempt in range(MAX_RETRIES):
+    failures = 0      # brutte kall, 5xx, ugyldig JSON …
+    rate_limited = 0  # 429
+    while True:
         try:
             r = requests.get(url, timeout=HTTP_TIMEOUT)
-            if r.status_code == 429 and attempt < MAX_RETRIES - 1:
-                time.sleep(RETRY_PAUSE * (attempt + 1))
-                continue
-            r.raise_for_status()
-            return r.json()
-        except Exception as exc:
-            last_exc = exc
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(RETRY_PAUSE * (attempt + 1))
-                continue
-            raise last_exc
+            if r.status_code != 429:
+                r.raise_for_status()
+                return r.json()
+        except Exception:
+            failures += 1
+            if failures >= MAX_RETRIES:
+                raise
+            time.sleep(RETRY_PAUSE * failures)
+            continue
+
+        rate_limited += 1
+        if rate_limited > RATE_LIMIT_RETRIES:
+            r.raise_for_status()  # gir opp: HTTPError 429, som før
+        time.sleep(_rate_limit_wait(r, rate_limited))
 
 # 1) GET SCOREBOARD
 def get_scoreboard(date):

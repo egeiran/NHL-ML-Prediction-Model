@@ -146,11 +146,16 @@ def flatten(record: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def read_runs(directory: Optional[Path] = None) -> List[Dict[str, str]]:
+    """
+    Kjøringene, eldste først etter `run_at` – ikke fil-rekkefølge: union-merge
+    (.gitattributes) kan legge en kjøring som ble pushet sist foran en som
+    kjørte senere. Sorteringen er stabil, så like tidspunkt beholder rekkefølgen.
+    """
     path = (directory or odds_dir()) / "runs.csv"
     if not path.exists():
         return []
     with path.open(newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+        return sorted(csv.DictReader(f), key=lambda r: r.get("run_at") or "")
 
 
 def append_run(row: Dict[str, Any], directory: Optional[Path] = None) -> Path:
