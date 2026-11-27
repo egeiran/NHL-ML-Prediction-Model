@@ -1379,6 +1379,122 @@ def test_nt_odds_stub_does_not_leak_to_other_modules():
     assert requests.get is before
 
 
+def _nhl_response(status_code, payload=None, retry_after=None):
+    """Ekte requests.Response, så raise_for_status oppfører seg som i drift."""
+    import json as _json
+
+    import requests
+
+    r = requests.models.Response()
+    r.status_code = status_code
+    r.url = "https://api-web.nhle.com/v1/scoreboard/2026-01-27"
+    r._content = _json.dumps(payload or {}).encode()
+    if retry_after is not None:
+        r.headers["Retry-After"] = str(retry_after)
+    return r
+
+
+def _with_stubbed_nhl(get_func, call):
+    """Kjører `call` med NHL-kallene stubbet; søvnen registreres i stedet for å tas."""
+    import types
+
+    from live import nhl_api
+
+    sleeps = []
+    original_requests, original_time = nhl_api.requests, nhl_api.time
+    nhl_api.requests = _RequestsShim(get_func)
+    nhl_api.time = types.SimpleNamespace(sleep=sleeps.append)
+    try:
+        return call(nhl_api), sleeps
+    finally:
+        nhl_api.requests, nhl_api.time = original_requests, original_time
+
+
+def test_nhl_api_waits_out_a_rate_limit():
+    """
+    26. nov døde den daglige jobben på 429 fra NHL-APIet: get_json ventet
+    0,4 + 0,8 s og ga opp. Nå følges Retry-After, ellers dobles pausen.
+    """
+    responses = [
+        _nhl_response(429, retry_after=7),
+        _nhl_response(429),
+        _nhl_response(200, {"gamesByDate": []}),
+    ]
+    calls = []
+
+    def get(url, params=None, timeout=None):
+        calls.append(url)
+        return responses[len(calls) - 1]
+
+    data, sleeps = _with_stubbed_nhl(get, lambda api: api.get_json("https://x"))
+
+    from live import nhl_api
+
+    assert data == {"gamesByDate": []}, data
+    assert len(calls) == 3, calls
+    # Første pause fra Retry-After, andre fra den doblede standardpausen.
+    assert sleeps == [7.0, nhl_api.RATE_LIMIT_PAUSE * 2], sleeps
+
+
+def test_nhl_api_gives_up_on_a_persistent_rate_limit():
+    """Et API som aldri slipper oss inn skal gi HTTPError, ikke henge for alltid."""
+    import requests
+
+    from live import nhl_api
+
+    calls = []
+
+    def get(url, params=None, timeout=None):
+        calls.append(url)
+        return _nhl_response(429, retry_after=9999)
+
+    try:
+        _with_stubbed_nhl(get, lambda api: api.get_json("https://x"))
+    except requests.exceptions.HTTPError as exc:
+        assert "429" in str(exc), exc
+    else:
+        raise AssertionError("forventet HTTPError etter siste 429")
+    assert len(calls) == nhl_api.RATE_LIMIT_RETRIES + 1, calls
+
+
+def test_a_failed_result_lookup_leaves_the_bet_pending():
+    """
+    Ett oppslag som feiler skal ikke velte avregningen – eller resten av den
+    daglige jobben. Raden står som pending til neste kjøring, og datoen spørres
+    ikke om igjen i samme kjøring.
+    """
+    import requests
+
+    import bet_tracker as bt
+
+    def row(date_str, home, away):
+        return {"status": "pending", "date": date_str, "home_abbr": home, "away_abbr": away,
+                "selection": "home", "stake": 100.0, "odds": 2.0}
+
+    rows = [row("2026-01-27", "CBJ", "LAK"), row("2026-01-27", "NYR", "BOS"),
+            row("2026-11-25", "TOR", "MTL")]
+    calls = []
+
+    def lookup(game_date, home, away):
+        calls.append(game_date)
+        if game_date == "2026-01-27":
+            raise requests.exceptions.HTTPError("429 Client Error: Too Many Requests")
+        return {"finished": True, "outcome": "home"}
+
+    original = bt._lookup_result
+    bt._lookup_result = lookup
+    errors = []
+    try:
+        settled = bt.settle_pending_bets(rows, errors)
+    finally:
+        bt._lookup_result = original
+
+    assert settled == 1, settled
+    assert [r["status"] for r in rows] == ["pending", "pending", "won"], rows
+    assert calls == ["2026-01-27", "2026-11-25"], calls
+    assert len(errors) == 1 and "2026-01-27" in errors[0], errors
+
+
 def main() -> int:
     failures = 0
     tmp_root = Path(tempfile.mkdtemp(prefix="nhl-export-test-"))
@@ -1409,6 +1525,9 @@ def main() -> int:
             ("nt_persistent_503", test_nt_odds_surfaces_a_persistent_server_error, False),
             ("nt_retry_gives_up", test_nt_odds_gives_up_after_the_last_retry, False),
             ("nt_stub_no_leak", test_nt_odds_stub_does_not_leak_to_other_modules, False),
+            ("nhl_rate_limit_waits", test_nhl_api_waits_out_a_rate_limit, False),
+            ("nhl_rate_limit_gives_up", test_nhl_api_gives_up_on_a_persistent_rate_limit, False),
+            ("settle_survives_lookup_error", test_a_failed_result_lookup_leaves_the_bet_pending, False),
             ("elo_display_abbrs", test_elo_export_uses_display_abbreviations, True),
             ("three_outcome_fields", test_bet_entry_logs_all_three_outcomes, True),
             ("legacy_round_trip", test_legacy_rows_survive_a_read_write_round_trip, True),

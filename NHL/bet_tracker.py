@@ -759,13 +759,21 @@ def _build_candidate_entry(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return entry
 
 
-def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
+def settle_pending_bets(
+    history: List[Dict[str, Any]], errors: Optional[List[str]] = None
+) -> int:
     """
     Oppdaterer resultater for alle bets som har gått ferdig.
     Returnerer antall oppdaterte rader.
+
+    Et oppslag som feiler (429, brudd) velter ikke kjøringen: raden blir stående
+    som pending og prøves igjen neste gang. Datoen hoppes over resten av
+    kjøringen, så vi ikke hamrer på et API som allerede sier stopp. Feilene
+    legges i `errors` når listen er gitt.
     """
     today = date.today()
     updated = 0
+    failed_dates = set()
 
     for row in history:
         if row.get("status") != "pending":
@@ -779,8 +787,18 @@ def settle_pending_bets(history: List[Dict[str, Any]]) -> int:
 
         if game_date > today:
             continue  # kamp ikke spilt ennå
+        if game_date_str in failed_dates:
+            continue
 
-        res = _lookup_result(game_date_str, row.get("home_abbr"), row.get("away_abbr"))
+        try:
+            res = _lookup_result(game_date_str, row.get("home_abbr"), row.get("away_abbr"))
+        except Exception as exc:
+            failed_dates.add(game_date_str)
+            message = f"fant ikke resultatene for {game_date_str}: {exc}"
+            print(f"  [WARN] {message}")
+            if errors is not None:
+                errors.append(message)
+            continue
         if not res or not res.get("finished"):
             continue
 
@@ -1029,9 +1047,10 @@ def update_daily_bets(
     """
     history = load_history(history_path)
     shadow = load_shadow(shadow_path)
-    settled = settle_pending_bets(history)
+    settle_errors: List[str] = []
+    settled = settle_pending_bets(history, settle_errors)
     # Skyggespillene avregnes med samme logikk, så tallene er sammenlignbare.
-    shadow_settled = settle_pending_bets(shadow)
+    shadow_settled = settle_pending_bets(shadow, settle_errors)
     report = prefetched_report if prefetched_report is not None else _build_value_report(days_ahead)
     created, shadowed = record_new_bets(
         history,
@@ -1056,6 +1075,7 @@ def update_daily_bets(
         "shadow_created": shadowed,
         "settled": settled,
         "shadow_settled": shadow_settled,
+        "settle_errors": settle_errors,
         "history": history,
         "below_threshold": below_threshold,
         "shadow": shadow,
@@ -1213,3 +1233,6 @@ if __name__ == "__main__":
     print("Siste status:")
     for ts in result["portfolio"]["timeseries"][-3:]:
         print(ts)
+    # Annotasjon i Actions: jobben går videre, men stillheten skal synes.
+    for message in result["settle_errors"]:
+        print(f"::warning::Avregning utsatt, prøves igjen neste kjøring – {message}")

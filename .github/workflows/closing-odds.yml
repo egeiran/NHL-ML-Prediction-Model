@@ -28,8 +28,11 @@ jobs:
       group: bet-ledger
       cancel-in-progress: false
     steps:
+      # Grentippen, ikke commiten som startet kjøringen – se daily-bet-update.yml.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5

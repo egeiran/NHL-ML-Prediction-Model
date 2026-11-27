@@ -26,9 +26,14 @@ jobs:
       NHL_DRAW_VALUE_MIN: "0.30"
       NHL_MAX_ODDS: "4.0"
     steps:
+      # Grentippen, ikke commiten som startet kjøringen: en planlagt kjøring som
+      # venter i bet-ledger-køen, og enhver re-run, får ellers en SHA som
+      # closing-odds.yml har skrevet forbi – og pushen dør i rebase-konflikt
+      # (run 45874880462, 27. nov).
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Set up Python
